@@ -232,6 +232,37 @@ class TestRefundCase:
         assert r.local_tax_due < 0
         assert r.total_due < 0
 
+    def test_refund_total_due_includes_national_refund_shortfall(self) -> None:
+        """売上110万・仕入550万(本則): total_due = -(312,000 + 88,000) = -400,000。"""
+        r = calc_consumption_tax(
+            ConsumptionTaxInput(
+                fiscal_year=2025,
+                method="standard",
+                taxable_sales_10=1_100_000,
+                taxable_purchases_10=5_500_000,
+            )
+        )
+        assert r.refund_shortfall == 312_000
+        assert r.local_tax_due == -88_000
+        assert r.total_due == -400_000
+
+    def test_refund_local_tax_is_not_truncated_to_100yen(self) -> None:
+        """還付譲渡割に端数が出るケース: -22,481 のまま返す（-22,400 に切捨てない）。"""
+        r = calc_consumption_tax(
+            ConsumptionTaxInput(
+                fiscal_year=2025,
+                method="standard",
+                taxable_sales_10=110_000,
+                taxable_purchases_10=1_234_100,
+            )
+        )
+        # 売上国税: 課税標準100,000 × 7.8% = 7,800
+        # 仕入国税: 1,234,100 × 78 // 1100 = 87,508
+        # refund_shortfall = 79,708 → 79,708 × 22 // 78 = 22,481
+        assert r.refund_shortfall == 79_708
+        assert r.local_tax_due == -22_481
+        assert r.total_due == -(79_708 + 22_481)
+
 
 class TestMixedRates:
     """8%軽減税率の混在テスト。"""

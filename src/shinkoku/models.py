@@ -523,8 +523,10 @@ class ConsumptionTaxResult(BaseModel):
     1. 課税標準額 = 税込金額 × 100/110（or 100/108）、1,000円未満切捨（国税通則法118条）
     2. 消費税額(国税) = 課税標準額 × 7.8%（or 6.24%）
     3. 控除対象仕入税額を計算（方式により異なる）
-    4. 差引税額 = 消費税額 − 控除対象仕入税額、100円未満切捨（国税通則法119条）
-    5. 地方消費税 = 差引税額 × 22/78、100円未満切捨
+    4. 差引税額(正の場合) = 消費税額 − 控除対象仕入税額、100円未満切捨
+       控除不足還付税額(負の場合) = 控除対象仕入税額 − 消費税額、端数処理なし
+    5. 地方消費税 = 差引税額または控除不足還付税額 × 22/78
+       納税額は100円未満切捨、還付額は1円未満切捨
     """
 
     fiscal_year: int
@@ -541,10 +543,13 @@ class ConsumptionTaxResult(BaseModel):
     net_tax: int = 0  # 差引税額(100円切捨, 正の場合のみ) AAJ00100
     refund_shortfall: int = 0  # 控除不足還付税額(仕入>売上の場合) AAJ00090
     interim_payment: int = 0  # 中間納付税額 AAJ00110
-    tax_due: int = 0  # 納付税額 = net_tax - interim_payment AAJ00120
+    # 後方互換の符号付き集計値 = net_tax - interim_payment
+    # 正=納付税額⑪/AAJ00120、負=中間納付還付税額⑫相当の絶対値
+    tax_due: int = 0
     # 地方消費税
-    local_tax_due: int = 0  # 地方消費税額
-    total_due: int = 0  # 合計納付税額（負=還付）
+    local_tax_due: int = 0  # 納付時は100円未満切捨、還付時は1円未満切捨
+    # = tax_due - refund_shortfall + local_tax_due（負=還付、地方中間納付は未考慮）
+    total_due: int = 0
 
 
 # --- ふるさと納税 (furusato nozei) ---

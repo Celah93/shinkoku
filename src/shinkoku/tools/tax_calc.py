@@ -1401,8 +1401,9 @@ def calc_consumption_tax(input_data: ConsumptionTaxInput) -> ConsumptionTaxResul
     2. 消費税額(国税) = 課税標準額 × 7.8%（10%品目）or 6.24%（8%品目）
     3. 控除対象仕入税額（方式による）
     4. 差引税額(正の場合) = 消費税額 − 仕入税額、100円未満切捨（国税通則法119条）
-       控除不足還付税額(負の場合) = 仕入税額 − 消費税額
-    5. 地方消費税 = 差引税額 × 22/78、100円未満切捨
+       控除不足還付税額(負の場合) = 仕入税額 − 消費税額、端数処理なし
+    5. 地方消費税 = 差引税額または控除不足還付税額 × 22/78
+       納税額は100円未満切捨、還付額は1円未満切捨
 
     Methods:
     - special_20pct: 2割特例 = 消費税額(国税) × 20%
@@ -1468,22 +1469,27 @@ def calc_consumption_tax(input_data: ConsumptionTaxInput) -> ConsumptionTaxResul
         net_tax = 0
         refund_shortfall = abs(tax_due_raw)
 
-    # 納付税額 = 差引税額 − 中間納付税額
+    # NOTE: tax_due は後方互換の符号付き集計値（正=納付税額⑪相当、
+    # 負=中間納付還付税額⑫相当の絶対値）。申告書欄への振り分けは
+    # 表示側の責務のため、還付時でも控除不足還付税額（refund_shortfall）は
+    # ここに含めない。納付/還付の合計は total_due が持つ。
     interim_payment = input_data.interim_payment
     tax_due = net_tax - interim_payment
 
-    # Step 5: 地方消費税 = 差引税額 × 22/78, 100円未満切捨
+    # Step 5: 地方消費税。納税額のみ100円未満切捨、還付額は1円未満切捨
     if net_tax > 0:
         local_tax = net_tax * LOCAL_TAX_RATIO // NATIONAL_TAX_RATIO
         local_tax = (local_tax // TAX_AMOUNT_ROUNDING) * TAX_AMOUNT_ROUNDING
     elif refund_shortfall > 0:
-        # 還付の場合も地方消費税部分は計算する（還付額に含む）
-        local_tax_raw = refund_shortfall * LOCAL_TAX_RATIO // NATIONAL_TAX_RATIO
-        local_tax = -((local_tax_raw // TAX_AMOUNT_ROUNDING) * TAX_AMOUNT_ROUNDING)
+        # 還付譲渡割額は100円未満切捨ての対象外（切捨ては納税額のみ。
+        # 令和7年分手引き: 地方消費税の税額計算）
+        local_tax = -(refund_shortfall * LOCAL_TAX_RATIO // NATIONAL_TAX_RATIO)
     else:
         local_tax = 0
 
-    total_due = tax_due + local_tax
+    # NOTE: 地方消費税の中間納付譲渡割額は入力モデルに存在しないため
+    # total_due に反映されない（Issue: 中間納付譲渡割額の入力対応）。
+    total_due = tax_due - refund_shortfall + local_tax
 
     return ConsumptionTaxResult(
         fiscal_year=input_data.fiscal_year,

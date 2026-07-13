@@ -21,6 +21,9 @@ skills/e-tax/research/*.png
 # Planning docs
 docs/plans/
 
+# Claude handoff reports
+_handoff_claude/
+
 # User config & database (contain personal info)
 shinkoku.config.yaml
 shinkoku.db
