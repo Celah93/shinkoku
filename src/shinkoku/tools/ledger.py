@@ -796,9 +796,72 @@ def ledger_bs(*, db_path: str, fiscal_year: int) -> dict:
             ).fetchall()
             return [{"account_code": r[0], "account_name": r[1], "amount": r[2]} for r in rows]
 
-        assets = _get_balances("asset", "debit")
-        liabilities = _get_balances("liability", "credit")
-        equity = _get_balances("equity", "credit")
+        current_assets = _get_balances("asset", "debit")
+        current_liabilities = _get_balances("liability", "credit")
+        current_equity = _get_balances("equity", "credit")
+
+        # 期首残高を取得
+        opening_rows = conn.execute(
+            "SELECT ob.account_code, a.name, a.category, ob.amount "
+            "FROM opening_balances ob "
+            "INNER JOIN accounts a ON a.code = ob.account_code "
+            "WHERE ob.fiscal_year = ? AND ob.amount != 0 "
+            "ORDER BY ob.account_code",
+            (fiscal_year,),
+        ).fetchall()
+
+        opening_assets = [
+            {"account_code": r[0], "account_name": r[1], "amount": r[3]}
+            for r in opening_rows
+            if r[2] == "asset"
+        ]
+        opening_liabilities = [
+            {"account_code": r[0], "account_name": r[1], "amount": r[3]}
+            for r in opening_rows
+            if r[2] == "liability"
+        ]
+        opening_equity = [
+            {"account_code": r[0], "account_name": r[1], "amount": r[3]}
+            for r in opening_rows
+            if r[2] == "equity"
+        ]
+
+        def _merge_closing_balances(
+            current_balances: list[dict], opening_balances: list[dict]
+        ) -> list[dict]:
+            # NOTE: 期末残高は「期首 + 当期増減」。SQL側で opening_balances を
+            # JOIN しない理由: 仕訳が1件もない科目（期首残高のみの固定資産等）は
+            # journal_lines 起点のクエリに現れないため、Python側でマージする。
+            # opening_balances.amount は正常残高側を正とする符号規約
+            # （general_ledger と同じ）を前提に単純加算する。
+            merged = {
+                item["account_code"]: {
+                    "account_code": item["account_code"],
+                    "account_name": item["account_name"],
+                    "amount": item["amount"],
+                }
+                for item in opening_balances
+            }
+            for item in current_balances:
+                account_code = item["account_code"]
+                if account_code in merged:
+                    merged[account_code]["amount"] += item["amount"]
+                else:
+                    merged[account_code] = {
+                        "account_code": account_code,
+                        "account_name": item["account_name"],
+                        "amount": item["amount"],
+                    }
+
+            return [
+                merged[account_code]
+                for account_code in sorted(merged)
+                if merged[account_code]["amount"] != 0
+            ]
+
+        assets = _merge_closing_balances(current_assets, opening_assets)
+        liabilities = _merge_closing_balances(current_liabilities, opening_liabilities)
+        equity = _merge_closing_balances(current_equity, opening_equity)
 
         total_assets = sum(a["amount"] for a in assets)
         total_liabilities = sum(li["amount"] for li in liabilities)
@@ -838,32 +901,6 @@ def ledger_bs(*, db_path: str, fiscal_year: int) -> dict:
 
         net_income = rev_net - exp_net
         total_equity = total_equity_accounts + net_income
-
-        # 期首残高を取得
-        opening_rows = conn.execute(
-            "SELECT ob.account_code, a.name, a.category, ob.amount "
-            "FROM opening_balances ob "
-            "INNER JOIN accounts a ON a.code = ob.account_code "
-            "WHERE ob.fiscal_year = ? AND ob.amount != 0 "
-            "ORDER BY ob.account_code",
-            (fiscal_year,),
-        ).fetchall()
-
-        opening_assets = [
-            {"account_code": r[0], "account_name": r[1], "amount": r[3]}
-            for r in opening_rows
-            if r[2] == "asset"
-        ]
-        opening_liabilities = [
-            {"account_code": r[0], "account_name": r[1], "amount": r[3]}
-            for r in opening_rows
-            if r[2] == "liability"
-        ]
-        opening_equity = [
-            {"account_code": r[0], "account_name": r[1], "amount": r[3]}
-            for r in opening_rows
-            if r[2] == "equity"
-        ]
 
         return {
             "status": "ok",
