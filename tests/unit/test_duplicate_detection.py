@@ -129,6 +129,25 @@ class TestSourceFileCheck:
 
 
 class TestFindDuplicatePairs:
+    def test_find_duplicate_pairs_score90_independent_of_line_insertion_order(
+        self, in_memory_db_with_accounts
+    ):
+        """同じ科目構成なら仕訳行の登録順が逆でもscore 90と判定する。"""
+        db = in_memory_db_with_accounts
+        db.execute("INSERT INTO fiscal_years (year) VALUES (2025)")
+        db.commit()
+
+        entry1 = _make_entry(debit_code="1001", credit_code="4001")
+        entry2 = _make_entry(debit_code="1001", credit_code="4001")
+        entry2.lines.reverse()
+        _insert_journal(db, entry1, include_hash=False)
+        _insert_journal(db, entry2, include_hash=False)
+
+        result = find_duplicate_pairs(db, 2025)
+
+        assert len(result.pairs) == 1
+        assert result.pairs[0].score == 90
+
     def test_find_duplicate_pairs_legacy_exact(self, in_memory_db_with_accounts):
         """Legacy entries (NULL hash) with identical content detected via date+amount+accounts."""
         db = in_memory_db_with_accounts

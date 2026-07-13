@@ -135,9 +135,14 @@ def find_duplicate_pairs(
                 exact_count += 1
 
     # Phase 2: Same date + same total debit (score 70-90)
+    # NOTE: GROUP_CONCAT に ORDER BY を付けない。集約関数内 ORDER BY は
+    # SQLite 3.44（2023-11）で追加された構文で、Windows版 CPython 3.12.0
+    # 同梱の3.42やUbuntu 22.04の3.37ではsyntax errorになる。
+    # score 90判定は連結文字列の完全一致に依存するため、
+    # 順序の正規化は下のPython側ソートで行う。
     journals = conn.execute(
         "SELECT j.id, j.date, j.description, "
-        "GROUP_CONCAT(jl.account_code ORDER BY jl.account_code), "
+        "GROUP_CONCAT(jl.account_code), "
         "SUM(CASE WHEN jl.side='debit' THEN jl.amount ELSE 0 END) as debit_total "
         "FROM journals j "
         "INNER JOIN journal_lines jl ON jl.journal_id = j.id "
@@ -150,7 +155,10 @@ def find_duplicate_pairs(
     groups: dict[tuple[str, int], list[tuple[int, str | None, str | None]]] = defaultdict(list)
     for j in journals:
         key = (j[1], j[4])  # (date, debit_total)
-        groups[key].append((j[0], j[2], j[3]))  # (id, description, account_codes)
+        codes = j[3]
+        # GROUP_CONCATの連結順は未規定のため、比較用に決定的な形へ正規化する
+        normalized_codes = ",".join(sorted(codes.split(","))) if codes else codes
+        groups[key].append((j[0], j[2], normalized_codes))  # (id, description, account_codes)
 
     # Already-seen pairs from exact matches
     seen = {(p.journal_id_a, p.journal_id_b) for p in pairs}
