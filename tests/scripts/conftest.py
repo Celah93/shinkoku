@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -40,10 +41,19 @@ def db_path(tmp_path: Path) -> str:
 
 def run_cli(*args: str) -> subprocess.CompletedProcess[str]:
     """Run the unified shinkoku CLI and return the CompletedProcess."""
+    # 親の復号と子CLIの入出力を両方UTF-8にピン留めする。
+    # PYTHONUTF8だけでは継承したPYTHONIOENCODINGに標準入出力を
+    # 上書きされるため、両方を明示する。
     return subprocess.run(
         [sys.executable, "-m", "shinkoku.cli", *args],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        env={
+            **os.environ,
+            "PYTHONUTF8": "1",
+            "PYTHONIOENCODING": "utf-8",
+        },
         cwd=str(PROJECT_ROOT),
         timeout=60,
     )
@@ -52,5 +62,6 @@ def run_cli(*args: str) -> subprocess.CompletedProcess[str]:
 def write_json(tmp_path: Path, data: Any, name: str = "input.json") -> str:
     """Write JSON data to a temp file and return path."""
     path = tmp_path / name
-    path.write_text(json.dumps(data, ensure_ascii=False))
+    # CLIの入力読込みはUTF-8固定のため、Windowsの既定CP932に依存させない。
+    path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
     return str(path)

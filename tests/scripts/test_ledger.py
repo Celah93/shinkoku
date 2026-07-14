@@ -1319,7 +1319,7 @@ class TestErrorHandling:
 
     def test_invalid_json(self, db_path, tmp_path):
         bad_file = tmp_path / "bad.json"
-        bad_file.write_text("not json at all")
+        bad_file.write_text("not json at all", encoding="utf-8")
         r = run_ledger_raw(
             "journal-add",
             "--db-path",

@@ -24,7 +24,7 @@ def test_extract_text_file_not_found(tmp_path: Path):
 
 def test_extract_text_not_pdf(tmp_path: Path):
     txt = tmp_path / "test.txt"
-    txt.write_text("hello")
+    txt.write_text("hello", encoding="utf-8")
     result = run_pdf("extract-text", "--file-path", str(txt))
     assert result.returncode == 1
     output = json.loads(result.stdout)
@@ -68,7 +68,7 @@ def test_to_image_file_not_found(tmp_path: Path):
 
 def test_to_image_not_pdf(tmp_path: Path):
     txt = tmp_path / "test.txt"
-    txt.write_text("hello")
+    txt.write_text("hello", encoding="utf-8")
     result = run_pdf("to-image", "--file-path", str(txt), "--output-dir", str(tmp_path / "out"))
     assert result.returncode == 1
     output = json.loads(result.stdout)

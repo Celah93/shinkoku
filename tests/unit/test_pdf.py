@@ -18,7 +18,7 @@ def test_extract_text_file_not_found(tmp_path: Path):
 
 def test_extract_text_not_pdf(tmp_path: Path):
     txt = tmp_path / "test.txt"
-    txt.write_text("hello")
+    txt.write_text("hello", encoding="utf-8")
     result = extract_text(file_path=str(txt))
     assert result["status"] == "error"
     assert "Not a PDF" in result["message"]
@@ -53,7 +53,7 @@ def test_to_images_file_not_found(tmp_path: Path):
 
 def test_to_images_not_pdf(tmp_path: Path):
     txt = tmp_path / "test.txt"
-    txt.write_text("hello")
+    txt.write_text("hello", encoding="utf-8")
     result = to_images(file_path=str(txt), output_dir=str(tmp_path / "out"))
     assert result["status"] == "error"
     assert "Not a PDF" in result["message"]
