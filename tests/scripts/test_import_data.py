@@ -26,6 +26,34 @@ def test_import_csv(tmp_path: Path):
     assert output["candidates"][0]["amount"] == 1000
 
 
+def test_import_csv_negative_triangle_amount_kept_negative(tmp_path: Path):
+    csv_file = tmp_path / "negative.csv"
+    csv_file.write_text(
+        '日付,摘要,金額\n2025-01-15,返金,"▲1,000"\n',
+        encoding="utf-8",
+    )
+    result = run_import("csv", "--file-path", str(csv_file))
+    assert result.returncode == 0
+    output = json.loads(result.stdout)
+    assert output["status"] == "ok"
+    assert output["candidates"][0]["amount"] == -1_000
+
+
+def test_import_csv_unparseable_amount_goes_to_skipped_rows(tmp_path: Path):
+    csv_file = tmp_path / "unparseable.csv"
+    csv_file.write_text(
+        '日付,摘要,金額\n2025-01-15,書式崩れ,"12,34"\n',
+        encoding="utf-8",
+    )
+    result = run_import("csv", "--file-path", str(csv_file))
+    assert result.returncode == 0
+    output = json.loads(result.stdout)
+    assert output["status"] == "ok"
+    assert output["candidates"] == []
+    assert output["total_rows"] == 0
+    assert output["skipped_rows"] == [2]
+
+
 def test_import_csv_file_not_found(tmp_path: Path):
     result = run_import("csv", "--file-path", str(tmp_path / "nonexistent.csv"))
     assert result.returncode == 1

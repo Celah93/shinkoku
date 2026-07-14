@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import io
 import re
+import unicodedata
 from pathlib import Path
 
 from shinkoku.db import get_connection
@@ -80,16 +81,38 @@ def _detect_amount_column(headers: list[str]) -> int | None:
     return 2 if len(headers) > 2 else None
 
 
+# 金額の許容書式: [通貨記号]数字([3桁区切り])[.0+][円]
+# 記号を除去してから判定すると、場所・個数の情報が失われ、12,34や1円2などの
+# 壊れた書式を正しい金額らしく見せてしまうため、文字列全体を照合する。
+_AMOUNT_RE = re.compile(
+    r"(?:[¥\\])?"  # 通貨記号は先頭に最大1つ
+    r"([0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)"  # 3桁区切り or 区切りなし
+    r"(?:\.0+)?"  # 小数部は0のみ（整数円として解釈）
+    r"円?"  # 円は末尾に最大1つ
+)
+
+
 def _parse_amount(value: str) -> int | None:
-    """Parse an amount string to int. Returns None if unparseable."""
-    cleaned = value.strip().replace(",", "").replace("\\", "").replace("¥", "")
-    cleaned = re.sub(r"[^\d\-]", "", cleaned)
-    if not cleaned or cleaned == "-":
+    """Parse an amount string to int. Returns None if unparseable.
+
+    許容書式の全体照合で判定し、一致しない値は黙って数値化せず None を
+    返す（呼び出し側で skipped_rows 行き）。
+    """
+    # 全角数字・カンマ・括弧・円記号・マイナスを半角へ正規化する。
+    s = unicodedata.normalize("NFKC", value.strip())
+
+    negative = False
+    # 負数記号は先頭の1種類だけ。▲△とU+2212はNFKCで'-'にならないため明示する。
+    if s[:1] in ("▲", "△", "−", "-"):
+        negative, s = True, s[1:].lstrip()
+    elif len(s) >= 2 and s[0] == "(" and s[-1] == ")":
+        negative, s = True, s[1:-1].strip()
+    # 末尾マイナスや二重符号は本体の全体照合に一致しないため受け付けない。
+    match = _AMOUNT_RE.fullmatch(s)
+    if match is None:
         return None
-    try:
-        return int(cleaned)
-    except ValueError:
-        return None
+    amount = int(match.group(1).replace(",", ""))
+    return -amount if negative else amount
 
 
 def _normalize_date(value: str) -> str | None:
