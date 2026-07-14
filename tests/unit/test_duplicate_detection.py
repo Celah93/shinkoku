@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
+from shinkoku.db import get_connection
 from shinkoku.duplicate_detection import (
     check_duplicate_on_insert,
     check_source_file_imported,
@@ -10,6 +13,13 @@ from shinkoku.duplicate_detection import (
 )
 from shinkoku.hashing import compute_journal_hash
 from shinkoku.models import JournalEntry, JournalLine
+from shinkoku.tools.ledger import (
+    ledger_add_journal,
+    ledger_add_journals_batch,
+    ledger_delete_journal,
+    ledger_init,
+    ledger_update_journal,
+)
 
 
 def _make_entry(
@@ -50,6 +60,61 @@ def _insert_journal(
         )
     db.commit()
     return journal_id
+
+
+def _init_file_db(tmp_path: Path) -> str:
+    """Create a file-backed ledger DB for tool-level duplicate tests."""
+    db_path = str(tmp_path / "force-duplicate.db")
+    ledger_init(fiscal_year=2025, db_path=db_path)
+    return db_path
+
+
+def _trip_entry(description: str) -> JournalEntry:
+    """Create one side of a same-day round-trip fare."""
+    return _make_entry(
+        date="2025-06-01",
+        debit_code="5200",
+        credit_code="1100",
+        amount=220,
+        description=description,
+    )
+
+
+def _add_anchor_and_forced_twin(db_path: str) -> tuple[int, int]:
+    anchor = ledger_add_journal(
+        db_path=db_path,
+        fiscal_year=2025,
+        entry=_trip_entry("電車賃（行き）"),
+    )
+    twin = ledger_add_journal(
+        db_path=db_path,
+        fiscal_year=2025,
+        entry=_trip_entry("電車賃（帰り）"),
+        force=True,
+    )
+    assert anchor["status"] == "ok"
+    assert twin["status"] == "ok"
+    return anchor["journal_id"], twin["journal_id"]
+
+
+def _content_hash(db_path: str, journal_id: int) -> str | None:
+    conn = get_connection(db_path)
+    try:
+        row = conn.execute(
+            "SELECT content_hash FROM journals WHERE id = ?", (journal_id,)
+        ).fetchone()
+        assert row is not None
+        return row[0]
+    finally:
+        conn.close()
+
+
+def _journal_count(db_path: str) -> int:
+    conn = get_connection(db_path)
+    try:
+        return conn.execute("SELECT COUNT(*) FROM journals").fetchone()[0]
+    finally:
+        conn.close()
 
 
 class TestCheckDuplicateOnInsert:
@@ -205,3 +270,187 @@ class TestFindDuplicatePairs:
         result_low = find_duplicate_pairs(db, 2025, threshold=60)
         included = [p for p in result_low.pairs if p.score >= 60]
         assert len(included) >= 1
+
+
+class TestForceInsertExactDuplicate:
+    def test_add_exact_duplicate_without_force_returns_error_with_force_hint(self, tmp_path: Path):
+        db_path = _init_file_db(tmp_path)
+        first = ledger_add_journal(
+            db_path=db_path,
+            fiscal_year=2025,
+            entry=_trip_entry("電車賃（行き）"),
+        )
+
+        result = ledger_add_journal(
+            db_path=db_path,
+            fiscal_year=2025,
+            entry=_trip_entry("電車賃（帰り）"),
+        )
+
+        assert first["status"] == "ok"
+        assert result["status"] == "error"
+        assert result["duplicate"]["match_type"] == "exact"
+        assert "force=True" in result["message"]
+
+    def test_add_exact_duplicate_with_force_inserts_with_null_content_hash(self, tmp_path: Path):
+        db_path = _init_file_db(tmp_path)
+        anchor = ledger_add_journal(
+            db_path=db_path,
+            fiscal_year=2025,
+            entry=_trip_entry("電車賃（行き）"),
+        )
+        twin = ledger_add_journal(
+            db_path=db_path,
+            fiscal_year=2025,
+            entry=_trip_entry("電車賃（帰り）"),
+            force=True,
+        )
+
+        assert anchor["status"] == "ok"
+        assert twin["status"] == "ok"
+        assert _content_hash(db_path, anchor["journal_id"]) is not None
+        assert _content_hash(db_path, twin["journal_id"]) is None
+        assert len(twin["warnings"]) == 1
+        assert twin["warnings"][0]["match_type"] == "exact"
+        assert twin["warnings"][0]["existing_journal_id"] == anchor["journal_id"]
+
+    def test_third_copy_while_anchor_alive_is_blocked_as_exact(self, tmp_path: Path):
+        db_path = _init_file_db(tmp_path)
+        anchor_id, _ = _add_anchor_and_forced_twin(db_path)
+
+        result = ledger_add_journal(
+            db_path=db_path,
+            fiscal_year=2025,
+            entry=_trip_entry("電車賃（3件目）"),
+        )
+
+        assert result["status"] == "error"
+        assert result["duplicate"]["match_type"] == "exact"
+        assert result["duplicate"]["existing_journal_id"] == anchor_id
+
+    def test_third_copy_after_anchor_deleted_degrades_to_similar_warning(self, tmp_path: Path):
+        db_path = _init_file_db(tmp_path)
+        anchor_id, _ = _add_anchor_and_forced_twin(db_path)
+        deleted = ledger_delete_journal(db_path=db_path, journal_id=anchor_id)
+
+        result = ledger_add_journal(
+            db_path=db_path,
+            fiscal_year=2025,
+            entry=_trip_entry("電車賃（3件目）"),
+        )
+
+        assert deleted["status"] == "ok"
+        assert result["status"] == "warning"
+        assert result["duplicate"]["match_type"] == "similar"
+        assert _journal_count(db_path) == 1
+
+    def test_forced_twin_appears_as_similar_not_exact_in_check_duplicates(self, tmp_path: Path):
+        db_path = _init_file_db(tmp_path)
+        anchor_id, twin_id = _add_anchor_and_forced_twin(db_path)
+        conn = get_connection(db_path)
+        try:
+            result = find_duplicate_pairs(conn, 2025)
+        finally:
+            conn.close()
+
+        assert result.exact_count == 0
+        assert result.suspected_count == 1
+        assert len(result.pairs) == 1
+        assert result.pairs[0].score == 90
+        assert {result.pairs[0].journal_id_a, result.pairs[0].journal_id_b} == {
+            anchor_id,
+            twin_id,
+        }
+
+    def test_batch_within_batch_duplicates_with_force_inserts_both_with_resolved_warning(
+        self, tmp_path: Path
+    ):
+        db_path = _init_file_db(tmp_path)
+
+        result = ledger_add_journals_batch(
+            db_path=db_path,
+            fiscal_year=2025,
+            entries=[_trip_entry("電車賃（行き）"), _trip_entry("電車賃（帰り）")],
+            force=True,
+        )
+
+        assert result["status"] == "ok"
+        assert result["count"] == 2
+        assert _content_hash(db_path, result["journal_ids"][0]) is not None
+        assert _content_hash(db_path, result["journal_ids"][1]) is None
+        assert len(result["warnings"]) == 1
+        warning = result["warnings"][0]
+        assert warning["entry_index"] == 1
+        assert warning["match_type"] == "exact"
+        assert warning["existing_journal_id"] == result["journal_ids"][0]
+
+    def test_batch_exact_against_existing_db_row_with_force(self, tmp_path: Path):
+        db_path = _init_file_db(tmp_path)
+        anchor = ledger_add_journal(
+            db_path=db_path,
+            fiscal_year=2025,
+            entry=_trip_entry("電車賃（行き）"),
+        )
+
+        result = ledger_add_journals_batch(
+            db_path=db_path,
+            fiscal_year=2025,
+            entries=[_trip_entry("電車賃（帰り）")],
+            force=True,
+        )
+
+        assert result["status"] == "ok"
+        assert result["count"] == 1
+        assert _content_hash(db_path, result["journal_ids"][0]) is None
+        assert len(result["warnings"]) == 1
+        warning = result["warnings"][0]
+        assert warning["entry_index"] == 0
+        assert warning["match_type"] == "exact"
+        assert warning["existing_journal_id"] == anchor["journal_id"]
+
+    def test_batch_within_batch_duplicates_without_force_blocked(self, tmp_path: Path):
+        db_path = _init_file_db(tmp_path)
+
+        result = ledger_add_journals_batch(
+            db_path=db_path,
+            fiscal_year=2025,
+            entries=[_trip_entry("電車賃（行き）"), _trip_entry("電車賃（帰り）")],
+        )
+
+        assert result["status"] == "error"
+        assert result["failed_index"] == 1
+        assert _journal_count(db_path) == 0
+
+    def test_update_collision_with_force_stores_null_hash_and_returns_warning(self, tmp_path: Path):
+        db_path = _init_file_db(tmp_path)
+        anchor_id, twin_id = _add_anchor_and_forced_twin(db_path)
+
+        result = ledger_update_journal(
+            db_path=db_path,
+            journal_id=twin_id,
+            fiscal_year=2025,
+            entry=_trip_entry("電車賃（帰り・摘要修正）"),
+            force=True,
+        )
+
+        assert result["status"] == "ok"
+        assert _content_hash(db_path, twin_id) is None
+        assert len(result["warnings"]) == 1
+        warning = result["warnings"][0]
+        assert warning["match_type"] == "exact"
+        assert warning["existing_journal_id"] == anchor_id
+
+    def test_update_collision_without_force_returns_error(self, tmp_path: Path):
+        db_path = _init_file_db(tmp_path)
+        _, twin_id = _add_anchor_and_forced_twin(db_path)
+
+        result = ledger_update_journal(
+            db_path=db_path,
+            journal_id=twin_id,
+            fiscal_year=2025,
+            entry=_trip_entry("電車賃（帰り・摘要修正）"),
+        )
+
+        assert result["status"] == "error"
+        assert "force=True" in result["message"]
+        assert _content_hash(db_path, twin_id) is None

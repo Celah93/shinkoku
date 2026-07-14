@@ -117,10 +117,13 @@ def ledger_add_journal(
         content_hash = compute_journal_hash(entry.date, entry.lines)
         warning = check_duplicate_on_insert(conn, fiscal_year, entry)
         if warning:
-            if warning.match_type == "exact":
+            if warning.match_type == "exact" and not force:
                 return {
                     "status": "error",
-                    "message": warning.reason,
+                    "message": (
+                        warning.reason + " 同一内容の別取引（往復の交通費等）であれば"
+                        " force=True で登録できます。"
+                    ),
                     "duplicate": warning.model_dump(),
                 }
             if warning.match_type == "similar" and not force:
@@ -130,8 +133,13 @@ def ledger_add_journal(
                     "duplicate": warning.model_dump(),
                 }
 
+        # NOTE: forceで通した完全一致はcontent_hashをNULLにする。
+        # UNIQUE制約は部分インデックス（IS NOT NULL）のため制約に触れず、
+        # ハッシュを保持する初出行が残る間は3件目以降をexactで検出できる。
+        # 初出行の削除・変更後はsimilar警告に弱まる（再アンカーは別Issue）。
+        store_hash = None if warning and warning.match_type == "exact" else content_hash
         journal_id = _insert_journal_in_transaction(
-            conn, fiscal_year, entry, content_hash=content_hash
+            conn, fiscal_year, entry, content_hash=store_hash
         )
 
         conn.commit()
@@ -140,7 +148,7 @@ def ledger_add_journal(
             "journal_id": journal_id,
             "fiscal_year": fiscal_year,
         }
-        if warning and warning.match_type == "similar" and force:
+        if warning and force:
             result["warnings"] = [warning.model_dump()]
         return result
     finally:
@@ -215,33 +223,49 @@ def ledger_add_journals_batch(
                     "failed_index": i,
                 }
 
-        # 重複チェック: compute hashes and check within-batch + against DB
-        hashes: list[str] = []
+        # 重複チェック: バッチ内とDB既存行の両方を確認する
+        seen_hashes: dict[str, int] = {}
+        storage_hashes: list[str | None] = []
         warnings: list[dict] = []
+        pending_batch_warnings: list[tuple[int, int]] = []
         for i, entry in enumerate(entries):
             h = compute_journal_hash(entry.date, entry.lines)
-            # バッチ内重複チェック（完全一致はforce=Trueでも常にブロック）
-            if h in hashes:
-                dup_idx = hashes.index(h)
-                return {
-                    "status": "error",
-                    "message": (
-                        f"Entry {i}: バッチ内で重複しています (Entry {dup_idx} と同一内容)"
-                    ),
-                    "failed_index": i,
-                }
-            hashes.append(h)
+            # バッチ内の完全一致。force時も初出のハッシュはseenに残し、
+            # 2件目以降をすべてNULLで保存する。
+            if h in seen_hashes:
+                dup_idx = seen_hashes[h]
+                if not force:
+                    return {
+                        "status": "error",
+                        "message": (
+                            f"Entry {i}: バッチ内で重複しています (Entry {dup_idx} と同一内容)"
+                        ),
+                        "failed_index": i,
+                    }
+                storage_hashes.append(None)
+                pending_batch_warnings.append((i, dup_idx))
+                continue
+            seen_hashes[h] = i
 
             # DB重複チェック
+            store_hash: str | None = h
             warning = check_duplicate_on_insert(conn, fiscal_year, entry)
             if warning:
-                if warning.match_type == "exact":
+                if warning.match_type == "exact" and not force:
                     return {
                         "status": "error",
                         "message": f"Entry {i}: {warning.reason}",
                         "failed_index": i,
                         "duplicate": warning.model_dump(),
                     }
+                if warning.match_type == "exact" and force:
+                    store_hash = None
+                    warnings.append(
+                        {
+                            "entry_index": i,
+                            **warning.model_dump(),
+                        }
+                    )
                 if warning.match_type == "similar" and not force:
                     return {
                         "status": "warning",
@@ -256,12 +280,31 @@ def ledger_add_journals_batch(
                             **warning.model_dump(),
                         }
                     )
+            storage_hashes.append(store_hash)
 
         # Insert all in a single transaction
         journal_ids = []
-        for entry, h in zip(entries, hashes):
-            jid = _insert_journal_in_transaction(conn, fiscal_year, entry, content_hash=h)
+        for entry, storage_hash in zip(entries, storage_hashes):
+            jid = _insert_journal_in_transaction(
+                conn, fiscal_year, entry, content_hash=storage_hash
+            )
             journal_ids.append(jid)
+
+        # バッチ内警告の重複元を、INSERT後の実仕訳IDへ解決する。
+        for entry_index, duplicate_index in pending_batch_warnings:
+            warnings.append(
+                {
+                    "entry_index": entry_index,
+                    "match_type": "exact",
+                    "score": 100,
+                    "existing_journal_id": journal_ids[duplicate_index],
+                    "reason": (
+                        f"Entry {duplicate_index} と同一内容のため、"
+                        "確認済みとして force 登録しました"
+                    ),
+                }
+            )
+        warnings.sort(key=lambda item: item["entry_index"])
 
         conn.commit()
         result: dict = {
@@ -393,6 +436,7 @@ def ledger_update_journal(
     journal_id: int,
     fiscal_year: int,
     entry: JournalEntry,
+    force: bool = False,
 ) -> dict:
     """Update a journal entry (replace lines with re-validation).
 
@@ -417,16 +461,28 @@ def ledger_update_journal(
             return {"status": "error", "message": error}
 
         # content_hash を再計算し、他の仕訳との衝突をチェック
-        content_hash = compute_journal_hash(entry.date, entry.lines)
+        content_hash: str | None = compute_journal_hash(entry.date, entry.lines)
         collision = conn.execute(
             "SELECT id FROM journals WHERE fiscal_year = ? AND content_hash = ? AND id != ?",
             (fiscal_year, content_hash, journal_id),
         ).fetchone()
+        collision_warning = None
         if collision:
-            return {
-                "status": "error",
-                "message": f"更新後の内容が既存の仕訳 (ID: {collision[0]}) と一致します",
+            collision_reason = f"更新後の内容が既存の仕訳 (ID: {collision[0]}) と一致します"
+            collision_warning = {
+                "match_type": "exact",
+                "score": 100,
+                "existing_journal_id": collision[0],
+                "reason": collision_reason,
             }
+            if not force:
+                return {
+                    "status": "error",
+                    "message": (
+                        collision_reason + " 同一内容の別取引であれば force=True で更新できます。"
+                    ),
+                }
+            content_hash = None
 
         # 変更前の仕訳明細を取得し、監査ログ用のJSONに変換
         old_lines = conn.execute(
@@ -523,7 +579,10 @@ def ledger_update_journal(
             )
 
         conn.commit()
-        return {"status": "ok", "journal_id": journal_id}
+        result: dict = {"status": "ok", "journal_id": journal_id}
+        if collision_warning:
+            result["warnings"] = [collision_warning]
+        return result
     finally:
         conn.close()
 

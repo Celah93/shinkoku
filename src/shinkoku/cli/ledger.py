@@ -331,6 +331,7 @@ def cmd_journal_update(args: argparse.Namespace) -> None:
             journal_id=args.journal_id,
             fiscal_year=args.fiscal_year,
             entry=entry,
+            force=args.force,
         )
     )
 
@@ -886,14 +887,14 @@ def register(parent_subparsers: argparse._SubParsersAction) -> None:
     _add_db_arg(p)
     _add_fy_arg(p)
     _add_input_arg(p)
-    p.add_argument("--force", action="store_true", help="類似重複を無視")
+    p.add_argument("--force", action="store_true", help="重複警告を無視して登録（完全一致を含む）")
     p.set_defaults(func=cmd_journal_add)
 
     p = sub.add_parser("journal-batch-add", help="仕訳一括追加")
     _add_db_arg(p)
     _add_fy_arg(p)
     _add_input_arg(p)
-    p.add_argument("--force", action="store_true", help="類似重複を無視")
+    p.add_argument("--force", action="store_true", help="重複警告を無視して登録（完全一致を含む）")
     p.set_defaults(func=cmd_journal_batch_add)
 
     p = sub.add_parser("search", help="仕訳検索")
@@ -907,6 +908,7 @@ def register(parent_subparsers: argparse._SubParsersAction) -> None:
     _add_fy_arg(p)
     p.add_argument("--journal-id", required=True, type=int)
     _add_input_arg(p)
+    p.add_argument("--force", action="store_true", help="重複警告を無視して登録（完全一致を含む）")
     p.set_defaults(func=cmd_journal_update)
 
     p = sub.add_parser("journal-delete", help="仕訳削除")

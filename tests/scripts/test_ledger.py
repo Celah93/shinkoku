@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 from pathlib import Path
 
 from .conftest import run_cli, write_json
@@ -208,6 +209,88 @@ class TestJournalUpdate:
             f,
         )
         assert out["status"] == "error"
+
+    def test_journal_update_force_flag_via_cli(self, db_path, tmp_path):
+        first_file = write_json(
+            tmp_path,
+            {
+                "date": "2025-06-01",
+                "description": "電車賃（行き）",
+                "lines": [
+                    {"side": "debit", "account_code": "5200", "amount": 220},
+                    {"side": "credit", "account_code": "1100", "amount": 220},
+                ],
+            },
+            "outward.json",
+        )
+        second_file = write_json(
+            tmp_path,
+            {
+                "date": "2025-06-01",
+                "description": "電車賃（帰り）",
+                "lines": [
+                    {"side": "debit", "account_code": "5200", "amount": 220},
+                    {"side": "credit", "account_code": "1100", "amount": 220},
+                ],
+            },
+            "return.json",
+        )
+        first = run_ledger(
+            "journal-add",
+            "--db-path",
+            db_path,
+            "--fiscal-year",
+            "2025",
+            "--input",
+            first_file,
+        )
+        second = run_ledger(
+            "journal-add",
+            "--db-path",
+            db_path,
+            "--fiscal-year",
+            "2025",
+            "--input",
+            second_file,
+            "--force",
+        )
+        update_file = write_json(
+            tmp_path,
+            {
+                "date": "2025-06-01",
+                "description": "電車賃（帰り・摘要修正）",
+                "lines": [
+                    {"side": "debit", "account_code": "5200", "amount": 220},
+                    {"side": "credit", "account_code": "1100", "amount": 220},
+                ],
+            },
+            "update-return.json",
+        )
+
+        result = run_ledger_raw(
+            "journal-update",
+            "--db-path",
+            db_path,
+            "--fiscal-year",
+            "2025",
+            "--journal-id",
+            str(second["journal_id"]),
+            "--input",
+            update_file,
+            "--force",
+        )
+
+        assert first["status"] == "ok"
+        assert second["status"] == "ok"
+        assert result.returncode == 0
+        output = json.loads(result.stdout)
+        assert output["status"] == "ok"
+        assert output["warnings"][0]["existing_journal_id"] == first["journal_id"]
+        with sqlite3.connect(db_path) as conn:
+            content_hash = conn.execute(
+                "SELECT content_hash FROM journals WHERE id = ?", (second["journal_id"],)
+            ).fetchone()[0]
+        assert content_hash is None
 
 
 class TestJournalDelete:
