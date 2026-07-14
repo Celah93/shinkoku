@@ -471,7 +471,25 @@ def test_calc_depreciation_straight_line(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr
     output = json.loads(result.stdout)
     assert output["method"] == "straight_line"
-    assert output["depreciation_amount"] == 300_000 // 4
+    assert output["depreciation_amount"] == 75_000  # 償却率0.250（端数なし）
+
+
+def test_calc_depreciation_straight_line_rounds_up(tmp_path: Path) -> None:
+    input_file = _write_input(
+        tmp_path,
+        {
+            "method": "straight_line",
+            "acquisition_cost": 300_001,
+            "useful_life": 3,
+            "business_use_ratio": 100,
+            "months": 12,
+        },
+    )
+    result = run_cli("tax", "calc-depreciation", "--input", str(input_file))
+    assert result.returncode == 0, result.stderr
+    output = json.loads(result.stdout)
+    assert output["method"] == "straight_line"
+    assert output["depreciation_amount"] == 100_201
 
 
 def test_calc_depreciation_declining_balance(tmp_path: Path) -> None:

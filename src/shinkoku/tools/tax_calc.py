@@ -1030,15 +1030,22 @@ def calc_depreciation_straight_line(
     business_use_ratio: int,
     months: int = 12,
 ) -> int:
-    """Straight-line depreciation.
+    """Straight-line depreciation（平成19年4月1日以後取得・定額法）.
 
-    amount = acquisition_cost * (1/useful_life) * (business_use_ratio/100) * (months/12)
+    青色申告決算書「減価償却費の計算」の欄単位で2段階に計算する:
+      普通償却費     = 取得価額 × 償却率(別表第八) × 月数/12  …1円未満切上げ
+      必要経費算入額 = 普通償却費 × 事業専用割合              …1円未満切上げ
+    端数切上げは確定申告書等作成コーナーの方針（FAQ scid1736）。
     """
     if useful_life <= 0 or months <= 0:
         return 0
-    annual = acquisition_cost // useful_life
-    amount = annual * business_use_ratio * months // (100 * 12)
-    return amount
+    # 率表をコードに重複保持せず、別表第八の定額法償却率を整数演算で求める。
+    # ceil(1000/n) と公式手引き掲載の2〜50年・49件との一致はテストで保証する。
+    rate_permille = -(-1000 // useful_life)
+    # 決算書の普通償却費欄と必要経費算入額欄へ整数円で転記するため、
+    # 最後にまとめて丸めず、各欄で1円未満を切り上げる。
+    ordinary = -(-(acquisition_cost * rate_permille * months) // (1000 * 12))
+    return -(-(ordinary * business_use_ratio) // 100)
 
 
 def calc_depreciation_declining_balance(
