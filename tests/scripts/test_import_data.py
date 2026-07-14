@@ -26,6 +26,53 @@ def test_import_csv(tmp_path: Path):
     assert output["candidates"][0]["amount"] == 1000
 
 
+def test_import_csv_cp932_with_extension_chars_parses(tmp_path: Path):
+    """CP932拡張文字を含む摘要を文字化けさせずに取り込む。"""
+    csv_file = tmp_path / "cp932-extension.csv"
+    csv_file.write_bytes("日付,摘要,金額\n2025/06/01,店舗①㈱髙﨑,1000\n".encode("cp932"))
+
+    result = run_import("csv", "--file-path", str(csv_file))
+
+    assert result.returncode == 0
+    output = json.loads(result.stdout)
+    assert output["status"] == "ok"
+    assert output["encoding"] == "cp932"
+    assert output["candidates"][0]["description"] == "店舗①㈱髙﨑"
+    assert output["candidates"][0]["amount"] == 1000
+
+
+def test_import_csv_utf8_bom_header_has_no_feff(tmp_path: Path):
+    """BOM付きUTF-8の先頭ヘッダへU+FEFFを残さない。"""
+    csv_file = tmp_path / "utf8-bom.csv"
+    csv_file.write_bytes(
+        b"\xef\xbb\xbf" + "日付,摘要,金額\n2025/06/01,BOM店,1000\n".encode("utf-8")
+    )
+
+    result = run_import("csv", "--file-path", str(csv_file))
+
+    assert result.returncode == 0
+    output = json.loads(result.stdout)
+    assert output["status"] == "ok"
+    assert output["encoding"] == "utf-8-sig"
+    original_data = output["candidates"][0]["original_data"]
+    assert "日付" in original_data
+    assert "\ufeff日付" not in original_data
+
+
+def test_import_csv_cp932_fullwidth_minus_amount_parses_negative(tmp_path: Path):
+    """CP932の全角マイナスをFix #04の正規化へつなぎ、負数として取り込む。"""
+    csv_file = tmp_path / "cp932-negative.csv"
+    csv_file.write_bytes("日付,摘要,金額\n2025/06/01,返金,－1000\n".encode("cp932"))
+
+    result = run_import("csv", "--file-path", str(csv_file))
+
+    assert result.returncode == 0
+    output = json.loads(result.stdout)
+    assert output["status"] == "ok"
+    assert output["encoding"] == "cp932"
+    assert output["candidates"][0]["amount"] == -1000
+
+
 def test_import_csv_negative_triangle_amount_kept_negative(tmp_path: Path):
     csv_file = tmp_path / "negative.csv"
     csv_file.write_text(

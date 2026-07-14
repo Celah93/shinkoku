@@ -14,21 +14,26 @@ from shinkoku.hashing import compute_file_hash
 
 
 def _detect_encoding(file_path: str) -> str:
-    """Detect file encoding (UTF-8 or Shift_JIS)."""
+    """Detect file encoding (UTF-8 with/without BOM, or cp932 = Windows-31J)."""
     raw = Path(file_path).read_bytes()
-    # Try UTF-8 first
+    # Excel出力CSVのBOM。plain utf-8でもデコードは成功してしまい、
+    # 1列目ヘッダに \ufeff が混入するため、utf-8判定より先に見る。
+    if raw.startswith(b"\xef\xbb\xbf"):
+        return "utf-8-sig"
+    # BOMなしUTF-8の日本語はcp932でも文字化けしたまま読めるため、utf-8を先に試す。
     try:
         raw.decode("utf-8")
         return "utf-8"
     except UnicodeDecodeError:
         pass
-    # Try Shift_JIS
+    # 銀行・カード明細CSVはWindows製で、純正Shift_JISにない拡張文字を含む。
+    # shift_jisで有効なバイト列はすべてcp932でも読めるため、cp932へ一本化する。
     try:
-        raw.decode("shift_jis")
-        return "shift_jis"
+        raw.decode("cp932")
+        return "cp932"
     except UnicodeDecodeError:
         pass
-    # Fallback
+    # 読める保証はなく、読込時のエラーとして表面化させる。
     return "utf-8"
 
 
@@ -131,7 +136,7 @@ def _normalize_date(value: str) -> str | None:
 def import_csv(*, file_path: str) -> dict:
     """Parse a CSV file and return CSVImportCandidate list.
 
-    Supports UTF-8 and Shift_JIS encoding.
+    Supports UTF-8 (with/without BOM) and cp932 (Windows-31J) encoding.
     Does not guess account codes (that is left to Claude/Skills).
     """
     path = Path(file_path)
