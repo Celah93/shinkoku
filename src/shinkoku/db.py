@@ -30,6 +30,15 @@ def init_db(db_path: str) -> sqlite3.Connection:
 
 def _migrate(conn: sqlite3.Connection) -> None:
     """既存DBに新しいカラム・テーブルを追加するマイグレーション。"""
+    # fiscal_years: 年度別の消費税プロファイル
+    fy_cols = {row[1] for row in conn.execute("PRAGMA table_info(fiscal_years)").fetchall()}
+    if "taxpayer_status" not in fy_cols:
+        conn.execute("ALTER TABLE fiscal_years ADD COLUMN taxpayer_status TEXT")
+    if "consumption_tax_method" not in fy_cols:
+        conn.execute("ALTER TABLE fiscal_years ADD COLUMN consumption_tax_method TEXT")
+    if "simplified_business_type" not in fy_cols:
+        conn.execute("ALTER TABLE fiscal_years ADD COLUMN simplified_business_type INTEGER")
+
     # journals.counterparty カラム追加（電帳法 検索機能要件: 取引先検索）
     cols = {row[1] for row in conn.execute("PRAGMA table_info(journals)").fetchall()}
     if "counterparty" not in cols:

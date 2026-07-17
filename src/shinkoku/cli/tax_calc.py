@@ -21,6 +21,7 @@ from shinkoku.models import (
     RetirementIncomeInput,
     SmallBusinessMutualAidInput,
 )
+from shinkoku.tools.ledger import ledger_get_fiscal_year_tax_profile
 from shinkoku.tools.tax_calc import (
     calc_consumption_tax,
     calc_deductions,
@@ -187,8 +188,36 @@ def _handle_calc_consumption(args: argparse.Namespace) -> None:
     """calc-consumption: 消費税計算。"""
     params = _load_json(args.input)
     input_data = ConsumptionTaxInput(**params)
+    db_path = getattr(args, "db_path", None)
+    method_verified: bool | None = None
+
+    if db_path is not None:
+        profile = ledger_get_fiscal_year_tax_profile(
+            db_path=db_path,
+            fiscal_year=input_data.fiscal_year,
+        )
+        db_method = profile["consumption_tax_method"]
+        if db_method is None:
+            method_verified = False
+        else:
+            if db_method != input_data.method:
+                raise ValueError(
+                    f"消費税申告方法が一致しません: DB={db_method!r}, input={input_data.method!r}"
+                )
+            if input_data.method == "simplified":
+                db_business_type = profile["simplified_business_type"]
+                if db_business_type != input_data.simplified_business_type:
+                    raise ValueError(
+                        "簡易課税事業区分が一致しません: "
+                        f"DB={db_business_type!r}, input={input_data.simplified_business_type!r}"
+                    )
+            method_verified = True
+
     result = calc_consumption_tax(input_data)
-    _output_json(result.model_dump())
+    output = result.model_dump()
+    if method_verified is not None:
+        output["method_verified"] = method_verified
+    _output_json(output)
 
 
 def _handle_calc_furusato_limit(args: argparse.Namespace) -> None:
@@ -306,6 +335,8 @@ def register(parent_subparsers: argparse._SubParsersAction) -> None:
     ]:
         p = sub.add_parser(name)
         p.add_argument("--input", required=True, help="入力 JSON ファイルパス")
+        if name == "calc-consumption":
+            p.add_argument("--db-path", help="年度別消費税プロファイルを照合するDBパス")
         p.set_defaults(func=_dispatch)
 
     parser.set_defaults(func=lambda args: parser.print_help() or sys.exit(1))

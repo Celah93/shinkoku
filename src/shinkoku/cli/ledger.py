@@ -17,6 +17,7 @@ from shinkoku.models import (
     DonationRecordInput,
     FXLossCarryforwardInput,
     FXTradingInput,
+    FiscalYearTaxProfileUpdate,
     HousingLoanDetailInput,
     InsurancePolicyInput,
     InventoryInput,
@@ -79,6 +80,7 @@ from shinkoku.tools.ledger import (
     ledger_delete_spouse,
     ledger_delete_withholding_slip,
     ledger_get_spouse,
+    ledger_get_fiscal_year_tax_profile,
     ledger_init,
     ledger_list_business_withholding,
     ledger_list_crypto_income,
@@ -107,6 +109,7 @@ from shinkoku.tools.ledger import (
     ledger_set_opening_balances_batch,
     ledger_set_spouse,
     ledger_trial_balance,
+    ledger_update_fiscal_year_tax_profile,
     ledger_update_journal,
 )
 
@@ -286,6 +289,27 @@ def _error(message: str) -> None:
 
 def cmd_init(args: argparse.Namespace) -> None:
     _output(ledger_init(fiscal_year=args.fiscal_year, db_path=args.db_path))
+
+
+def cmd_fiscal_year_show(args: argparse.Namespace) -> None:
+    _output(
+        ledger_get_fiscal_year_tax_profile(
+            db_path=args.db_path,
+            fiscal_year=args.fiscal_year,
+        )
+    )
+
+
+def cmd_fiscal_year_update(args: argparse.Namespace) -> None:
+    data = _load_json(args.input)
+    update = FiscalYearTaxProfileUpdate(**data)
+    _output(
+        ledger_update_fiscal_year_tax_profile(
+            db_path=args.db_path,
+            fiscal_year=args.fiscal_year,
+            update=update,
+        )
+    )
 
 
 def cmd_journal_add(args: argparse.Namespace) -> None:
@@ -881,6 +905,18 @@ def register(parent_subparsers: argparse._SubParsersAction) -> None:
     _add_db_arg(p)
     _add_fy_arg(p)
     p.set_defaults(func=cmd_init)
+
+    # --- fiscal year tax profile ---
+    p = sub.add_parser("fiscal-year-show", help="年度別消費税プロファイル表示")
+    _add_db_arg(p)
+    _add_fy_arg(p)
+    p.set_defaults(func=cmd_fiscal_year_show)
+
+    p = sub.add_parser("fiscal-year-update", help="年度別消費税プロファイル更新")
+    _add_db_arg(p)
+    _add_fy_arg(p)
+    _add_input_arg(p)
+    p.set_defaults(func=cmd_fiscal_year_update)
 
     # --- journal CRUD ---
     p = sub.add_parser("journal-add", help="仕訳追加")

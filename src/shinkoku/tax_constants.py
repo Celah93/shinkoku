@@ -378,7 +378,6 @@ SIMPLIFIED_DEEMED_RATIOS: dict[int, int] = {
     5: 50,  # サービス業等
     6: 40,  # 不動産業
 }
-SIMPLIFIED_DEFAULT_RATIO = 50  # デフォルト（サービス業）
 
 # 2割特例の乗率（インボイス経過措置、令和8年9月30日まで）
 SPECIAL_20PCT_RATE = 20  # 20%

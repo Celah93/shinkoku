@@ -104,7 +104,6 @@ from shinkoku.tax_constants import (
     SELF_MEDICATION_MAX,
     SELF_MEDICATION_THRESHOLD,
     SIMPLIFIED_DEEMED_RATIOS,
-    SIMPLIFIED_DEFAULT_RATIO,
     SINGLE_PARENT_DEDUCTION,
     SPECIAL_20PCT_RATE,
     SPECIFIC_RELATIVE_SPECIAL_DEDUCTION_TABLE,
@@ -1462,8 +1461,10 @@ def calc_consumption_tax(input_data: ConsumptionTaxInput) -> ConsumptionTaxResul
 
     elif input_data.method == "simplified":
         # 簡易課税: 仕入控除税額 = 消費税額(国税) × みなし仕入率
-        btype = input_data.simplified_business_type or 5  # default: サービス業
-        ratio = SIMPLIFIED_DEEMED_RATIOS.get(btype, SIMPLIFIED_DEFAULT_RATIO)
+        btype = input_data.simplified_business_type
+        if btype is None:
+            raise ValueError("簡易課税では simplified_business_type が必要です")
+        ratio = SIMPLIFIED_DEEMED_RATIOS[btype]
         tax_on_purchases = national_tax_on_sales * ratio // 100
         tax_due_raw = national_tax_on_sales - tax_on_purchases
 

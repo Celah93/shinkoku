@@ -14,6 +14,8 @@ from shinkoku.models import (
     CryptoIncomeInput,
     DependentInput,
     DonationRecordInput,
+    FiscalYearTaxProfile,
+    FiscalYearTaxProfileUpdate,
     FXLossCarryforwardInput,
     FXTradingInput,
     HousingLoanDetailInput,
@@ -68,6 +70,82 @@ def ledger_init(*, fiscal_year: int, db_path: str) -> dict:
             "accounts_loaded": accounts_count,
             "db_path": db_path,
         }
+    finally:
+        conn.close()
+
+
+def _load_fiscal_year_tax_profile(
+    conn: sqlite3.Connection, fiscal_year: int
+) -> FiscalYearTaxProfile:
+    """DB行を年度別消費税プロファイルとして検証して返す。"""
+    row = conn.execute(
+        "SELECT taxpayer_status, consumption_tax_method, simplified_business_type "
+        "FROM fiscal_years WHERE year = ?",
+        (fiscal_year,),
+    ).fetchone()
+    if row is None:
+        raise ValueError(f"Fiscal year {fiscal_year} not found")
+    return FiscalYearTaxProfile(
+        taxpayer_status=row["taxpayer_status"],
+        consumption_tax_method=row["consumption_tax_method"],
+        simplified_business_type=row["simplified_business_type"],
+    )
+
+
+def ledger_get_fiscal_year_tax_profile(*, db_path: str, fiscal_year: int) -> dict:
+    """年度別の消費税プロファイルを読み出す。旧DBは接続時に移行する。"""
+    conn = init_db(db_path)
+    try:
+        profile = _load_fiscal_year_tax_profile(conn, fiscal_year)
+        return {
+            "status": "ok",
+            "fiscal_year": fiscal_year,
+            **profile.model_dump(),
+        }
+    finally:
+        conn.close()
+
+
+def ledger_update_fiscal_year_tax_profile(
+    *, db_path: str, fiscal_year: int, update: FiscalYearTaxProfileUpdate
+) -> dict:
+    """年度別消費税プロファイルを部分更新し、更新前後を返す。"""
+    patch = update.model_dump(exclude_unset=True)
+    if not patch:
+        raise ValueError("更新する項目がありません")
+
+    allowed_columns = (
+        "taxpayer_status",
+        "consumption_tax_method",
+        "simplified_business_type",
+    )
+    update_columns = [column for column in allowed_columns if column in patch]
+
+    conn = init_db(db_path)
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        before = _load_fiscal_year_tax_profile(conn, fiscal_year)
+        merged = before.model_dump()
+        merged.update(patch)
+        after = FiscalYearTaxProfile(**merged)
+
+        assignments = ", ".join(f"{column} = ?" for column in update_columns)
+        values = [getattr(after, column) for column in update_columns]
+        conn.execute(
+            f"UPDATE fiscal_years SET {assignments} WHERE year = ?",
+            (*values, fiscal_year),
+        )
+        stored_after = _load_fiscal_year_tax_profile(conn, fiscal_year)
+        conn.commit()
+        return {
+            "status": "ok",
+            "fiscal_year": fiscal_year,
+            "before": before.model_dump(),
+            "after": stored_after.model_dump(),
+        }
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         conn.close()
 

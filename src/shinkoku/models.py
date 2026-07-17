@@ -2,10 +2,54 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from typing import Literal
+
+from pydantic import BaseModel, Field, model_validator
 
 
 # --- 帳簿管理 (ledger) ---
+
+
+class FiscalYearTaxProfile(BaseModel):
+    """年度別に確定した納税者の消費税プロファイル。"""
+
+    taxpayer_status: Literal["taxable", "exempt"] | None = None
+    consumption_tax_method: Literal["standard", "simplified", "special_20pct"] | None = None
+    simplified_business_type: int | None = Field(default=None, ge=1, le=6)
+
+    @model_validator(mode="after")
+    def require_business_type_for_simplified(self) -> FiscalYearTaxProfile:
+        """簡易課税の確定時は事業区分を必須とする。"""
+        if self.consumption_tax_method == "simplified" and self.simplified_business_type is None:
+            raise ValueError("簡易課税では simplified_business_type が必要です")
+        return self
+
+    @model_validator(mode="after")
+    def reject_method_for_exempt_taxpayer(self) -> FiscalYearTaxProfile:
+        """免税事業者には確定申告方法を保持しない。"""
+        if self.taxpayer_status == "exempt" and self.consumption_tax_method is not None:
+            raise ValueError("免税事業者の consumption_tax_method は null である必要があります")
+        return self
+
+    @model_validator(mode="after")
+    def reject_orphan_business_type(self) -> FiscalYearTaxProfile:
+        """簡易課税以外では事業区分を保持しない。"""
+        if (
+            self.simplified_business_type is not None
+            and self.consumption_tax_method != "simplified"
+        ):
+            raise ValueError(
+                "simplified_business_type は consumption_tax_method=simplified の場合のみ設定できます"
+            )
+        return self
+
+
+class FiscalYearTaxProfileUpdate(BaseModel):
+    """年度別消費税プロファイルの部分更新入力。相関検証はマージ後に行う。"""
+
+    taxpayer_status: Literal["taxable", "exempt"] | None = None
+    consumption_tax_method: Literal["standard", "simplified", "special_20pct"] | None = None
+    simplified_business_type: int | None = Field(default=None, ge=1, le=6)
 
 
 class JournalLine(BaseModel):
@@ -514,6 +558,13 @@ class ConsumptionTaxInput(BaseModel):
         default=None, ge=1, le=6, description="簡易課税の事業区分(1-6)"
     )
     interim_payment: int = 0  # 中間納付税額
+
+    @model_validator(mode="after")
+    def require_simplified_business_type(self) -> ConsumptionTaxInput:
+        """簡易課税ではみなし仕入率を決める事業区分を必須とする。"""
+        if self.method == "simplified" and self.simplified_business_type is None:
+            raise ValueError("簡易課税では simplified_business_type が必要です")
+        return self
 
 
 class ConsumptionTaxResult(BaseModel):

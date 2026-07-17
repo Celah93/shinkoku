@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 from pathlib import Path
+
+import pytest
 
 from .conftest import run_cli
 
@@ -13,10 +16,42 @@ from .conftest import run_cli
 # ============================================================
 
 
-def _write_input(tmp_path: Path, data: dict) -> Path:
-    f = tmp_path / "input.json"
+def _write_input(tmp_path: Path, data: dict, name: str = "input.json") -> Path:
+    f = tmp_path / name
     f.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
     return f
+
+
+def _initialize_tax_profile_db(
+    tmp_path: Path,
+    *,
+    fiscal_year: int = 2025,
+    profile: dict | None = None,
+) -> Path:
+    db_path = tmp_path / "profile.db"
+    result = run_cli(
+        "ledger",
+        "init",
+        "--db-path",
+        str(db_path),
+        "--fiscal-year",
+        str(fiscal_year),
+    )
+    assert result.returncode == 0, result.stdout
+    if profile is not None:
+        profile_file = _write_input(tmp_path, profile, "profile.json")
+        result = run_cli(
+            "ledger",
+            "fiscal-year-update",
+            "--db-path",
+            str(db_path),
+            "--fiscal-year",
+            str(fiscal_year),
+            "--input",
+            str(profile_file),
+        )
+        assert result.returncode == 0, result.stdout
+    return db_path
 
 
 # ============================================================
@@ -576,6 +611,7 @@ def test_calc_consumption_special(tmp_path: Path) -> None:
     output = json.loads(result.stdout)
     assert output["method"] == "special_20pct"
     assert output["total_due"] > 0
+    assert "method_verified" not in output
 
 
 def test_calc_consumption_simplified(tmp_path: Path) -> None:
@@ -592,6 +628,233 @@ def test_calc_consumption_simplified(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr
     output = json.loads(result.stdout)
     assert output["method"] == "simplified"
+    assert "method_verified" not in output
+
+
+@pytest.mark.parametrize(
+    ("method", "business_type"),
+    [("standard", None), ("simplified", 5)],
+)
+def test_calc_consumption_db_method_null_is_unverified(
+    tmp_path: Path, method: str, business_type: int | None
+) -> None:
+    db_path = _initialize_tax_profile_db(tmp_path)
+    params = {
+        "fiscal_year": 2025,
+        "method": method,
+        "taxable_sales_10": 1_100_000,
+    }
+    if business_type is not None:
+        params["simplified_business_type"] = business_type
+    input_file = _write_input(tmp_path, params)
+
+    result = run_cli(
+        "tax",
+        "calc-consumption",
+        "--input",
+        str(input_file),
+        "--db-path",
+        str(db_path),
+    )
+    assert result.returncode == 0, result.stdout
+    output = json.loads(result.stdout)
+    assert output["method"] == method
+    assert output["method_verified"] is False
+
+
+@pytest.mark.parametrize(
+    ("method", "business_type"),
+    [("standard", None), ("simplified", 5)],
+)
+def test_calc_consumption_db_missing_year_is_error(
+    tmp_path: Path, method: str, business_type: int | None
+) -> None:
+    db_path = _initialize_tax_profile_db(tmp_path, fiscal_year=2024)
+    params = {"fiscal_year": 2025, "method": method}
+    if business_type is not None:
+        params["simplified_business_type"] = business_type
+    input_file = _write_input(tmp_path, params)
+
+    result = run_cli(
+        "tax",
+        "calc-consumption",
+        "--input",
+        str(input_file),
+        "--db-path",
+        str(db_path),
+    )
+    assert result.returncode == 1
+    output = json.loads(result.stdout)
+    assert output["status"] == "error"
+    assert "2025" in output["message"]
+
+
+@pytest.mark.parametrize(
+    ("profile", "method", "business_type"),
+    [
+        ({"consumption_tax_method": "standard"}, "standard", None),
+        (
+            {"consumption_tax_method": "simplified", "simplified_business_type": 5},
+            "simplified",
+            5,
+        ),
+    ],
+)
+def test_calc_consumption_db_profile_match_is_verified(
+    tmp_path: Path,
+    profile: dict,
+    method: str,
+    business_type: int | None,
+) -> None:
+    db_path = _initialize_tax_profile_db(tmp_path, profile=profile)
+    params = {
+        "fiscal_year": 2025,
+        "method": method,
+        "taxable_sales_10": 1_100_000,
+    }
+    if business_type is not None:
+        params["simplified_business_type"] = business_type
+    input_file = _write_input(tmp_path, params)
+
+    result = run_cli(
+        "tax",
+        "calc-consumption",
+        "--input",
+        str(input_file),
+        "--db-path",
+        str(db_path),
+    )
+    assert result.returncode == 0, result.stdout
+    assert json.loads(result.stdout)["method_verified"] is True
+
+
+@pytest.mark.parametrize(
+    ("profile", "input_params", "expected_values"),
+    [
+        (
+            {"consumption_tax_method": "standard"},
+            {"method": "simplified", "simplified_business_type": 5},
+            ("standard", "simplified"),
+        ),
+        (
+            {"consumption_tax_method": "simplified", "simplified_business_type": 5},
+            {"method": "standard"},
+            ("simplified", "standard"),
+        ),
+    ],
+)
+def test_calc_consumption_db_method_mismatch_stops_before_calculation(
+    tmp_path: Path,
+    profile: dict,
+    input_params: dict,
+    expected_values: tuple[str, str],
+) -> None:
+    db_path = _initialize_tax_profile_db(tmp_path, profile=profile)
+    input_file = _write_input(tmp_path, {"fiscal_year": 2025, **input_params})
+
+    result = run_cli(
+        "tax",
+        "calc-consumption",
+        "--input",
+        str(input_file),
+        "--db-path",
+        str(db_path),
+    )
+    assert result.returncode == 1
+    output = json.loads(result.stdout)
+    assert output["status"] == "error"
+    assert all(value in output["message"] for value in expected_values)
+
+
+def test_calc_consumption_simplified_business_type_mismatch_includes_both_values(
+    tmp_path: Path,
+) -> None:
+    db_path = _initialize_tax_profile_db(
+        tmp_path,
+        profile={"consumption_tax_method": "simplified", "simplified_business_type": 1},
+    )
+    input_file = _write_input(
+        tmp_path,
+        {
+            "fiscal_year": 2025,
+            "method": "simplified",
+            "simplified_business_type": 5,
+        },
+    )
+
+    result = run_cli(
+        "tax",
+        "calc-consumption",
+        "--input",
+        str(input_file),
+        "--db-path",
+        str(db_path),
+    )
+    assert result.returncode == 1
+    output = json.loads(result.stdout)
+    assert output["status"] == "error"
+    assert "DB=1" in output["message"]
+    assert "input=5" in output["message"]
+
+
+def test_calc_consumption_old_schema_db_is_migrated_automatically(tmp_path: Path) -> None:
+    db_path = tmp_path / "legacy.db"
+    conn = sqlite3.connect(db_path)
+    conn.execute(
+        "CREATE TABLE fiscal_years ("
+        "year INTEGER PRIMARY KEY, "
+        "status TEXT NOT NULL DEFAULT 'open', "
+        "created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
+    )
+    conn.execute("INSERT INTO fiscal_years (year) VALUES (2025)")
+    conn.commit()
+    conn.close()
+    input_file = _write_input(tmp_path, {"fiscal_year": 2025, "method": "standard"})
+
+    result = run_cli(
+        "tax",
+        "calc-consumption",
+        "--input",
+        str(input_file),
+        "--db-path",
+        str(db_path),
+    )
+    assert result.returncode == 0, result.stdout
+    assert json.loads(result.stdout)["method_verified"] is False
+    conn = sqlite3.connect(db_path)
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(fiscal_years)")}
+    conn.close()
+    assert {"taxpayer_status", "consumption_tax_method", "simplified_business_type"}.issubset(
+        columns
+    )
+
+
+def test_calc_consumption_exempt_status_does_not_block_simulation(tmp_path: Path) -> None:
+    db_path = _initialize_tax_profile_db(tmp_path, profile={"taxpayer_status": "exempt"})
+    input_file = _write_input(tmp_path, {"fiscal_year": 2025, "method": "standard"})
+
+    result = run_cli(
+        "tax",
+        "calc-consumption",
+        "--input",
+        str(input_file),
+        "--db-path",
+        str(db_path),
+    )
+    assert result.returncode == 0, result.stdout
+    assert json.loads(result.stdout)["method_verified"] is False
+
+
+def test_calc_consumption_simplified_missing_business_type_is_error(tmp_path: Path) -> None:
+    input_file = _write_input(
+        tmp_path,
+        {"fiscal_year": 2025, "method": "simplified", "taxable_sales_10": 1_100_000},
+    )
+    result = run_cli("tax", "calc-consumption", "--input", str(input_file))
+    assert result.returncode == 1
+    output = json.loads(result.stdout)
+    assert output["status"] == "error"
+    assert "simplified_business_type" in output["message"]
 
 
 # ============================================================

@@ -1,4 +1,4 @@
-"""Tests for ledger.py CLI script (67 subcommands)."""
+"""Tests for ledger.py CLI script."""
 
 from __future__ import annotations
 
@@ -67,6 +67,180 @@ class TestInit:
     def test_init_idempotent(self, db_path):
         out = run_ledger("init", "--db-path", db_path, "--fiscal-year", "2025")
         assert out["status"] == "ok"
+
+
+class TestFiscalYearTaxProfile:
+    def test_show_initial_profile(self, db_path):
+        out = run_ledger(
+            "fiscal-year-show",
+            "--db-path",
+            db_path,
+            "--fiscal-year",
+            "2025",
+        )
+        assert out == {
+            "status": "ok",
+            "fiscal_year": 2025,
+            "taxpayer_status": None,
+            "consumption_tax_method": None,
+            "simplified_business_type": None,
+        }
+
+    def test_update_returns_before_after_and_supports_partial_update(self, db_path, tmp_path):
+        initial_patch = write_json(
+            tmp_path,
+            {
+                "taxpayer_status": "taxable",
+                "consumption_tax_method": "simplified",
+                "simplified_business_type": 5,
+            },
+            "profile-initial.json",
+        )
+        out = run_ledger(
+            "fiscal-year-update",
+            "--db-path",
+            db_path,
+            "--fiscal-year",
+            "2025",
+            "--input",
+            initial_patch,
+        )
+        assert out["before"]["taxpayer_status"] is None
+        assert out["after"]["simplified_business_type"] == 5
+
+        partial_patch = write_json(
+            tmp_path,
+            {"consumption_tax_method": "simplified"},
+            "profile-partial.json",
+        )
+        out = run_ledger(
+            "fiscal-year-update",
+            "--db-path",
+            db_path,
+            "--fiscal-year",
+            "2025",
+            "--input",
+            partial_patch,
+        )
+        assert out["after"] == {
+            "taxpayer_status": "taxable",
+            "consumption_tax_method": "simplified",
+            "simplified_business_type": 5,
+        }
+
+    def test_explicit_null_clears_profile_values(self, db_path, tmp_path):
+        initial_patch = write_json(
+            tmp_path,
+            {
+                "taxpayer_status": "taxable",
+                "consumption_tax_method": "simplified",
+                "simplified_business_type": 5,
+            },
+            "profile-initial.json",
+        )
+        run_ledger(
+            "fiscal-year-update",
+            "--db-path",
+            db_path,
+            "--fiscal-year",
+            "2025",
+            "--input",
+            initial_patch,
+        )
+        clear_patch = write_json(
+            tmp_path,
+            {"consumption_tax_method": None, "simplified_business_type": None},
+            "profile-clear.json",
+        )
+        out = run_ledger(
+            "fiscal-year-update",
+            "--db-path",
+            db_path,
+            "--fiscal-year",
+            "2025",
+            "--input",
+            clear_patch,
+        )
+        assert out["after"]["taxpayer_status"] == "taxable"
+        assert out["after"]["consumption_tax_method"] is None
+        assert out["after"]["simplified_business_type"] is None
+
+    def test_empty_patch_is_error(self, db_path, tmp_path):
+        patch = write_json(tmp_path, {}, "profile-empty.json")
+        result = run_ledger_raw(
+            "fiscal-year-update",
+            "--db-path",
+            db_path,
+            "--fiscal-year",
+            "2025",
+            "--input",
+            patch,
+        )
+        assert result.returncode == 1
+        out = json.loads(result.stdout)
+        assert out["status"] == "error"
+        assert "更新する項目がありません" in out["message"]
+
+    def test_missing_fiscal_year_is_error(self, db_path):
+        result = run_ledger_raw(
+            "fiscal-year-show",
+            "--db-path",
+            db_path,
+            "--fiscal-year",
+            "2024",
+        )
+        assert result.returncode == 1
+        out = json.loads(result.stdout)
+        assert out["status"] == "error"
+        assert "2024" in out["message"]
+
+    def test_direct_sql_invalid_value_is_show_error(self, db_path):
+        conn = sqlite3.connect(db_path)
+        conn.execute(
+            "UPDATE fiscal_years SET taxpayer_status = ? WHERE year = ?",
+            ("unknown", 2025),
+        )
+        conn.commit()
+        conn.close()
+
+        result = run_ledger_raw(
+            "fiscal-year-show",
+            "--db-path",
+            db_path,
+            "--fiscal-year",
+            "2025",
+        )
+        assert result.returncode == 1
+        out = json.loads(result.stdout)
+        assert out["status"] == "error"
+        assert "taxpayer_status" in out["message"]
+
+    def test_init_rerun_preserves_saved_profile(self, db_path, tmp_path):
+        patch = write_json(
+            tmp_path,
+            {"taxpayer_status": "taxable", "consumption_tax_method": "standard"},
+            "profile-standard.json",
+        )
+        run_ledger(
+            "fiscal-year-update",
+            "--db-path",
+            db_path,
+            "--fiscal-year",
+            "2025",
+            "--input",
+            patch,
+        )
+
+        run_ledger("init", "--db-path", db_path, "--fiscal-year", "2025")
+        out = run_ledger(
+            "fiscal-year-show",
+            "--db-path",
+            db_path,
+            "--fiscal-year",
+            "2025",
+        )
+        assert out["taxpayer_status"] == "taxable"
+        assert out["consumption_tax_method"] == "standard"
 
 
 # ============================================================

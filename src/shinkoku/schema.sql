@@ -5,7 +5,10 @@
 CREATE TABLE IF NOT EXISTS fiscal_years (
     year INTEGER PRIMARY KEY,
     status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'closed')),
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    taxpayer_status TEXT,
+    consumption_tax_method TEXT,
+    simplified_business_type INTEGER
 );
 
 -- 勘定科目マスタ

@@ -9,6 +9,8 @@
 
 from __future__ import annotations
 
+import pytest
+from pydantic import ValidationError
 
 from shinkoku.models import ConsumptionTaxInput
 from shinkoku.tools.tax_calc import calc_consumption_tax
@@ -296,6 +298,45 @@ class TestMixedRates:
         # 仕入国税10%: 1,100,000 * 78/1100 = 78,000
         # 仕入国税8%:  216,000 * 624/10800 = 12,480
         assert r.tax_on_purchases == 78_000 + 12_480
+
+
+class TestSimplifiedBusinessType:
+    """簡易課税の事業区分を黙示補完せず、明示値を使う。"""
+
+    def test_missing_business_type_is_rejected(self) -> None:
+        with pytest.raises(ValidationError):
+            ConsumptionTaxInput(
+                fiscal_year=2025,
+                method="simplified",
+                taxable_sales_10=1_100_000,
+            )
+
+    @pytest.mark.parametrize(
+        ("business_type", "deemed_ratio"),
+        [(1, 90), (2, 80), (3, 70), (4, 60), (5, 50), (6, 40)],
+    )
+    def test_explicit_business_type_uses_existing_deemed_ratio(
+        self, business_type: int, deemed_ratio: int
+    ) -> None:
+        result = calc_consumption_tax(
+            ConsumptionTaxInput(
+                fiscal_year=2025,
+                method="simplified",
+                taxable_sales_10=1_100_000,
+                simplified_business_type=business_type,
+            )
+        )
+        assert result.national_tax_on_sales == 78_000
+        assert result.tax_on_purchases == 78_000 * deemed_ratio // 100
+
+    @pytest.mark.parametrize("method", ["standard", "special_20pct"])
+    def test_other_methods_continue_to_allow_missing_business_type(self, method: str) -> None:
+        input_data = ConsumptionTaxInput(
+            fiscal_year=2025,
+            method=method,
+            taxable_sales_10=1_100_000,
+        )
+        assert input_data.simplified_business_type is None
 
 
 class TestZeroSales:
