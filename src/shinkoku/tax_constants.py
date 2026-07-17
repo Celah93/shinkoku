@@ -9,6 +9,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from dataclasses import dataclass
+from types import MappingProxyType
+from typing import Final
+
 # ============================================================
 # 基礎控除（令和7年分）
 # 所得税法第86条、租税特別措置法第41条の16の2（令和7年改正）
@@ -122,6 +127,75 @@ SPECIFIC_RELATIVE_SPECIAL_DEDUCTION_TABLE: list[tuple[int, int]] = [
     (1_230_000, 30_000),  # 120万超〜123万: 3万
 ]
 SPECIFIC_RELATIVE_SPECIAL_INCOME_MAX = 1_230_000  # 123万超は控除なし
+
+# ============================================================
+# 年分別の所得税定数
+# ============================================================
+
+# 給与所得額が None の行は「給与収入 - 最低保障額」で計算する。
+SalaryIncomeStep = tuple[int, int, int | None]
+
+
+@dataclass(frozen=True)
+class IncomeTaxYearConstants:
+    """1年分の所得税定数一式。"""
+
+    basic_deduction_table: tuple[tuple[int, int], ...]
+    salary_deduction_min: int
+    dependent_income_limit: int
+    working_student_income_limit: int
+    salary_income_step_table: tuple[SalaryIncomeStep, ...] | None
+
+
+_INCOME_TAX_CONSTANTS_2025 = IncomeTaxYearConstants(
+    basic_deduction_table=tuple(BASIC_DEDUCTION_TABLE),
+    salary_deduction_min=SALARY_DEDUCTION_MIN,
+    dependent_income_limit=DEPENDENT_INCOME_LIMIT,
+    working_student_income_limit=WORKING_STUDENT_INCOME_LIMIT,
+    salary_income_step_table=None,
+)
+
+_INCOME_TAX_CONSTANTS_2026 = IncomeTaxYearConstants(
+    basic_deduction_table=(
+        (1_320_000, 1_040_000),
+        (3_360_000, 1_040_000),
+        (4_890_000, 1_040_000),
+        (6_550_000, 670_000),
+        (23_500_000, 620_000),
+        (24_000_000, 480_000),
+        (24_500_000, 320_000),
+        (25_000_000, 160_000),
+    ),
+    salary_deduction_min=740_000,
+    dependent_income_limit=620_000,
+    working_student_income_limit=890_000,
+    salary_income_step_table=(
+        (691_000, 741_000, 0),
+        (741_000, 2_191_000, None),
+        (2_191_000, 2_193_000, 1_451_000),
+        (2_193_000, 2_196_000, 1_453_000),
+        (2_196_000, 2_200_000, 1_456_000),
+    ),
+)
+
+# 令和8・9年分は同じ内容。不変オブジェクトなので安全に共有できる。
+INCOME_TAX_CONSTANTS_BY_YEAR: Final[Mapping[int, IncomeTaxYearConstants]] = MappingProxyType(
+    {
+        2025: _INCOME_TAX_CONSTANTS_2025,
+        2026: _INCOME_TAX_CONSTANTS_2026,
+        2027: _INCOME_TAX_CONSTANTS_2026,
+    }
+)
+
+
+def get_income_tax_constants(fiscal_year: int) -> IncomeTaxYearConstants:
+    """年分に対応する所得税定数を返す。未対応年分は計算しない。"""
+    try:
+        return INCOME_TAX_CONSTANTS_BY_YEAR[fiscal_year]
+    except KeyError as exc:
+        supported = sorted(INCOME_TAX_CONSTANTS_BY_YEAR)
+        raise ValueError(f"fiscal_year={fiscal_year} は未対応です。対応年分: {supported}") from exc
+
 
 # ============================================================
 # 医療費控除（所得税法第73条）

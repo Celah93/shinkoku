@@ -32,13 +32,11 @@ from shinkoku.models import (
     TaxSanityCheckResult,
 )
 from shinkoku.tax_constants import (
-    BASIC_DEDUCTION_TABLE,
     DEPENDENT_ELDERLY,
     DEPENDENT_ELDERLY_COHABITING,
     DEPENDENT_GENERAL,
     DEPENDENT_AGE_SPECIFIC_MAX,
     DEPENDENT_AGE_SPECIFIC_MIN,
-    DEPENDENT_INCOME_LIMIT,
     DONATION_INCOME_DEDUCTION_RATIO,
     DONATION_SELF_BURDEN,
     NPO_DONATION_CREDIT_CAP_RATIO,
@@ -103,7 +101,6 @@ from shinkoku.tax_constants import (
     RETIREMENT_OFFICER_SHORT_SERVICE_YEARS,
     RETIREMENT_SHORT_SERVICE_HALF_LIMIT,
     SALARY_DEDUCTION_MAX,
-    SALARY_DEDUCTION_MIN,
     SELF_MEDICATION_MAX,
     SELF_MEDICATION_THRESHOLD,
     SIMPLIFIED_DEEMED_RATIOS,
@@ -122,13 +119,14 @@ from shinkoku.tax_constants import (
     TAXABLE_INCOME_ROUNDING,
     WIDOW_DEDUCTION,
     WORKING_STUDENT_DEDUCTION,
-    WORKING_STUDENT_INCOME_LIMIT,
+    get_income_tax_constants,
 )
 
 
-def calc_basic_deduction(total_income: int) -> int:
-    """Calculate basic deduction based on total income (Reiwa 7)."""
-    for upper, deduction in BASIC_DEDUCTION_TABLE:
+def calc_basic_deduction(total_income: int, fiscal_year: int = 2025) -> int:
+    """年分と合計所得金額に応じた基礎控除額を返す。"""
+    constants = get_income_tax_constants(fiscal_year)
+    for upper, deduction in constants.basic_deduction_table:
         if total_income <= upper:
             return deduction
     return 0
@@ -139,17 +137,30 @@ def calc_basic_deduction(total_income: int) -> int:
 # ============================================================
 
 
-def calc_salary_deduction(salary_income: int) -> int:
-    """Calculate salary income deduction (Reiwa 7 revision).
+def calc_salary_deduction(salary_income: int, fiscal_year: int = 2025) -> int:
+    """年分に応じた給与所得控除額を返す。
 
-    令和7年改正: 最低保障額65万、≤190万で一律65万に変更。
-    Returns the deduction amount (not the net salary income).
+    引数名は後方互換のため維持しているが、値は給与収入を表す。
+    令和8・9年分の段差帯は給与所得額が直接定められているため、
+    給与収入との差額を控除額として返す。
     """
+    constants = get_income_tax_constants(fiscal_year)
     if salary_income <= 0:
         return 0
+
+    if constants.salary_income_step_table is not None:
+        for lower, upper, fixed_income in constants.salary_income_step_table:
+            if lower <= salary_income < upper:
+                net_salary_income = (
+                    salary_income - constants.salary_deduction_min
+                    if fixed_income is None
+                    else fixed_income
+                )
+                return salary_income - net_salary_income
+
     # 令和7年改正: ≤190万は一律65万（旧: ≤162.5万で55万、162.5万超〜180万は40%-10万）
     if salary_income <= 1_900_000:
-        return SALARY_DEDUCTION_MIN
+        return constants.salary_deduction_min
     if salary_income <= 3_600_000:
         return int(salary_income * 30 // 100) + 80_000
     if salary_income <= 6_600_000:
@@ -302,9 +313,10 @@ def calc_disability_deduction_self(status: str) -> int:
     return 0
 
 
-def calc_working_student_deduction(flag: bool, total_income: int) -> int:
-    """勤労学生控除: 270,000（合計所得75万以下）。"""
-    if flag and total_income <= WORKING_STUDENT_INCOME_LIMIT:
+def calc_working_student_deduction(flag: bool, total_income: int, fiscal_year: int = 2025) -> int:
+    """年分に応じた所得要件で勤労学生控除を計算する。"""
+    constants = get_income_tax_constants(fiscal_year)
+    if flag and total_income <= constants.working_student_income_limit:
         return WORKING_STUDENT_DEDUCTION
     return 0
 
@@ -412,6 +424,7 @@ def calc_dependents_deduction(
     - 同居特別障害者: 75万円
     """
     items: list[DeductionItem] = []
+    constants = get_income_tax_constants(fiscal_year)
     fiscal_year_end = f"{fiscal_year}-12-31"
 
     for dep in dependents:
@@ -431,7 +444,7 @@ def calc_dependents_deduction(
             if dep.income > SPECIFIC_RELATIVE_SPECIAL_INCOME_MAX:
                 continue
         else:
-            if dep.income > DEPENDENT_INCOME_LIMIT:
+            if dep.income > constants.dependent_income_limit:
                 continue
 
         # 扶養控除（16歳以上のみ）
@@ -452,7 +465,7 @@ def calc_dependents_deduction(
                 )
             )
         elif is_specific_age:
-            if dep.income <= DEPENDENT_INCOME_LIMIT:
+            if dep.income <= constants.dependent_income_limit:
                 # 所得58万以下: 通常の特定扶養控除
                 items.append(
                     DeductionItem(
@@ -739,7 +752,7 @@ def calc_deductions(
     tax_credits: list[DeductionItem] = []
 
     # 1. Basic deduction (always applied if > 0)
-    basic = calc_basic_deduction(total_income)
+    basic = calc_basic_deduction(total_income, fiscal_year)
     if basic > 0:
         income_deductions.append(DeductionItem(type="basic", name="基礎控除", amount=basic))
 
@@ -951,7 +964,7 @@ def calc_deductions(
 
     # 12. 勤労学生控除（Phase 5）
     if working_student:
-        ws = calc_working_student_deduction(True, total_income)
+        ws = calc_working_student_deduction(True, total_income, fiscal_year)
         if ws > 0:
             income_deductions.append(
                 DeductionItem(type="working_student", name="勤労学生控除", amount=ws)
@@ -1096,8 +1109,11 @@ def calc_income_tax(input_data: IncomeTaxInput) -> IncomeTaxResult:
     9. Filing tax amount (truncate to 100 yen)
     10. Difference = filing amount - withheld tax
     """
+    # 入力内容に関係なく、未対応年分は計算開始時に止める。
+    get_income_tax_constants(input_data.fiscal_year)
+
     # Step 1: Salary income after deduction
-    salary_deduction = calc_salary_deduction(input_data.salary_income)
+    salary_deduction = calc_salary_deduction(input_data.salary_income, input_data.fiscal_year)
     salary_income_after = max(0, input_data.salary_income - salary_deduction)
 
     # Step 2: Business income（赤字の場合は負値 → 給与所得と損益通算）

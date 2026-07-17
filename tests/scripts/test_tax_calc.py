@@ -380,6 +380,35 @@ def test_calc_income_salary_only(tmp_path: Path) -> None:
     assert output["fiscal_year"] == 2025
 
 
+def test_calc_income_unsupported_fiscal_year(tmp_path: Path) -> None:
+    input_file = _write_input(
+        tmp_path,
+        {
+            "fiscal_year": 2028,
+            "salary_income": 0,
+            "blue_return_deduction": 0,
+        },
+    )
+
+    result = run_cli("tax", "calc-income", "--input", str(input_file))
+
+    assert result.returncode == 1
+    output = json.loads(result.stdout)
+    assert output["status"] == "error"
+    assert "2028" in output["message"]
+
+
+def test_calc_deductions_unsupported_fiscal_year(tmp_path: Path) -> None:
+    input_file = _write_input(tmp_path, {"total_income": 0, "fiscal_year": 2028})
+
+    result = run_cli("tax", "calc-deductions", "--input", str(input_file))
+
+    assert result.returncode == 1
+    output = json.loads(result.stdout)
+    assert output["status"] == "error"
+    assert "2028" in output["message"]
+
+
 def test_calc_income_with_business(tmp_path: Path) -> None:
     input_file = _write_input(
         tmp_path,
