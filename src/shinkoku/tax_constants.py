@@ -1,4 +1,4 @@
-"""税制定数の一元管理モジュール（令和7年分 / 2025年課税年度）。
+"""税制定数の一元管理モジュール（令和7〜9年分 / 2025〜2027年課税年度）。
 
 全ての税法関連の定数・テーブルをこのモジュールに集約する。
 税率はパーセンテージの整数で管理（例: 5% → 5）。
@@ -113,7 +113,8 @@ DEPENDENT_AGE_SPECIFIC_MIN = 19  # 特定扶養の最低年齢
 DEPENDENT_AGE_SPECIFIC_MAX = 23  # 特定扶養の最大年齢（未満）
 DEPENDENT_AGE_ELDERLY = 70  # 老人扶養の最低年齢
 
-# 特定親族特別控除（令和7年新設、租税特別措置法第41条の17）
+# 特定親族特別控除（令和7年新設、所得税法第84条の2）
+# 以下の表は令和7年分固定の互換定数。新規計算は IncomeTaxYearConstants を参照する。
 # 19〜22歳の親族で所得58万超〜123万以下に適用
 # (所得上限, 控除額)
 SPECIFIC_RELATIVE_SPECIAL_DEDUCTION_TABLE: list[tuple[int, int]] = [
@@ -136,6 +137,46 @@ SPECIFIC_RELATIVE_SPECIAL_INCOME_MAX = 1_230_000  # 123万超は控除なし
 # 給与所得額が None の行は「給与収入 - 最低保障額」で計算する。
 SalaryIncomeStep = tuple[int, int, int | None]
 
+# 下限は排他、上限は包含。法令表の「超 / 以下」をそのまま保持する。
+SpouseSpecialDeductionRow = tuple[int, int, int, int, int]
+# (配偶者所得の下限, 上限, 納税者所得900万円以下, 950万円以下, 1,000万円以下)
+SpecificRelativeSpecialDeductionRow = tuple[int, int, int]
+# (特定親族所得の下限, 上限, 控除額)
+
+_SPOUSE_SPECIAL_DEDUCTION_TABLE_2025: tuple[SpouseSpecialDeductionRow, ...] = (
+    (580_000, 950_000, 380_000, 260_000, 130_000),
+    (950_000, 1_000_000, 360_000, 240_000, 120_000),
+    (1_000_000, 1_050_000, 310_000, 210_000, 110_000),
+    (1_050_000, 1_100_000, 260_000, 180_000, 90_000),
+    (1_100_000, 1_150_000, 210_000, 140_000, 70_000),
+    (1_150_000, 1_200_000, 160_000, 110_000, 60_000),
+    (1_200_000, 1_250_000, 110_000, 80_000, 40_000),
+    (1_250_000, 1_300_000, 60_000, 40_000, 20_000),
+    (1_300_000, 1_330_000, 30_000, 20_000, 10_000),
+)
+
+_SPOUSE_SPECIAL_DEDUCTION_TABLE_2026: tuple[SpouseSpecialDeductionRow, ...] = (
+    (620_000, 950_000, 380_000, 260_000, 130_000),
+    *_SPOUSE_SPECIAL_DEDUCTION_TABLE_2025[1:],
+)
+
+_SPECIFIC_RELATIVE_SPECIAL_DEDUCTION_TABLE_2025: tuple[SpecificRelativeSpecialDeductionRow, ...] = (
+    (580_000, 850_000, 630_000),
+    (850_000, 900_000, 610_000),
+    (900_000, 950_000, 510_000),
+    (950_000, 1_000_000, 410_000),
+    (1_000_000, 1_050_000, 310_000),
+    (1_050_000, 1_100_000, 210_000),
+    (1_100_000, 1_150_000, 110_000),
+    (1_150_000, 1_200_000, 60_000),
+    (1_200_000, 1_230_000, 30_000),
+)
+
+_SPECIFIC_RELATIVE_SPECIAL_DEDUCTION_TABLE_2026: tuple[SpecificRelativeSpecialDeductionRow, ...] = (
+    (620_000, 850_000, 630_000),
+    *_SPECIFIC_RELATIVE_SPECIAL_DEDUCTION_TABLE_2025[1:],
+)
+
 
 @dataclass(frozen=True)
 class IncomeTaxYearConstants:
@@ -144,16 +185,22 @@ class IncomeTaxYearConstants:
     basic_deduction_table: tuple[tuple[int, int], ...]
     salary_deduction_min: int
     dependent_income_limit: int
+    spouse_income_limit: int
     working_student_income_limit: int
     salary_income_step_table: tuple[SalaryIncomeStep, ...] | None
+    spouse_special_deduction_table: tuple[SpouseSpecialDeductionRow, ...]
+    specific_relative_special_deduction_table: tuple[SpecificRelativeSpecialDeductionRow, ...]
 
 
 _INCOME_TAX_CONSTANTS_2025 = IncomeTaxYearConstants(
     basic_deduction_table=tuple(BASIC_DEDUCTION_TABLE),
     salary_deduction_min=SALARY_DEDUCTION_MIN,
     dependent_income_limit=DEPENDENT_INCOME_LIMIT,
+    spouse_income_limit=580_000,
     working_student_income_limit=WORKING_STUDENT_INCOME_LIMIT,
     salary_income_step_table=None,
+    spouse_special_deduction_table=_SPOUSE_SPECIAL_DEDUCTION_TABLE_2025,
+    specific_relative_special_deduction_table=(_SPECIFIC_RELATIVE_SPECIAL_DEDUCTION_TABLE_2025),
 )
 
 _INCOME_TAX_CONSTANTS_2026 = IncomeTaxYearConstants(
@@ -169,6 +216,7 @@ _INCOME_TAX_CONSTANTS_2026 = IncomeTaxYearConstants(
     ),
     salary_deduction_min=740_000,
     dependent_income_limit=620_000,
+    spouse_income_limit=620_000,
     working_student_income_limit=890_000,
     salary_income_step_table=(
         (691_000, 741_000, 0),
@@ -177,6 +225,8 @@ _INCOME_TAX_CONSTANTS_2026 = IncomeTaxYearConstants(
         (2_193_000, 2_196_000, 1_453_000),
         (2_196_000, 2_200_000, 1_456_000),
     ),
+    spouse_special_deduction_table=_SPOUSE_SPECIAL_DEDUCTION_TABLE_2026,
+    specific_relative_special_deduction_table=(_SPECIFIC_RELATIVE_SPECIAL_DEDUCTION_TABLE_2026),
 )
 
 # 令和8・9年分は同じ内容。不変オブジェクトなので安全に共有できる。
@@ -219,7 +269,11 @@ ONE_TIME_INCOME_SPECIAL_DEDUCTION = 500_000  # 特別控除額
 # 令和7年改正: 配偶者所得要件拡大（48万→58万で配偶者控除）
 # ============================================================
 SPOUSE_TAXPAYER_INCOME_LIMIT = 10_000_000  # 納税者の所得制限
+SPOUSE_DEDUCTION_AMOUNT_LE_900 = 380_000
+SPOUSE_DEDUCTION_AMOUNT_LE_950 = 260_000
+SPOUSE_DEDUCTION_AMOUNT_LE_1000 = 130_000
 
+# 以下の3表は令和7年分固定の互換定数。新規計算は IncomeTaxYearConstants を参照する。
 # 配偶者控除テーブル: (配偶者所得上限, 控除額)
 # 納税者所得 ≤ 900万
 SPOUSE_DEDUCTION_TABLE: list[tuple[int, int]] = [

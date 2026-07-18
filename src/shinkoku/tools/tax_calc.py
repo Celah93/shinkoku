@@ -119,11 +119,9 @@ from shinkoku.tax_constants import (
     SIMPLIFIED_DEEMED_RATIOS,
     SINGLE_PARENT_DEDUCTION,
     SPECIAL_20PCT_RATE,
-    SPECIFIC_RELATIVE_SPECIAL_DEDUCTION_TABLE,
-    SPECIFIC_RELATIVE_SPECIAL_INCOME_MAX,
-    SPOUSE_DEDUCTION_TABLE,
-    SPOUSE_DEDUCTION_TABLE_9M,
-    SPOUSE_DEDUCTION_TABLE_10M,
+    SPOUSE_DEDUCTION_AMOUNT_LE_1000,
+    SPOUSE_DEDUCTION_AMOUNT_LE_900,
+    SPOUSE_DEDUCTION_AMOUNT_LE_950,
     SPOUSE_TAXPAYER_BRACKET_1,
     SPOUSE_TAXPAYER_BRACKET_2,
     SPOUSE_TAXPAYER_INCOME_LIMIT,
@@ -386,25 +384,51 @@ def calc_dividend_tax_credit(dividend_income: int, taxable_income: int) -> int:
 # ============================================================
 
 
-def calc_spouse_deduction(taxpayer_income: int, spouse_income: int | None) -> int:
-    """Calculate spouse deduction / special spouse deduction."""
+SpouseDeductionType = Literal["spouse", "spouse_special"]
+
+
+def _resolve_spouse_deduction(
+    taxpayer_income: int,
+    spouse_income: int | None,
+    fiscal_year: int,
+) -> tuple[int, SpouseDeductionType | None]:
+    """年分に応じた配偶者控除額と制度区分を返す。"""
+    constants = get_income_tax_constants(fiscal_year)
     if spouse_income is None:
-        return 0
+        return 0, None
     if taxpayer_income > SPOUSE_TAXPAYER_INCOME_LIMIT:
-        return 0
+        return 0, None
 
-    # Select the appropriate table based on taxpayer income
     if taxpayer_income <= SPOUSE_TAXPAYER_BRACKET_1:
-        table = SPOUSE_DEDUCTION_TABLE
+        regular_amount = SPOUSE_DEDUCTION_AMOUNT_LE_900
+        amount_index = 2
     elif taxpayer_income <= SPOUSE_TAXPAYER_BRACKET_2:
-        table = SPOUSE_DEDUCTION_TABLE_9M
+        regular_amount = SPOUSE_DEDUCTION_AMOUNT_LE_950
+        amount_index = 3
     else:  # <= 10_000_000
-        table = SPOUSE_DEDUCTION_TABLE_10M
+        regular_amount = SPOUSE_DEDUCTION_AMOUNT_LE_1000
+        amount_index = 4
 
-    for upper, deduction in table:
-        if spouse_income <= upper:
-            return deduction
-    return 0
+    if spouse_income <= constants.spouse_income_limit:
+        # Why not: 老人控除対象配偶者は生年月日を受ける経路がないため別Issueで扱う。
+        # ここでは年齢を推測せず、一般の配偶者控除額だけを返す。
+        return regular_amount, "spouse"
+
+    for row in constants.spouse_special_deduction_table:
+        income_over, income_up_to = row[:2]
+        if income_over < spouse_income <= income_up_to:
+            return row[amount_index], "spouse_special"
+    return 0, None
+
+
+def calc_spouse_deduction(
+    taxpayer_income: int,
+    spouse_income: int | None,
+    fiscal_year: int = 2025,
+) -> int:
+    """年分に応じた配偶者控除・配偶者特別控除の金額を返す。"""
+    amount, _ = _resolve_spouse_deduction(taxpayer_income, spouse_income, fiscal_year)
+    return amount
 
 
 # ============================================================
@@ -441,14 +465,14 @@ def calc_dependents_deduction(
 ) -> list[DeductionItem]:
     """Calculate deductions for dependents (扶養控除 + 特定親族特別控除 + 障害者控除).
 
-    扶養控除（配偶者以外の親族で所得58万以下）:
+    扶養控除（配偶者以外の親族で年分別の所得要件以下）:
     - 一般扶養: 38万円（16歳以上）
     - 特定扶養: 63万円（19歳以上23歳未満）
     - 老人扶養（同居）: 58万円（70歳以上、同居）
     - 老人扶養（別居）: 48万円（70歳以上、別居）
     - 16歳未満: 扶養控除なし（児童手当対象）
 
-    特定親族特別控除（令和7年新設、19〜22歳で所得58万超〜123万以下）:
+    特定親族特別控除（令和7年新設、19〜22歳で年分別の下限超〜123万以下）:
     - 所得金額に応じて63万〜3万の段階的控除
 
     障害者控除:
@@ -458,6 +482,10 @@ def calc_dependents_deduction(
     """
     items: list[DeductionItem] = []
     constants = get_income_tax_constants(fiscal_year)
+    specific_relative_income_max = constants.specific_relative_special_deduction_table[-1][1]
+
+    # Why not: 特定親族特別控除には本人の所得制限がないため、taxpayer_income は使わない。
+    # 配偶者控除側の1,000万円制限を流用しないことを意図している。
 
     for dep in dependents:
         # 他の納税者の扶養親族 → 二重控除防止のため除外
@@ -471,9 +499,9 @@ def calc_dependents_deduction(
         age = _calc_age(dep.birth_date, fiscal_year)
         is_specific_age = DEPENDENT_AGE_SPECIFIC_MIN <= age < DEPENDENT_AGE_SPECIFIC_MAX
 
-        # 所得要件: 19〜22歳は123万まで許容（特定親族特別控除）、それ以外は58万
+        # 所得要件: 19〜22歳は特定親族特別控除の上限まで、それ以外は年分別要件
         if is_specific_age:
-            if dep.income > SPECIFIC_RELATIVE_SPECIAL_INCOME_MAX:
+            if dep.income > specific_relative_income_max:
                 continue
         else:
             if dep.income > constants.dependent_income_limit:
@@ -498,7 +526,7 @@ def calc_dependents_deduction(
             )
         elif is_specific_age:
             if dep.income <= constants.dependent_income_limit:
-                # 所得58万以下: 通常の特定扶養控除
+                # 年分別の所得要件以下: 通常の特定扶養控除
                 items.append(
                     DeductionItem(
                         type="dependent",
@@ -508,10 +536,14 @@ def calc_dependents_deduction(
                     )
                 )
             else:
-                # 所得58万超〜123万: 特定親族特別控除（段階的逓減）
+                # 年分別の下限超〜123万: 特定親族特別控除（段階的逓減）
                 special_amount = 0
-                for threshold, amount in SPECIFIC_RELATIVE_SPECIAL_DEDUCTION_TABLE:
-                    if dep.income <= threshold:
+                for (
+                    income_over,
+                    income_up_to,
+                    amount,
+                ) in constants.specific_relative_special_deduction_table:
+                    if income_over < dep.income <= income_up_to:
                         special_amount = amount
                         break
                 if special_amount > 0:
@@ -1078,9 +1110,16 @@ def calc_deductions(
 
     # 8. Spouse deduction
     if spouse_income is not None:
-        spouse = calc_spouse_deduction(total_income, spouse_income)
-        if spouse > 0:
-            income_deductions.append(DeductionItem(type="spouse", name="配偶者控除", amount=spouse))
+        spouse, spouse_type = _resolve_spouse_deduction(
+            total_income,
+            spouse_income,
+            fiscal_year,
+        )
+        if spouse > 0 and spouse_type is not None:
+            spouse_name = "配偶者控除" if spouse_type == "spouse" else "配偶者特別控除"
+            income_deductions.append(
+                DeductionItem(type=spouse_type, name=spouse_name, amount=spouse)
+            )
 
     # 9. Dependent deductions (扶養控除 + 障害者控除)
     if dependents:

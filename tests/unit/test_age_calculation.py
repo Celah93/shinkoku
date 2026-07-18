@@ -118,3 +118,36 @@ def test_january_first_age_crosses_fiscal_year_dependent_income_rules(
     )
 
     assert [(item.type, item.amount) for item in result] == [(expected_type, 630_000)]
+
+
+@pytest.mark.parametrize(
+    ("birth_date", "expected_type", "expected_amount"),
+    [
+        ("2004-01-01", None, 0),
+        ("2004-01-02", "specific_relative_special", 630_000),
+        ("2008-01-01", "specific_relative_special", 630_000),
+        ("2008-01-02", None, 0),
+    ],
+)
+def test_2026_specific_relative_income_boundary_uses_legal_age(
+    birth_date: str,
+    expected_type: str | None,
+    expected_amount: int,
+) -> None:
+    dependent = DependentInfo(
+        name="特定親族年齢境界",
+        relationship="子",
+        birth_date=birth_date,
+        income=630_000,
+    )
+
+    result = calc_dependents_deduction(
+        [dependent],
+        taxpayer_income=3_000_000,
+        fiscal_year=2026,
+    )
+
+    if expected_type is None:
+        assert result == []
+        return
+    assert [(item.type, item.amount) for item in result] == [(expected_type, expected_amount)]

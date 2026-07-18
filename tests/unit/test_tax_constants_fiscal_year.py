@@ -36,8 +36,21 @@ class TestIncomeTaxYearConstants:
         assert constants.basic_deduction_table == tuple(BASIC_DEDUCTION_TABLE)
         assert constants.salary_deduction_min == SALARY_DEDUCTION_MIN
         assert constants.dependent_income_limit == DEPENDENT_INCOME_LIMIT
+        assert constants.spouse_income_limit == 580_000
         assert constants.working_student_income_limit == WORKING_STUDENT_INCOME_LIMIT
         assert constants.salary_income_step_table is None
+        assert constants.spouse_special_deduction_table[0] == (
+            580_000,
+            950_000,
+            380_000,
+            260_000,
+            130_000,
+        )
+        assert constants.specific_relative_special_deduction_table[0] == (
+            580_000,
+            850_000,
+            630_000,
+        )
 
     def test_2026_values(self) -> None:
         constants = get_income_tax_constants(2026)
@@ -51,8 +64,21 @@ class TestIncomeTaxYearConstants:
         )
         assert constants.salary_deduction_min == 740_000
         assert constants.dependent_income_limit == 620_000
+        assert constants.spouse_income_limit == 620_000
         assert constants.working_student_income_limit == 890_000
         assert constants.salary_income_step_table is not None
+        assert constants.spouse_special_deduction_table[0] == (
+            620_000,
+            950_000,
+            380_000,
+            260_000,
+            130_000,
+        )
+        assert constants.specific_relative_special_deduction_table[0] == (
+            620_000,
+            850_000,
+            630_000,
+        )
 
     def test_2027_shares_immutable_2026_values(self) -> None:
         assert get_income_tax_constants(2027) is get_income_tax_constants(2026)
@@ -62,6 +88,8 @@ class TestIncomeTaxYearConstants:
 
         assert isinstance(constants.basic_deduction_table, tuple)
         assert isinstance(constants.salary_income_step_table, tuple)
+        assert isinstance(constants.spouse_special_deduction_table, tuple)
+        assert isinstance(constants.specific_relative_special_deduction_table, tuple)
         with pytest.raises(FrozenInstanceError):
             setattr(constants, "salary_deduction_min", 0)
 

@@ -117,6 +117,75 @@ def test_calc_deductions_invalid_dependent_birth_date_is_error(tmp_path: Path) -
     assert "扶養親族の生年月日 '2025-99-99' が不正です" in output["message"]
 
 
+@pytest.mark.parametrize(
+    ("spouse_income", "expected_type", "expected_name"),
+    [
+        (700_000, "spouse_special", "配偶者特別控除"),
+        (600_000, "spouse", "配偶者控除"),
+    ],
+)
+def test_calc_income_keeps_2026_spouse_classification_in_json(
+    tmp_path: Path,
+    spouse_income: int,
+    expected_type: str,
+    expected_name: str,
+) -> None:
+    input_file = _write_input(
+        tmp_path,
+        {
+            "fiscal_year": 2026,
+            "business_revenue": 5_000_000,
+            "blue_return_deduction": 0,
+            "spouse_income": spouse_income,
+        },
+    )
+
+    result = run_cli("tax", "calc-income", "--input", str(input_file))
+
+    assert result.returncode == 0, result.stderr
+    output = json.loads(result.stdout)
+    spouse_items = [
+        item
+        for item in output["deductions_detail"]["income_deductions"]
+        if item["type"] in {"spouse", "spouse_special"}
+    ]
+    assert [(item["type"], item["name"]) for item in spouse_items] == [
+        (expected_type, expected_name)
+    ]
+
+
+def test_calc_income_keeps_2026_specific_relative_classification_in_json(
+    tmp_path: Path,
+) -> None:
+    input_file = _write_input(
+        tmp_path,
+        {
+            "fiscal_year": 2026,
+            "business_revenue": 5_000_000,
+            "blue_return_deduction": 0,
+            "dependents": [
+                {
+                    "name": "特定親族",
+                    "relationship": "子",
+                    "birth_date": "2005-06-15",
+                    "income": 630_000,
+                }
+            ],
+        },
+    )
+
+    result = run_cli("tax", "calc-income", "--input", str(input_file))
+
+    assert result.returncode == 0, result.stderr
+    output = json.loads(result.stdout)
+    items = output["deductions_detail"]["income_deductions"]
+    assert [
+        (item["type"], item["amount"])
+        for item in items
+        if item["type"] == "specific_relative_special"
+    ] == [("specific_relative_special", 630_000)]
+
+
 def _donation_record(amount: int, donation_type: str) -> dict:
     """DonationRecordRecord に必要な全フィールドを含むヘルパー."""
     return {
