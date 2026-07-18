@@ -157,6 +157,7 @@ class TestStandardRounding:
                 method="standard",
                 taxable_sales_10=1_234_567,
                 taxable_purchases_10=987_654,
+                legacy_purchase_assumption="all_qualified",
             )
         )
         assert r.total_due == 22_300
@@ -170,6 +171,7 @@ class TestStandardRounding:
                 method="standard",
                 taxable_sales_10=2_200_000,
                 taxable_purchases_10=1_100_000,
+                legacy_purchase_assumption="all_qualified",
             )
         )
         assert r.tax_on_purchases == 78_000
@@ -183,6 +185,7 @@ class TestStandardRounding:
                 method="standard",
                 taxable_sales_10=1_100_000,
                 taxable_purchases_8=108_000,
+                legacy_purchase_assumption="all_qualified",
             )
         )
         assert r.tax_on_purchases == 6_240
@@ -199,6 +202,7 @@ class TestRefundCase:
                 method="standard",
                 taxable_sales_10=500_000,
                 taxable_purchases_10=1_500_000,
+                legacy_purchase_assumption="all_qualified",
             )
         )
         assert r.net_tax == 0
@@ -213,6 +217,7 @@ class TestRefundCase:
                 method="standard",
                 taxable_sales_10=110_000,
                 taxable_purchases_10=1_100_000,
+                legacy_purchase_assumption="all_qualified",
             )
         )
         # 売上国税: 100,000 * 78/1000 = 7,800 (base 100,000)
@@ -229,6 +234,7 @@ class TestRefundCase:
                 method="standard",
                 taxable_sales_10=110_000,
                 taxable_purchases_10=1_100_000,
+                legacy_purchase_assumption="all_qualified",
             )
         )
         assert r.local_tax_due < 0
@@ -242,6 +248,7 @@ class TestRefundCase:
                 method="standard",
                 taxable_sales_10=1_100_000,
                 taxable_purchases_10=5_500_000,
+                legacy_purchase_assumption="all_qualified",
             )
         )
         assert r.refund_shortfall == 312_000
@@ -256,6 +263,7 @@ class TestRefundCase:
                 method="standard",
                 taxable_sales_10=110_000,
                 taxable_purchases_10=1_234_100,
+                legacy_purchase_assumption="all_qualified",
             )
         )
         # 売上国税: 課税標準100,000 × 7.8% = 7,800
@@ -293,6 +301,7 @@ class TestMixedRates:
                 taxable_sales_10=5_500_000,
                 taxable_purchases_10=1_100_000,
                 taxable_purchases_8=216_000,
+                legacy_purchase_assumption="all_qualified",
             )
         )
         # 仕入国税10%: 1,100,000 * 78/1100 = 78,000

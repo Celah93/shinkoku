@@ -132,6 +132,28 @@ shinkoku tax calc-consumption --input consumption_input.json
   "interim_payment": 0
 }
 ```
+
+本則課税（`method: "standard"`）では、仕入れを `purchase_details` に明細で渡す。各明細には課税仕入れの認識日、税込金額、税率区分、控除区分を指定する。
+
+```json
+{
+  "fiscal_year": 2026,
+  "method": "standard",
+  "taxable_sales_10": 5500000,
+  "purchase_details": [
+    {
+      "tax_recognition_date": "2026-09-30",
+      "amount_inclusive": 550000,
+      "tax_rate": "standard_10",
+      "credit_category": "nonqualified_transitional",
+      "supplier_key": "supplier-001"
+    }
+  ]
+}
+```
+
+`credit_category` は `qualified_invoice`、`nonqualified_transitional`、`book_only_full_credit`、`small_amount_full_credit`、`noncreditable`、`unknown` のいずれか。認識日と区分は入力側で確定し、計算層はその値を使う。旧形式の `taxable_purchases_10/8` を使う場合は、全件を適格請求書ありとして扱うことを明示する `legacy_purchase_assumption: "all_qualified"` が必要で、結果に警告が付く。
+
 出力 (ConsumptionTaxResult):
 - `method`: 適用した申告方法
 - `taxable_sales_total`: 課税売上高合計（税込、表示用）
@@ -140,6 +162,13 @@ shinkoku tax calc-consumption --input consumption_input.json
 - `national_tax_on_sales`: 消費税額（国税: 7.8%分 + 6.24%分）
 - `tax_on_sales`: = national_tax_on_sales（後方互換エイリアス）
 - `tax_on_purchases`: 控除対象仕入税額（国税部分）
+- `full_credit_purchase_amount` / `full_credit_tax_amount`: 100%控除区分の税率別内訳
+- `transitional_credit_breakdown`: 経過措置の控除率・税率別内訳
+- `noncreditable_amount`: 控除不可区分の税率別税込額
+- `unclassified_amount` / `unclassified_count`: 未分類明細の税込額と件数
+- `form_2_3`: 付表2-3の⑨・⑩・⑪・⑫・⑰に対応する税率別集計
+- `warnings`: 未分類、旧形式入力、仕入先上限を確認するための警告
+- `calculation_method`: `tax_inclusive_total`（割戻し計算）
 - `net_tax`: 差引税額（100円切捨て、正の場合のみ）
 - `refund_shortfall`: 控除不足還付税額（仕入 > 売上の場合）
 - `interim_payment`: 中間納付税額

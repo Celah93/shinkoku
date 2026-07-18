@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.10.0] - 2026-07-18
+
+### Added
+- 免税事業者等からの課税仕入れを認識日・税率・控除区分ごとに受け取り、80%・70%・50%・30%・0%の経過措置を割戻し計算する仕組みを追加
+- 適格請求書、帳簿のみ保存特例、少額特例、控除不可、未分類を分けた仕入明細入力と、付表2-3主要欄・税率別内訳・警告を計算結果へ追加
+- 一者当たり年間課税仕入限度額の超過と仕入先キー不足を、控除額を変えず警告する確認処理を追加
+
+### Changed
+- 本則課税の旧仕入合計入力は `legacy_purchase_assumption="all_qualified"` の明示を必須とし、全件を適格請求書ありとして扱った旨を結果へ残すように変更
+- `ConsumptionTaxInput` の未知フィールドを拒否し、未分類の仕入れを黙って全額控除しない入力契約へ変更
+- インボイス経過措置のスキル資料を、R13年10月の完全移行までの確定スケジュールへ更新
+
 ## [0.9.1] - 2026-07-18
 
 ### Fixed

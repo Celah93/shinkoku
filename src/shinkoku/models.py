@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 DonationType = Literal["political", "npo", "public_interest", "specified", "other"]
@@ -585,21 +586,62 @@ class IncomeTaxResult(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
+class PurchaseDetail(BaseModel):
+    """仕入税額控除を判定するための課税仕入れ明細。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    tax_recognition_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    amount_inclusive: int
+    tax_rate: Literal["standard_10", "reduced_8"]
+    credit_category: Literal[
+        "qualified_invoice",
+        "nonqualified_transitional",
+        "book_only_full_credit",
+        "small_amount_full_credit",
+        "noncreditable",
+        "unknown",
+    ]
+    supplier_key: str | None = None
+
+    @field_validator("tax_recognition_date")
+    @classmethod
+    def validate_tax_recognition_date(cls, value: str) -> str:
+        """実在する暦日かを検証する。"""
+        try:
+            date.fromisoformat(value)
+        except ValueError as exc:
+            raise ValueError(
+                "tax_recognition_date は実在する YYYY-MM-DD 形式の日付が必要です"
+            ) from exc
+        return value
+
+    @model_validator(mode="after")
+    def validate_small_amount_period(self) -> PurchaseDetail:
+        """少額特例の法定期限後の指定を拒否する。"""
+        if self.credit_category == "small_amount_full_credit" and date.fromisoformat(
+            self.tax_recognition_date
+        ) >= date(2029, 10, 1):
+            raise ValueError("small_amount_full_credit は 2029-09-30 まで指定できます")
+        return self
+
+
 class ConsumptionTaxInput(BaseModel):
     """消費税計算の入力。
 
     売上・仕入は税込金額で入力する。
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     fiscal_year: int
-    method: str = Field(
-        pattern=r"^(standard|simplified|special_20pct)$",
-        description="standard=本則, simplified=簡易, special_20pct=2割特例",
-    )
+    method: Literal["standard", "simplified", "special_20pct"]
     taxable_sales_10: int = 0  # 課税売上高(税込, 標準税率10%)
     taxable_sales_8: int = 0  # 課税売上高(税込, 軽減税率8%)
     taxable_purchases_10: int = 0  # 課税仕入高(税込, 標準税率10%)
     taxable_purchases_8: int = 0  # 課税仕入高(税込, 軽減税率8%)
+    purchase_details: list[PurchaseDetail] | None = None
+    legacy_purchase_assumption: Literal["all_qualified"] | None = None
     simplified_business_type: int | None = Field(
         default=None, ge=1, le=6, description="簡易課税の事業区分(1-6)"
     )
@@ -610,7 +652,48 @@ class ConsumptionTaxInput(BaseModel):
         """簡易課税ではみなし仕入率を決める事業区分を必須とする。"""
         if self.method == "simplified" and self.simplified_business_type is None:
             raise ValueError("簡易課税では simplified_business_type が必要です")
+        if self.method == "standard":
+            has_legacy_amounts = bool(self.taxable_purchases_10 or self.taxable_purchases_8)
+            if self.purchase_details is not None and (
+                has_legacy_amounts or self.legacy_purchase_assumption is not None
+            ):
+                raise ValueError("purchase_details と旧形式の仕入入力は併用できません")
+            if (
+                self.purchase_details is None
+                and has_legacy_amounts
+                and self.legacy_purchase_assumption != "all_qualified"
+            ):
+                raise ValueError(
+                    "旧形式の仕入額を使う場合は legacy_purchase_assumption='all_qualified' が必要です"
+                )
         return self
+
+
+class TaxRateAmountBreakdown(BaseModel):
+    """標準税率と軽減税率に分けた金額。"""
+
+    standard_10: int = 0
+    reduced_8: int = 0
+    total: int = 0
+
+
+class TransitionalCreditBreakdown(BaseModel):
+    """経過措置の控除割合別内訳。"""
+
+    rate_percent: int
+    amount_inclusive: TaxRateAmountBreakdown
+    tax_equivalent: TaxRateAmountBreakdown
+    credit_amount: TaxRateAmountBreakdown
+
+
+class ConsumptionTaxForm2_3Result(BaseModel):
+    """消費税申告書付表2-3の主要欄に対応する集計値。"""
+
+    row_9_purchase_amount: TaxRateAmountBreakdown
+    row_10_purchase_tax: TaxRateAmountBreakdown
+    row_11_transitional_purchase_amount: TaxRateAmountBreakdown
+    row_12_transitional_deemed_tax: TaxRateAmountBreakdown
+    row_17_total_input_tax: TaxRateAmountBreakdown
 
 
 class ConsumptionTaxResult(BaseModel):
@@ -636,6 +719,18 @@ class ConsumptionTaxResult(BaseModel):
     national_tax_on_sales: int = 0  # 消費税額(国税: 7.8%分+6.24%分)
     tax_on_sales: int = 0  # = national_tax_on_sales（後方互換エイリアス）
     tax_on_purchases: int = 0  # 控除対象仕入税額(国税部分)
+    full_credit_purchase_amount: TaxRateAmountBreakdown = Field(
+        default_factory=TaxRateAmountBreakdown
+    )
+    full_credit_tax_amount: TaxRateAmountBreakdown = Field(default_factory=TaxRateAmountBreakdown)
+    transitional_credit_breakdown: list[TransitionalCreditBreakdown] = Field(default_factory=list)
+    noncreditable_amount: TaxRateAmountBreakdown = Field(default_factory=TaxRateAmountBreakdown)
+    unclassified_amount: TaxRateAmountBreakdown = Field(default_factory=TaxRateAmountBreakdown)
+    unclassified_count: int = 0
+    form_2_3: ConsumptionTaxForm2_3Result | None = None
+    warnings: list[str] = Field(default_factory=list)
+    calculation_method: Literal["tax_inclusive_total"] = "tax_inclusive_total"
+    legacy_purchase_assumption: Literal["all_qualified"] | None = None
     # 差引き
     net_tax: int = 0  # 差引税額(100円切捨, 正の場合のみ) AAJ00100
     refund_shortfall: int = 0  # 控除不足還付税額(仕入>売上の場合) AAJ00090

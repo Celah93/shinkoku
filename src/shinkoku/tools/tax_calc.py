@@ -14,6 +14,7 @@ from datetime import date
 from typing import Any, Literal
 
 from shinkoku.models import (
+    ConsumptionTaxForm2_3Result,
     DeductionItem,
     DeductionsResult,
     DependentInfo,
@@ -35,6 +36,8 @@ from shinkoku.models import (
     RetirementIncomeResult,
     TaxSanityCheckItem,
     TaxSanityCheckResult,
+    TaxRateAmountBreakdown,
+    TransitionalCreditBreakdown,
 )
 from shinkoku.tax_constants import (
     DEPENDENT_AGE_ELDERLY,
@@ -126,9 +129,12 @@ from shinkoku.tax_constants import (
     SPOUSE_TAXPAYER_INCOME_LIMIT,
     TAX_AMOUNT_ROUNDING,
     TAXABLE_INCOME_ROUNDING,
+    TRANSITIONAL_CREDIT_PERIODS,
     WIDOW_DEDUCTION,
     WORKING_STUDENT_DEDUCTION,
     get_income_tax_constants,
+    get_per_supplier_limit,
+    get_transitional_credit_rate,
 )
 
 DonationMethod = Literal["income", "credit"]
@@ -1583,8 +1589,28 @@ def calc_income_tax(input_data: IncomeTaxInput) -> IncomeTaxResult:
 # ============================================================
 
 
+def _tax_rate_breakdown(standard_10: int = 0, reduced_8: int = 0) -> TaxRateAmountBreakdown:
+    """税率別金額と合計を同じ形で返す。"""
+    return TaxRateAmountBreakdown(
+        standard_10=standard_10,
+        reduced_8=reduced_8,
+        total=standard_10 + reduced_8,
+    )
+
+
+def _purchase_tax_from_gross(
+    amount_inclusive: int,
+    tax_rate: Literal["standard_10", "reduced_8"],
+    credit_rate_percent: int = 100,
+) -> int:
+    """税込総額から国税分の控除対象仕入税額を一度だけ切り捨てて求める。"""
+    if tax_rate == "standard_10":
+        return amount_inclusive * 78 * credit_rate_percent // 110_000
+    return amount_inclusive * 624 * credit_rate_percent // 1_080_000
+
+
 def calc_consumption_tax(input_data: ConsumptionTaxInput) -> ConsumptionTaxResult:
-    """消費税の計算（令和7年分）。
+    """消費税を計算し、本則課税では認識日別の仕入税額控除を反映する。
 
     正しい計算フロー（消費税法 第28条、第45条）:
     1. 課税標準額 = 税込金額 × 100/110（or 100/108）、1,000円未満切捨（国税通則法118条）
@@ -1621,6 +1647,34 @@ def calc_consumption_tax(input_data: ConsumptionTaxInput) -> ConsumptionTaxResul
     )
     national_tax_on_sales = national_tax_10 + national_tax_8
 
+    full_credit_categories = (
+        "qualified_invoice",
+        "book_only_full_credit",
+        "small_amount_full_credit",
+    )
+    full_purchase_amounts_by_category = {
+        category: {"standard_10": 0, "reduced_8": 0} for category in full_credit_categories
+    }
+    full_purchase_amounts = {"standard_10": 0, "reduced_8": 0}
+    full_credit_amounts = {"standard_10": 0, "reduced_8": 0}
+    transition_rates = tuple(period.rate_percent for period in TRANSITIONAL_CREDIT_PERIODS)
+    transitional_purchase_amounts = {
+        rate: {"standard_10": 0, "reduced_8": 0} for rate in transition_rates
+    }
+    transitional_tax_equivalents = {
+        rate: {"standard_10": 0, "reduced_8": 0} for rate in transition_rates
+    }
+    transitional_credit_amounts = {
+        rate: {"standard_10": 0, "reduced_8": 0} for rate in transition_rates
+    }
+    noncreditable_amounts = {"standard_10": 0, "reduced_8": 0}
+    unclassified_amounts = {"standard_10": 0, "reduced_8": 0}
+    unclassified_count = 0
+    warnings: list[str] = []
+    legacy_assumption_applied: Literal["all_qualified"] | None = None
+    transitional_breakdown: list[TransitionalCreditBreakdown] = []
+    form_2_3: ConsumptionTaxForm2_3Result | None = None
+
     # Step 3: 控除対象仕入税額（方式による）
     if input_data.method == "special_20pct":
         # 2割特例: 仕入控除税額 = 消費税額(国税) × 80%
@@ -1637,18 +1691,133 @@ def calc_consumption_tax(input_data: ConsumptionTaxInput) -> ConsumptionTaxResul
         tax_due_raw = national_tax_on_sales - tax_on_purchases
 
     else:  # standard（本則課税）
-        # 仕入税額 = 税込仕入額 × 7.8/110（10%品目）+ 6.24/108（8%品目）
-        purchase_tax_10 = (
-            input_data.taxable_purchases_10 * CONSUMPTION_TAX_STANDARD_NATIONAL_RATE // 1100
-            if input_data.taxable_purchases_10
-            else 0
+        if input_data.purchase_details is None:
+            full_purchase_amounts["standard_10"] = input_data.taxable_purchases_10
+            full_purchase_amounts["reduced_8"] = input_data.taxable_purchases_8
+            full_purchase_amounts_by_category["qualified_invoice"]["standard_10"] = (
+                input_data.taxable_purchases_10
+            )
+            full_purchase_amounts_by_category["qualified_invoice"]["reduced_8"] = (
+                input_data.taxable_purchases_8
+            )
+            if input_data.legacy_purchase_assumption == "all_qualified":
+                legacy_assumption_applied = "all_qualified"
+                warnings.append(
+                    "旧形式の仕入額を全件適格請求書ありとして扱いました。仕入区分を確認してください。"
+                )
+        else:
+            supplier_totals: dict[str, int] = {}
+            missing_supplier_key = False
+            for detail in input_data.purchase_details:
+                tax_rate = detail.tax_rate
+                if detail.credit_category in full_credit_categories:
+                    full_purchase_amounts[tax_rate] += detail.amount_inclusive
+                    full_purchase_amounts_by_category[detail.credit_category][tax_rate] += (
+                        detail.amount_inclusive
+                    )
+                elif detail.credit_category == "nonqualified_transitional":
+                    recognition_date = date.fromisoformat(detail.tax_recognition_date)
+                    credit_rate = get_transitional_credit_rate(recognition_date)
+                    transitional_purchase_amounts[credit_rate][tax_rate] += detail.amount_inclusive
+                    if detail.supplier_key is None:
+                        missing_supplier_key = True
+                    else:
+                        supplier_totals[detail.supplier_key] = (
+                            supplier_totals.get(detail.supplier_key, 0) + detail.amount_inclusive
+                        )
+                elif detail.credit_category == "noncreditable":
+                    noncreditable_amounts[tax_rate] += detail.amount_inclusive
+                else:
+                    unclassified_amounts[tax_rate] += detail.amount_inclusive
+                    unclassified_count += 1
+
+            if unclassified_count:
+                warnings.append(
+                    f"仕入区分が未確定の明細が {unclassified_count} 件あります。"
+                    "控除額は0円です。区分確定後に再計算してください。"
+                )
+
+            supplier_limit = get_per_supplier_limit(date(input_data.fiscal_year, 1, 1))
+            for supplier_key, amount in supplier_totals.items():
+                if amount > supplier_limit:
+                    warnings.append(
+                        f"仕入先 {supplier_key} の経過措置対象額 {amount:,}円が"
+                        f"一者当たり上限 {supplier_limit:,}円を超えています。"
+                        "超過部分の控除制限は計算額に未反映です。"
+                    )
+            if missing_supplier_key:
+                warnings.append(
+                    "supplier_key がない経過措置対象明細があるため、"
+                    "一者当たり上限を判定できません。"
+                )
+
+        for tax_rate in ("standard_10", "reduced_8"):
+            full_credit_amounts[tax_rate] = sum(
+                _purchase_tax_from_gross(amounts[tax_rate], tax_rate)
+                for amounts in full_purchase_amounts_by_category.values()
+            )
+            for rate in transition_rates:
+                transitional_tax_equivalents[rate][tax_rate] = _purchase_tax_from_gross(
+                    transitional_purchase_amounts[rate][tax_rate], tax_rate
+                )
+                transitional_credit_amounts[rate][tax_rate] = _purchase_tax_from_gross(
+                    transitional_purchase_amounts[rate][tax_rate], tax_rate, rate
+                )
+
+        transitional_breakdown = [
+            TransitionalCreditBreakdown(
+                rate_percent=rate,
+                amount_inclusive=_tax_rate_breakdown(
+                    transitional_purchase_amounts[rate]["standard_10"],
+                    transitional_purchase_amounts[rate]["reduced_8"],
+                ),
+                tax_equivalent=_tax_rate_breakdown(
+                    transitional_tax_equivalents[rate]["standard_10"],
+                    transitional_tax_equivalents[rate]["reduced_8"],
+                ),
+                credit_amount=_tax_rate_breakdown(
+                    transitional_credit_amounts[rate]["standard_10"],
+                    transitional_credit_amounts[rate]["reduced_8"],
+                ),
+            )
+            for rate in transition_rates
+        ]
+        transition_purchase_10 = sum(
+            amounts["standard_10"] for amounts in transitional_purchase_amounts.values()
         )
-        purchase_tax_8 = (
-            input_data.taxable_purchases_8 * CONSUMPTION_TAX_REDUCED_NATIONAL_RATE // 10800
-            if input_data.taxable_purchases_8
-            else 0
+        transition_purchase_8 = sum(
+            amounts["reduced_8"] for amounts in transitional_purchase_amounts.values()
         )
-        tax_on_purchases = purchase_tax_10 + purchase_tax_8
+        transition_credit_10 = sum(
+            amounts["standard_10"] for amounts in transitional_credit_amounts.values()
+        )
+        transition_credit_8 = sum(
+            amounts["reduced_8"] for amounts in transitional_credit_amounts.values()
+        )
+        tax_on_purchases = (
+            full_credit_amounts["standard_10"]
+            + full_credit_amounts["reduced_8"]
+            + transition_credit_10
+            + transition_credit_8
+        )
+        form_2_3 = ConsumptionTaxForm2_3Result(
+            row_9_purchase_amount=_tax_rate_breakdown(
+                full_purchase_amounts["standard_10"], full_purchase_amounts["reduced_8"]
+            ),
+            row_10_purchase_tax=_tax_rate_breakdown(
+                full_credit_amounts["standard_10"], full_credit_amounts["reduced_8"]
+            ),
+            row_11_transitional_purchase_amount=_tax_rate_breakdown(
+                transition_purchase_10, transition_purchase_8
+            ),
+            row_12_transitional_deemed_tax=_tax_rate_breakdown(
+                transition_credit_10, transition_credit_8
+            ),
+            row_17_total_input_tax=_tax_rate_breakdown(
+                full_credit_amounts["standard_10"] + transition_credit_10,
+                full_credit_amounts["reduced_8"] + transition_credit_8,
+            ),
+        )
         tax_due_raw = national_tax_on_sales - tax_on_purchases
 
     # Step 4: 差引税額 or 控除不足還付税額
@@ -1692,6 +1861,24 @@ def calc_consumption_tax(input_data: ConsumptionTaxInput) -> ConsumptionTaxResul
         national_tax_on_sales=national_tax_on_sales,
         tax_on_sales=national_tax_on_sales,  # 後方互換
         tax_on_purchases=tax_on_purchases,
+        full_credit_purchase_amount=_tax_rate_breakdown(
+            full_purchase_amounts["standard_10"], full_purchase_amounts["reduced_8"]
+        ),
+        full_credit_tax_amount=_tax_rate_breakdown(
+            full_credit_amounts["standard_10"], full_credit_amounts["reduced_8"]
+        ),
+        transitional_credit_breakdown=transitional_breakdown,
+        noncreditable_amount=_tax_rate_breakdown(
+            noncreditable_amounts["standard_10"], noncreditable_amounts["reduced_8"]
+        ),
+        unclassified_amount=_tax_rate_breakdown(
+            unclassified_amounts["standard_10"], unclassified_amounts["reduced_8"]
+        ),
+        unclassified_count=unclassified_count,
+        form_2_3=form_2_3,
+        warnings=warnings,
+        calculation_method="tax_inclusive_total",
+        legacy_purchase_assumption=legacy_assumption_applied,
         net_tax=net_tax,
         refund_shortfall=refund_shortfall,
         interim_payment=interim_payment,

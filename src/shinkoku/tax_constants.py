@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import date
 from types import MappingProxyType
 from typing import Final
 
@@ -379,8 +380,48 @@ SIMPLIFIED_DEEMED_RATIOS: dict[int, int] = {
     6: 40,  # 不動産業
 }
 
-# 2割特例の乗率（インボイス経過措置、令和8年9月30日まで）
+# 2割特例の納付割合（小規模事業者向け負担軽減措置、令和8年9月30日まで）
 SPECIAL_20PCT_RATE = 20  # 20%
+
+
+@dataclass(frozen=True)
+class TransitionalCreditPeriod:
+    """免税事業者等からの課税仕入れに係る経過措置の適用期間。"""
+
+    start_date: date
+    end_date: date | None
+    rate_percent: int
+
+
+TRANSITIONAL_CREDIT_PERIODS: tuple[TransitionalCreditPeriod, ...] = (
+    TransitionalCreditPeriod(date(2023, 10, 1), date(2026, 9, 30), 80),
+    TransitionalCreditPeriod(date(2026, 10, 1), date(2028, 9, 30), 70),
+    TransitionalCreditPeriod(date(2028, 10, 1), date(2030, 9, 30), 50),
+    TransitionalCreditPeriod(date(2030, 10, 1), date(2031, 9, 30), 30),
+    TransitionalCreditPeriod(date(2031, 10, 1), None, 0),
+)
+
+
+def get_transitional_credit_rate(tax_recognition_date: date) -> int:
+    """課税仕入れの認識日に適用する経過措置の控除割合を返す。"""
+    if tax_recognition_date < TRANSITIONAL_CREDIT_PERIODS[0].start_date:
+        raise ValueError("経過措置の開始日（2023-10-01）より前の日付です")
+
+    for period in TRANSITIONAL_CREDIT_PERIODS:
+        if tax_recognition_date >= period.start_date and (
+            period.end_date is None or tax_recognition_date <= period.end_date
+        ):
+            return period.rate_percent
+
+    raise ValueError("経過措置の控除割合を判定できません")
+
+
+def get_per_supplier_limit(taxable_period_start_date: date) -> int:
+    """免税事業者等一者当たりの年間課税仕入限度額を返す。"""
+    if taxable_period_start_date <= date(2026, 9, 30):
+        return 1_000_000_000
+    return 100_000_000
+
 
 # ============================================================
 # 配当控除（所得税法第92条）
