@@ -6,12 +6,15 @@ import argparse
 import json
 import sys
 
+from shinkoku import __version__
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="shinkoku",
         description="確定申告自動化 CLI",
     )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     subparsers = parser.add_subparsers(dest="command")
 
     # Register all subcommand modules

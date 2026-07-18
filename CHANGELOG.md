@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.11.1] - 2026-07-19
+
+### Fixed
+- `shinkoku --version` で、インストール済みパッケージのバージョンを表示するように修正
+- ソース内に残っていた古いバージョン定数を、パッケージ情報からの取得に統一
+
 ## [0.11.0] - 2026-07-18
 
 ### Added
