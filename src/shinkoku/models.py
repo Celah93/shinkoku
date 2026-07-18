@@ -7,6 +7,9 @@ from typing import Literal
 from pydantic import BaseModel, Field, model_validator
 
 
+DonationType = Literal["political", "npo", "public_interest", "specified", "other"]
+
+
 # --- 帳簿管理 (ledger) ---
 
 
@@ -327,6 +330,44 @@ class DeductionsResult(BaseModel):
     notes: list[str] = Field(default_factory=list, description="注意事項")
 
 
+class DonationIncomeDeductionCalculation(BaseModel):
+    """寄附金の所得控除に使う調整額。"""
+
+    original_amount: int = 0
+    eligible_amount: int = 0
+    threshold_amount: int = 0
+    final_amount: int = 0
+
+
+class DonationTaxCreditCalculation(BaseModel):
+    """区分別の寄附金特別控除に使う調整額。"""
+
+    original_amount: int = 0
+    eligible_amount: int = 0
+    threshold_amount: int = 0
+    formula_amount: int = 0
+    tax_credit_cap: int = 0
+    final_amount: int = 0
+
+
+class DonationAdjustmentResult(BaseModel):
+    """寄附金控除の40%枠・2,000円足切り・25%枠を調整した結果。"""
+
+    income_limit: int = 0
+    income_deduction: DonationIncomeDeductionCalculation
+    public_interest: DonationTaxCreditCalculation
+    npo: DonationTaxCreditCalculation
+    political: DonationTaxCreditCalculation
+
+
+class DonationMethodSelection(BaseModel):
+    """3区分ごとに選んだ寄附金控除方式。"""
+
+    public_interest: Literal["income", "credit"] = "income"
+    npo: Literal["income", "credit"] = "income"
+    political: Literal["income", "credit"] = "income"
+
+
 class DepreciationAsset(BaseModel):
     """減価償却計算結果の1資産。"""
 
@@ -521,6 +562,9 @@ class IncomeTaxResult(BaseModel):
     income_tax_base: int = 0
     dividend_credit: int = 0  # 配当控除（税額控除）
     housing_loan_credit: int = 0  # 住宅ローン控除（税額控除）
+    public_interest_donation_credit: int = 0  # 公益社団法人等寄附金特別控除
+    npo_donation_credit: int = 0  # 認定NPO法人等寄附金特別控除
+    political_donation_credit: int = 0  # 政党等寄附金特別控除
     total_tax_credits: int = 0
     income_tax_after_credits: int = 0
     reconstruction_tax: int = 0
@@ -535,6 +579,8 @@ class IncomeTaxResult(BaseModel):
     )
     # 内訳
     deductions_detail: DeductionsResult | None = None
+    donation_adjustment: DonationAdjustmentResult | None = None
+    donation_selection: DonationMethodSelection | None = None
     # 警告（自動調整等）
     warnings: list[str] = Field(default_factory=list)
 
@@ -1138,7 +1184,7 @@ class InsurancePolicyRecord(BaseModel):
 class DonationRecordInput(BaseModel):
     """ふるさと納税以外の寄附金入力。"""
 
-    donation_type: str = Field(
+    donation_type: DonationType = Field(
         description="種別: political / npo / public_interest / specified / other"
     )
     recipient_name: str  # 寄附先名
@@ -1153,7 +1199,7 @@ class DonationRecordRecord(BaseModel):
 
     id: int
     fiscal_year: int
-    donation_type: str
+    donation_type: DonationType
     recipient_name: str
     amount: int
     date: str

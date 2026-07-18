@@ -200,7 +200,7 @@ def test_calc_income_donation_credit_cap(tmp_path: Path) -> None:
     output = json.loads(result.stdout)
     # 税額控除が25%キャップで制限されていることを確認
     income_tax_base = output["income_tax_base"]
-    cap = income_tax_base * 25 // 100
+    cap = (income_tax_base * 25 // 100) // 100 * 100
     political_credit = _get_tax_credit(output, "political_donation")
     assert political_credit > 0  # 税額控除が選択されている
     assert political_credit <= cap
@@ -538,6 +538,185 @@ def test_calc_income_with_political_and_npo_donation_optimization(tmp_path: Path
         d for d in output["deductions_detail"]["income_deductions"] if d["type"] == "donation"
     ]
     assert len(donation_items) == 0
+
+
+def test_calc_income_donation_threshold_is_shared_with_income_deduction(
+    tmp_path: Path,
+) -> None:
+    """方向A: specified が2,000円足切りを消費し、政治は全額が算式対象になる。"""
+    input_file = _write_input(
+        tmp_path,
+        {
+            "fiscal_year": 2025,
+            "business_revenue": 5_000_000,
+            "blue_return_deduction": 0,
+            "donations": [
+                _donation_record(100_000, "specified"),
+                _donation_record(50_000, "political"),
+            ],
+        },
+    )
+
+    result = run_cli("tax", "calc-income", "--input", str(input_file))
+    assert result.returncode == 0, result.stderr
+    output = json.loads(result.stdout)
+    donation_items = [
+        d for d in output["deductions_detail"]["income_deductions"] if d["type"] == "donation"
+    ]
+
+    assert donation_items[0]["amount"] == 98_000
+    assert "特定公益増進法人: 100000円" in donation_items[0]["details"]
+    assert "政党等" not in donation_items[0]["details"]
+    assert output["political_donation_credit"] == 15_000
+    assert output["donation_adjustment"]["political"]["threshold_amount"] == 0
+
+
+def test_calc_income_donation_income_limit_is_shared_without_tax_cap(
+    tmp_path: Path,
+) -> None:
+    """方向B: 先行する所得控除寄附が40%枠を消費した最終値を検証する。"""
+    input_file = _write_input(
+        tmp_path,
+        {
+            "fiscal_year": 2025,
+            "business_revenue": 10_000_000,
+            "blue_return_deduction": 0,
+            "donations": [
+                _donation_record(3_800_000, "specified"),
+                _donation_record(500_000, "political"),
+            ],
+        },
+    )
+
+    result = run_cli("tax", "calc-income", "--input", str(input_file))
+    assert result.returncode == 0, result.stderr
+    output = json.loads(result.stdout)
+    adjustment = output["donation_adjustment"]
+
+    assert adjustment["income_limit"] == 4_000_000
+    assert adjustment["income_deduction"]["final_amount"] == 3_798_000
+    assert adjustment["political"]["eligible_amount"] == 200_000
+    assert adjustment["political"]["formula_amount"] == 60_000
+    assert adjustment["political"]["tax_credit_cap"] > 60_000
+    assert output["political_donation_credit"] == 60_000
+
+
+def test_calc_income_political_credit_rounds_formula_to_hundred(tmp_path: Path) -> None:
+    """方向C: 10,500円の政治寄附は2,550円ではなく2,500円になる。"""
+    input_file = _write_input(
+        tmp_path,
+        {
+            "fiscal_year": 2025,
+            "business_revenue": 5_000_000,
+            "blue_return_deduction": 0,
+            "donations": [_donation_record(10_500, "political")],
+        },
+    )
+
+    result = run_cli("tax", "calc-income", "--input", str(input_file))
+    assert result.returncode == 0, result.stderr
+    output = json.loads(result.stdout)
+
+    assert output["political_donation_credit"] == 2_500
+
+
+def test_calc_income_enumerates_npo_and_political_credit_candidate(tmp_path: Path) -> None:
+    """C8: NPOと政治を税額控除にする候補の合計34,200円を選ぶ。"""
+    input_file = _write_input(
+        tmp_path,
+        {
+            "fiscal_year": 2025,
+            "business_revenue": 5_000_000,
+            "blue_return_deduction": 0,
+            "donations": [
+                _donation_record(50_000, "npo"),
+                _donation_record(50_000, "political"),
+            ],
+        },
+    )
+
+    result = run_cli("tax", "calc-income", "--input", str(input_file))
+    assert result.returncode == 0, result.stderr
+    output = json.loads(result.stdout)
+
+    assert output["donation_selection"]["npo"] == "credit"
+    assert output["donation_selection"]["political"] == "credit"
+    assert output["npo_donation_credit"] == 19_200
+    assert output["political_donation_credit"] == 15_000
+    assert output["npo_donation_credit"] + output["political_donation_credit"] == 34_200
+
+
+def test_calc_income_can_select_different_methods_for_public_and_npo(
+    tmp_path: Path,
+) -> None:
+    """3区分の8候補から、公益とNPOで異なる方式を選べる。"""
+    input_file = _write_input(
+        tmp_path,
+        {
+            "fiscal_year": 2025,
+            "business_revenue": 3_000_000,
+            "blue_return_deduction": 0,
+            "donations": [
+                _donation_record(10_000, "public_interest"),
+                _donation_record(100_000, "npo"),
+                _donation_record(50_000, "political"),
+            ],
+        },
+    )
+
+    result = run_cli("tax", "calc-income", "--input", str(input_file))
+    assert result.returncode == 0, result.stderr
+    output = json.loads(result.stdout)
+
+    assert output["donation_selection"]["public_interest"] == "income"
+    assert output["donation_selection"]["npo"] == "credit"
+    assert output["donation_selection"]["political"] == "credit"
+    assert output["public_interest_donation_credit"] == 0
+    assert output["npo_donation_credit"] == 28_400
+    assert output["political_donation_credit"] == 15_000
+
+
+def test_calc_income_exposes_public_interest_credit_separately(tmp_path: Path) -> None:
+    """公益社団法人等の控除を専用項目と専用DeductionItemで返す。"""
+    input_file = _write_input(
+        tmp_path,
+        {
+            "fiscal_year": 2025,
+            "business_revenue": 5_000_000,
+            "blue_return_deduction": 0,
+            "donations": [_donation_record(10_000, "public_interest")],
+        },
+    )
+
+    result = run_cli("tax", "calc-income", "--input", str(input_file))
+    assert result.returncode == 0, result.stderr
+    output = json.loads(result.stdout)
+    credit_types = [d["type"] for d in output["deductions_detail"]["tax_credits"]]
+
+    assert output["donation_selection"]["public_interest"] == "credit"
+    assert output["public_interest_donation_credit"] == 3_200
+    assert "public_interest_donation" in credit_types
+    assert "npo_donation" not in credit_types
+
+
+def test_calc_income_donation_tie_prefers_income_deduction(tmp_path: Path) -> None:
+    """最終税額が同額なら先に列挙した所得控除側を選ぶ。"""
+    input_file = _write_input(
+        tmp_path,
+        {
+            "fiscal_year": 2025,
+            "business_revenue": 5_000_000,
+            "blue_return_deduction": 0,
+            "donations": [_donation_record(2_000, "political")],
+        },
+    )
+
+    result = run_cli("tax", "calc-income", "--input", str(input_file))
+    assert result.returncode == 0, result.stderr
+    output = json.loads(result.stdout)
+
+    assert output["donation_selection"]["political"] == "income"
+    assert output["political_donation_credit"] == 0
 
 
 # ============================================================

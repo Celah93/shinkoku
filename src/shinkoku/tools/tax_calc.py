@@ -11,13 +11,17 @@ Rounding rules:
 from __future__ import annotations
 
 from datetime import date
-from typing import Any
+from typing import Any, Literal
 
 from shinkoku.models import (
     DeductionItem,
     DeductionsResult,
     DependentInfo,
+    DonationAdjustmentResult,
+    DonationIncomeDeductionCalculation,
+    DonationMethodSelection,
     DonationRecordRecord,
+    DonationTaxCreditCalculation,
     HousingLoanCreditEntry,
     HousingLoanDetail,
     IncomeTaxInput,
@@ -56,6 +60,9 @@ from shinkoku.tax_constants import (
     POLITICAL_DONATION_CREDIT_CAP_RATIO,
     POLITICAL_DONATION_CREDIT_RATE,
     POLITICAL_DONATION_CREDIT_RATE_DENOM,
+    PUBLIC_INTEREST_DONATION_CREDIT_CAP_RATIO,
+    PUBLIC_INTEREST_DONATION_CREDIT_RATE,
+    PUBLIC_INTEREST_DONATION_CREDIT_RATE_DENOM,
     DEPENDENT_SPECIFIC,
     DISABILITY_GENERAL,
     DISABILITY_SPECIAL,
@@ -123,6 +130,8 @@ from shinkoku.tax_constants import (
     WORKING_STUDENT_DEDUCTION,
     get_income_tax_constants,
 )
+
+DonationMethod = Literal["income", "credit"]
 
 
 def calc_basic_deduction(total_income: int, fiscal_year: int = 2025) -> int:
@@ -721,17 +730,108 @@ def calc_housing_loan_credit_dual(
 # ============================================================
 
 
-def _calc_donation_income_deduction(donation_total: int, total_income: int) -> int:
-    """寄附金の所得控除額を計算（所得税法第78条）.
+def _floor_to_hundred(amount: int) -> int:
+    """100円未満を切り捨てる。"""
+    return max(0, amount) // 100 * 100
 
-    donation_total: ふるさと納税 + その他寄附金の合算額
-    total_income: 総所得金額等
-    return: 所得控除額（2,000円足切り・40%上限適用済）
+
+def calc_donation_adjustment(
+    *,
+    income_deduction_amount: int,
+    public_interest_amount: int,
+    npo_amount: int,
+    political_amount: int,
+    total_income: int,
+    income_tax_base: int,
+) -> DonationAdjustmentResult:
+    """寄附金控除の共有枠を法定順序で一括調整する。
+
+    所得控除、公益社団法人等、認定NPO法人等、政党等の順で、総所得金額等の
+    40%枠と2,000円の足切りを共有する。公益とNPOは所得税額25%枠を共有し、
+    政党等は別の25%枠を使う。算式額と25%上限額は100円未満を切り捨てる。
     """
-    if donation_total <= DONATION_SELF_BURDEN:
-        return 0
-    income_limit = total_income * DONATION_INCOME_DEDUCTION_RATIO // 100
-    return max(0, min(donation_total, income_limit) - DONATION_SELF_BURDEN)
+    income_amount = max(0, income_deduction_amount)
+    public_amount = max(0, public_interest_amount)
+    npo_amount = max(0, npo_amount)
+    political_amount = max(0, political_amount)
+    income_limit = max(0, total_income) * DONATION_INCOME_DEDUCTION_RATIO // 100
+    shared_tax_credit_cap = _floor_to_hundred(
+        max(0, income_tax_base) * PUBLIC_INTEREST_DONATION_CREDIT_CAP_RATIO // 100
+    )
+
+    income_eligible = min(income_amount, income_limit)
+    income_final = max(0, income_eligible - DONATION_SELF_BURDEN)
+
+    public_eligible = min(public_amount, max(0, income_limit - income_amount))
+    public_threshold = max(0, DONATION_SELF_BURDEN - income_amount)
+    public_formula = _floor_to_hundred(
+        max(0, public_eligible - public_threshold)
+        * PUBLIC_INTEREST_DONATION_CREDIT_RATE
+        // PUBLIC_INTEREST_DONATION_CREDIT_RATE_DENOM
+    )
+    public_final = min(public_formula, shared_tax_credit_cap)
+
+    npo_eligible = min(npo_amount, max(0, income_limit - income_amount - public_amount))
+    npo_threshold = max(0, DONATION_SELF_BURDEN - income_amount - public_amount)
+    npo_formula = _floor_to_hundred(
+        max(0, npo_eligible - npo_threshold)
+        * NPO_DONATION_CREDIT_RATE
+        // NPO_DONATION_CREDIT_RATE_DENOM
+    )
+    npo_cap = max(0, shared_tax_credit_cap - public_final)
+    npo_final = min(npo_formula, npo_cap)
+
+    political_eligible = min(
+        political_amount,
+        max(0, income_limit - income_amount - public_amount - npo_amount),
+    )
+    political_threshold = max(
+        0,
+        DONATION_SELF_BURDEN - income_amount - public_amount - npo_amount,
+    )
+    political_formula = _floor_to_hundred(
+        max(0, political_eligible - political_threshold)
+        * POLITICAL_DONATION_CREDIT_RATE
+        // POLITICAL_DONATION_CREDIT_RATE_DENOM
+    )
+    political_cap = _floor_to_hundred(
+        max(0, income_tax_base) * POLITICAL_DONATION_CREDIT_CAP_RATIO // 100
+    )
+    political_final = min(political_formula, political_cap)
+
+    return DonationAdjustmentResult(
+        income_limit=income_limit,
+        income_deduction=DonationIncomeDeductionCalculation(
+            original_amount=income_amount,
+            eligible_amount=income_eligible,
+            threshold_amount=DONATION_SELF_BURDEN,
+            final_amount=income_final,
+        ),
+        public_interest=DonationTaxCreditCalculation(
+            original_amount=public_amount,
+            eligible_amount=public_eligible,
+            threshold_amount=public_threshold,
+            formula_amount=public_formula,
+            tax_credit_cap=shared_tax_credit_cap,
+            final_amount=public_final,
+        ),
+        npo=DonationTaxCreditCalculation(
+            original_amount=npo_amount,
+            eligible_amount=npo_eligible,
+            threshold_amount=npo_threshold,
+            formula_amount=npo_formula,
+            tax_credit_cap=npo_cap,
+            final_amount=npo_final,
+        ),
+        political=DonationTaxCreditCalculation(
+            original_amount=political_amount,
+            eligible_amount=political_eligible,
+            threshold_amount=political_threshold,
+            formula_amount=political_formula,
+            tax_credit_cap=political_cap,
+            final_amount=political_final,
+        ),
+    )
 
 
 def calc_deductions(
@@ -760,7 +860,11 @@ def calc_deductions(
     taxable_income_for_dividend_credit: int = 0,
     donations: list[DonationRecordRecord] | None = None,
 ) -> DeductionsResult:
-    """Calculate all applicable deductions and return structured result."""
+    """控除の一覧を返す。
+
+    寄附金については方式選択前の所得控除候補と税額控除候補を併記する。
+    申告に使う確定値は calc_income_tax が最大8候補を比較して決める。
+    """
     income_deductions: list[DeductionItem] = []
     tax_credits: list[DeductionItem] = []
 
@@ -880,70 +984,87 @@ def calc_deductions(
             )
 
     # 7. 寄附金控除（所得税法第78条）
-    # ふるさと納税とその他寄附金を合算して40%上限・2,000円足切りを1回適用
-    donation_total_from_others = sum(d.amount for d in donations) if donations else 0
-    all_donation_total = furusato_nozei + donation_total_from_others
-    donation_deduction = _calc_donation_income_deduction(all_donation_total, total_income)
+    # calc-deductions は方式選択前の中間候補を返す。確定値は calc-income が8候補から選ぶ。
+    donation_amounts = {
+        donation_type: sum(d.amount for d in donations or [] if d.donation_type == donation_type)
+        for donation_type in ("political", "npo", "public_interest", "specified", "other")
+    }
+    all_donation_total = furusato_nozei + sum(donation_amounts.values())
+    income_candidate = calc_donation_adjustment(
+        income_deduction_amount=all_donation_total,
+        public_interest_amount=0,
+        npo_amount=0,
+        political_amount=0,
+        total_income=total_income,
+        income_tax_base=0,
+    )
+    donation_deduction = income_candidate.income_deduction.final_amount
     if donation_deduction > 0:
         parts = []
         if furusato_nozei > 0:
-            parts.append(f"ふるさと納税: {furusato_nozei}")
-        if donation_total_from_others > 0:
-            parts.append(f"その他寄附金: {donation_total_from_others}")
+            parts.append(f"ふるさと納税: {furusato_nozei}円")
+        for donation_type, label in (
+            ("specified", "特定公益増進法人"),
+            ("other", "その他"),
+            ("public_interest", "公益社団法人等"),
+            ("npo", "認定NPO法人等"),
+            ("political", "政党等"),
+        ):
+            if donation_amounts[donation_type] > 0:
+                parts.append(f"{label}: {donation_amounts[donation_type]}円")
         income_deductions.append(
             DeductionItem(
                 type="donation",
                 name="寄附金控除",
                 amount=donation_deduction,
-                details=", ".join(parts),
+                details="所得控除候補: " + ", ".join(parts),
             )
         )
 
-    # 7b. 寄附金税額控除（政治活動/認定NPO/公益法人等）
-    if donations:
-        # 税額控除対象: 政治活動寄附金（租税特別措置法第41条の18）
-        # 40%所得上限あり（租特法41条の18第1項）
-        political_total = sum(d.amount for d in donations if d.donation_type == "political")
-        political_capped = min(
-            political_total, total_income * DONATION_INCOME_DEDUCTION_RATIO // 100
-        )
-        if political_capped > DONATION_SELF_BURDEN:
-            political_credit = (
-                (political_capped - DONATION_SELF_BURDEN)
-                * POLITICAL_DONATION_CREDIT_RATE
-                // POLITICAL_DONATION_CREDIT_RATE_DENOM
-            )
-            if political_credit > 0:
-                tax_credits.append(
-                    DeductionItem(
-                        type="political_donation",
-                        name="政治活動寄附金控除",
-                        amount=political_credit,
-                        details=f"所得税額の{POLITICAL_DONATION_CREDIT_CAP_RATIO}%上限あり",
-                    )
+    # 7b. 寄附金特別控除の中間候補。所得税額25%上限は calc-income で適用する。
+    always_income_amount = (
+        furusato_nozei + donation_amounts["specified"] + donation_amounts["other"]
+    )
+    credit_candidate = calc_donation_adjustment(
+        income_deduction_amount=always_income_amount,
+        public_interest_amount=donation_amounts["public_interest"],
+        npo_amount=donation_amounts["npo"],
+        political_amount=donation_amounts["political"],
+        total_income=total_income,
+        income_tax_base=0,
+    )
+    for calculation, credit_type, name, cap_ratio in (
+        (
+            credit_candidate.public_interest,
+            "public_interest_donation",
+            "公益社団法人等寄附金特別控除",
+            PUBLIC_INTEREST_DONATION_CREDIT_CAP_RATIO,
+        ),
+        (
+            credit_candidate.npo,
+            "npo_donation",
+            "認定NPO法人等寄附金特別控除",
+            NPO_DONATION_CREDIT_CAP_RATIO,
+        ),
+        (
+            credit_candidate.political,
+            "political_donation",
+            "政党等寄附金特別控除",
+            POLITICAL_DONATION_CREDIT_CAP_RATIO,
+        ),
+    ):
+        if calculation.formula_amount > 0:
+            tax_credits.append(
+                DeductionItem(
+                    type=credit_type,
+                    name=name,
+                    amount=calculation.formula_amount,
+                    details=(
+                        f"方式選択前、対象額{calculation.eligible_amount}円、"
+                        f"足切り{calculation.threshold_amount}円、所得税額の{cap_ratio}%上限は未適用"
+                    ),
                 )
-
-        # 税額控除対象: 認定NPO法人（租特法41条の18の2）/ 公益社団法人等（租特法41条の18の3）
-        # 40%所得上限あり
-        npo_total = sum(
-            d.amount for d in donations if d.donation_type in ("npo", "public_interest")
-        )
-        npo_capped = min(npo_total, total_income * DONATION_INCOME_DEDUCTION_RATIO // 100)
-        if npo_capped > DONATION_SELF_BURDEN:
-            npo_credit = (
-                (npo_capped - DONATION_SELF_BURDEN)
-                * NPO_DONATION_CREDIT_RATE
-                // NPO_DONATION_CREDIT_RATE_DENOM
             )
-            if npo_credit > 0:
-                tax_credits.append(
-                    DeductionItem(
-                        type="npo_donation",
-                        name="認定NPO等寄附金控除",
-                        amount=npo_credit,
-                        details=f"所得税額の{NPO_DONATION_CREDIT_CAP_RATIO}%上限あり",
-                    )
-                )
 
     # 8. Spouse deduction
     if spouse_income is not None:
@@ -1026,14 +1147,18 @@ def calc_deductions(
     total_income_deductions = sum(d.amount for d in income_deductions)
     total_tax_credits = sum(d.amount for d in tax_credits)
 
-    # 排他適用の注意事項
+    # 方式選択前の中間候補であることを明示する。
     notes: list[str] = []
     has_donation_income = any(item.type == "donation" for item in income_deductions)
-    has_donation_credit = any(c.type in ("political_donation", "npo_donation") for c in tax_credits)
-    if has_donation_income and has_donation_credit:
+    has_donation_credit = any(
+        c.type in ("political_donation", "npo_donation", "public_interest_donation")
+        for c in tax_credits
+    )
+    if has_donation_income or has_donation_credit:
         notes.append(
-            "寄附金控除: 所得控除と税額控除は選択適用です（併用不可）。"
-            "calc-income では自動的に有利な方を選択します。"
+            "寄附金控除: calc-deductions の値は方式選択前の中間候補です。"
+            "同一区分内は選択適用（全額どちらか一方）。異なる区分間は併用可。"
+            "申告用の確定値は calc-income の結果を使ってください。"
         )
 
     return DeductionsResult(
@@ -1173,21 +1298,18 @@ def calc_income_tax(input_data: IncomeTaxInput) -> IncomeTaxResult:
         mutual_aid_total = input_data.small_business_mutual_aid.total
 
     # Step 4: Income deductions
-    # 寄附金の所得控除/税額控除の選択適用（所得税法78条 vs 租特法41条の18/18の2/18の3）
-    # political と npo+public_interest で独立に選択
-    # ※ specified（特定公益増進法人）は所得控除のみ（所得税法78条2項）のため選択適用の対象外
-    _SELECTABLE_TYPES_P = {"political"}
-    _SELECTABLE_TYPES_N = {"npo", "public_interest"}
-    _DONATION_CREDIT_CAPS = {
-        "political_donation": POLITICAL_DONATION_CREDIT_CAP_RATIO,
-        "npo_donation": NPO_DONATION_CREDIT_CAP_RATIO,
-    }
-
+    # 3区分ごとの所得控除/税額控除を最大8候補で比較する。
     donations = input_data.donations or []
-    has_selectable_p = any(d.donation_type in _SELECTABLE_TYPES_P for d in donations)
-    has_selectable_n = any(d.donation_type in _SELECTABLE_TYPES_N for d in donations)
+    donation_amounts = {
+        donation_type: sum(d.amount for d in donations if d.donation_type == donation_type)
+        for donation_type in ("political", "npo", "public_interest", "specified", "other")
+    }
+    always_income_amount = (
+        input_data.furusato_nozei + donation_amounts["specified"] + donation_amounts["other"]
+    )
+    total_donation_amount = input_data.furusato_nozei + sum(donation_amounts.values())
 
-    # calc_deductions() の共通引数（donations を除く）
+    # calc_deductions() の共通引数。寄附金は各候補で一括調整層から追加する。
     common_args: dict[str, Any] = {
         "total_income": total_income,
         "social_insurance": input_data.social_insurance,
@@ -1198,7 +1320,6 @@ def calc_income_tax(input_data: IncomeTaxInput) -> IncomeTaxResult:
         "medical_expenses": input_data.medical_expenses,
         "self_medication_expenses": input_data.self_medication_expenses,
         "self_medication_eligible": input_data.self_medication_eligible,
-        "furusato_nozei": input_data.furusato_nozei,
         "housing_loan_balance": input_data.housing_loan_balance,
         "spouse_income": input_data.spouse_income,
         "ideco_contribution": input_data.ideco_contribution,
@@ -1216,151 +1337,166 @@ def calc_income_tax(input_data: IncomeTaxInput) -> IncomeTaxResult:
         "working_student": input_data.working_student,
     }
 
-    # 全寄付を渡して所得控除・税額控除の両方を計算（1回だけ呼び出す）
-    base_deductions = calc_deductions(**common_args, donations=donations)
+    income_only: tuple[DonationMethod, ...] = ("income",)
+    selectable: tuple[DonationMethod, ...] = ("income", "credit")
+    public_choices = selectable if donation_amounts["public_interest"] > 0 else income_only
+    npo_choices = selectable if donation_amounts["npo"] > 0 else income_only
+    political_choices = selectable if donation_amounts["political"] > 0 else income_only
 
-    if not has_selectable_p and not has_selectable_n:
-        # 選択適用対象の寄付なし — 従来通り
-        deductions = base_deductions
-        total_income_deductions = deductions.total_income_deductions
-        taxable_income_raw = max(0, total_income - total_income_deductions)
-        taxable_income = (taxable_income_raw // TAXABLE_INCOME_ROUNDING) * TAXABLE_INCOME_ROUNDING
-        income_tax_base = _calc_income_tax_from_table(taxable_income)
+    best_candidate_total_tax: int | None = None
+    best_deductions: DeductionsResult | None = None
+    best_adjustment: DonationAdjustmentResult | None = None
+    best_selection: DonationMethodSelection | None = None
+    best_taxable_income = 0
+    best_income_tax_base = 0
 
-        # 寄附金税額控除の25%キャップ（選択対象外だが念のため）
-        capped_credits = []
-        for credit in deductions.tax_credits:
-            cap_ratio = _DONATION_CREDIT_CAPS.get(credit.type)
-            if cap_ratio is not None:
-                cap = income_tax_base * cap_ratio // 100
-                if credit.amount > cap:
-                    credit = credit.model_copy(
-                        update={"amount": cap, "details": f"所得税額の{cap_ratio}%上限適用済"}
-                    )
-            capped_credits.append(credit)
-        deductions = deductions.model_copy(
-            update={
-                "tax_credits": capped_credits,
-                "total_tax_credits": sum(c.amount for c in capped_credits),
-            }
-        )
-    else:
-        # 4パターン比較して最終税額が最小のパターンを採用
-        best_net_tax: int | None = None
-        best_deductions: DeductionsResult | None = None
-        best_taxable_income = 0
-        best_income_tax_base = 0
+    # income を先に列挙し、同額なら更新しないことで所得控除側を優先する。
+    for public_choice in public_choices:
+        for npo_choice in npo_choices:
+            for political_choice in political_choices:
+                income_amount = always_income_amount
+                if public_choice == "income":
+                    income_amount += donation_amounts["public_interest"]
+                if npo_choice == "income":
+                    income_amount += donation_amounts["npo"]
+                if political_choice == "income":
+                    income_amount += donation_amounts["political"]
 
-        p_choices = ["income", "credit"] if has_selectable_p else ["income"]
-        n_choices = ["income", "credit"] if has_selectable_n else ["income"]
-
-        for p_choice in p_choices:
-            for n_choice in n_choices:
-                d = base_deductions.model_copy(deep=True)
-
-                # 税額控除を選んだグループは所得控除の寄附金控除から除外
-                credit_excluded_types: set[str] = set()
-                if p_choice == "credit":
-                    credit_excluded_types |= _SELECTABLE_TYPES_P
-                if n_choice == "credit":
-                    credit_excluded_types |= _SELECTABLE_TYPES_N
-
-                if credit_excluded_types:
-                    # 除外対象を除いた寄付合算で所得控除を再計算
-                    remaining_total = input_data.furusato_nozei + sum(
-                        don.amount
-                        for don in donations
-                        if don.donation_type not in credit_excluded_types
-                    )
-                    new_amount = _calc_donation_income_deduction(remaining_total, total_income)
-                    new_income_deductions = [
-                        item.model_copy(update={"amount": new_amount})
-                        if item.type == "donation"
-                        else item
-                        for item in d.income_deductions
-                        if not (item.type == "donation" and new_amount == 0)
-                    ]
-                    d = d.model_copy(
-                        update={
-                            "income_deductions": new_income_deductions,
-                            "total_income_deductions": sum(
-                                item.amount for item in new_income_deductions
-                            ),
-                        }
-                    )
-
-                # 所得控除を選択したグループの税額控除を除去
-                new_tax_credits = d.tax_credits
-                if p_choice == "income":
-                    new_tax_credits = [c for c in new_tax_credits if c.type != "political_donation"]
-                if n_choice == "income":
-                    new_tax_credits = [c for c in new_tax_credits if c.type != "npo_donation"]
-                d = d.model_copy(
-                    update={
-                        "tax_credits": new_tax_credits,
-                        "total_tax_credits": sum(c.amount for c in new_tax_credits),
-                    }
+                public_amount = (
+                    donation_amounts["public_interest"] if public_choice == "credit" else 0
+                )
+                npo_amount = donation_amounts["npo"] if npo_choice == "credit" else 0
+                political_amount = (
+                    donation_amounts["political"] if political_choice == "credit" else 0
                 )
 
-                # taxable_income → income_tax_base
-                t_raw = max(0, total_income - d.total_income_deductions)
-                t_income = (t_raw // TAXABLE_INCOME_ROUNDING) * TAXABLE_INCOME_ROUNDING
-                t_base = _calc_income_tax_from_table(t_income)
+                # 所得控除額は所得税額に依存しないため、先に課税所得を求める。
+                preliminary = calc_donation_adjustment(
+                    income_deduction_amount=income_amount,
+                    public_interest_amount=public_amount,
+                    npo_amount=npo_amount,
+                    political_amount=political_amount,
+                    total_income=total_income,
+                    income_tax_base=0,
+                )
+                candidate = calc_deductions(**common_args)
+                donation_deduction = preliminary.income_deduction.final_amount
+                if donation_deduction > 0:
+                    details = []
+                    if input_data.furusato_nozei > 0:
+                        details.append(f"ふるさと納税: {input_data.furusato_nozei}円")
+                    for donation_type, label, choice in (
+                        ("specified", "特定公益増進法人", "income"),
+                        ("other", "その他", "income"),
+                        ("public_interest", "公益社団法人等", public_choice),
+                        ("npo", "認定NPO法人等", npo_choice),
+                        ("political", "政党等", political_choice),
+                    ):
+                        amount = donation_amounts[donation_type]
+                        if amount > 0 and choice == "income":
+                            details.append(f"{label}: {amount}円")
+                    candidate.income_deductions.append(
+                        DeductionItem(
+                            type="donation",
+                            name="寄附金控除",
+                            amount=donation_deduction,
+                            details="所得控除選択: " + ", ".join(details),
+                        )
+                    )
+                    candidate.total_income_deductions += donation_deduction
 
-                # 25%キャップ適用（model_copy で安全にコピー）
-                capped_credits = []
-                for credit in d.tax_credits:
-                    cap_ratio = _DONATION_CREDIT_CAPS.get(credit.type)
-                    if cap_ratio is not None:
-                        cap = t_base * cap_ratio // 100
-                        if credit.amount > cap:
-                            credit = credit.model_copy(
-                                update={
-                                    "amount": cap,
-                                    "details": f"所得税額の{cap_ratio}%上限適用済",
-                                }
+                taxable_raw = max(0, total_income - candidate.total_income_deductions)
+                candidate_taxable_income = (
+                    taxable_raw // TAXABLE_INCOME_ROUNDING
+                ) * TAXABLE_INCOME_ROUNDING
+                candidate_income_tax_base = _calc_income_tax_from_table(candidate_taxable_income)
+                adjustment = calc_donation_adjustment(
+                    income_deduction_amount=income_amount,
+                    public_interest_amount=public_amount,
+                    npo_amount=npo_amount,
+                    political_amount=political_amount,
+                    total_income=total_income,
+                    income_tax_base=candidate_income_tax_base,
+                )
+
+                for calculation, credit_type, name in (
+                    (
+                        adjustment.public_interest,
+                        "public_interest_donation",
+                        "公益社団法人等寄附金特別控除",
+                    ),
+                    (adjustment.npo, "npo_donation", "認定NPO法人等寄附金特別控除"),
+                    (adjustment.political, "political_donation", "政党等寄附金特別控除"),
+                ):
+                    if calculation.final_amount > 0:
+                        candidate.tax_credits.append(
+                            DeductionItem(
+                                type=credit_type,
+                                name=name,
+                                amount=calculation.final_amount,
+                                details=(
+                                    f"元寄附額{calculation.original_amount}円、"
+                                    f"40%枠適用後{calculation.eligible_amount}円、"
+                                    f"足切り{calculation.threshold_amount}円、"
+                                    f"算式額{calculation.formula_amount}円、"
+                                    f"25%上限{calculation.tax_credit_cap}円"
+                                ),
                             )
-                    capped_credits.append(credit)
-                d = d.model_copy(
-                    update={
-                        "tax_credits": capped_credits,
-                        "total_tax_credits": sum(c.amount for c in capped_credits),
-                    }
+                        )
+
+                # 配当控除も候補ごとの課税所得で再計算する。
+                if dividend_comprehensive > 0:
+                    div_credit = calc_dividend_tax_credit(
+                        dividend_comprehensive, candidate_taxable_income
+                    )
+                    if div_credit > 0:
+                        candidate.tax_credits.append(
+                            DeductionItem(type="dividend", name="配当控除", amount=div_credit)
+                        )
+
+                candidate.total_tax_credits = sum(c.amount for c in candidate.tax_credits)
+                candidate.notes = []
+                if total_donation_amount > 0:
+                    candidate.notes.append(
+                        "寄附金控除: 同一区分内は選択適用（全額どちらか一方）。"
+                        "異なる区分間は併用可。calc-income で最終税額が最小の候補を選択しました。"
+                    )
+                candidate_income_tax_after_credits = max(
+                    0, candidate_income_tax_base - candidate.total_tax_credits
+                )
+                candidate_reconstruction_tax = (
+                    candidate_income_tax_after_credits
+                    * RECONSTRUCTION_TAX_RATE
+                    // RECONSTRUCTION_TAX_DENOMINATOR
+                )
+                candidate_total_tax = (
+                    candidate_income_tax_after_credits + candidate_reconstruction_tax
                 )
 
-                net_tax = max(0, t_base - d.total_tax_credits)
-
-                if best_net_tax is None or net_tax < best_net_tax:
-                    best_net_tax = net_tax
-                    best_deductions = d
-                    best_taxable_income = t_income
-                    best_income_tax_base = t_base
-
-        assert best_deductions is not None
-        # 選択結果を notes に反映（未来形→過去形）
-        deductions = best_deductions.model_copy(
-            update={
-                "notes": [
-                    n.replace(
-                        "calc-income では自動的に有利な方を選択します。",
-                        "calc-income で自動的に有利な方を選択しました。",
+                if (
+                    best_candidate_total_tax is None
+                    or candidate_total_tax < best_candidate_total_tax
+                ):
+                    best_candidate_total_tax = candidate_total_tax
+                    best_deductions = candidate
+                    best_adjustment = adjustment
+                    best_selection = DonationMethodSelection(
+                        public_interest=public_choice,
+                        npo=npo_choice,
+                        political=political_choice,
                     )
-                    for n in best_deductions.notes
-                ]
-            }
-        )
-        taxable_income = best_taxable_income
-        income_tax_base = best_income_tax_base
-        total_income_deductions = deductions.total_income_deductions
+                    best_taxable_income = candidate_taxable_income
+                    best_income_tax_base = candidate_income_tax_base
 
-    # Step 6.5: 配当控除の計算（Phase 10）
-    if dividend_comprehensive > 0:
-        div_credit = calc_dividend_tax_credit(dividend_comprehensive, taxable_income)
-        if div_credit > 0:
-            deductions.tax_credits.append(
-                DeductionItem(type="dividend", name="配当控除", amount=div_credit)
-            )
-            deductions.total_tax_credits += div_credit
+    assert best_deductions is not None
+    assert best_adjustment is not None
+    assert best_selection is not None
+    deductions = best_deductions
+    donation_adjustment = best_adjustment
+    donation_selection = best_selection
+    taxable_income = best_taxable_income
+    income_tax_base = best_income_tax_base
+    total_income_deductions = deductions.total_income_deductions
 
     # Step 7: Tax credits
     total_tax_credits = deductions.total_tax_credits
@@ -1393,11 +1529,20 @@ def calc_income_tax(input_data: IncomeTaxInput) -> IncomeTaxResult:
     # 個別の税額控除額を抽出
     _dividend_credit = 0
     _housing_loan_credit = 0
+    _public_interest_donation_credit = 0
+    _npo_donation_credit = 0
+    _political_donation_credit = 0
     for tc in deductions.tax_credits:
         if tc.type == "dividend":
             _dividend_credit += tc.amount
         elif tc.type == "housing_loan":
             _housing_loan_credit += tc.amount
+        elif tc.type == "public_interest_donation":
+            _public_interest_donation_credit += tc.amount
+        elif tc.type == "npo_donation":
+            _npo_donation_credit += tc.amount
+        elif tc.type == "political_donation":
+            _political_donation_credit += tc.amount
 
     return IncomeTaxResult(
         fiscal_year=input_data.fiscal_year,
@@ -1410,6 +1555,9 @@ def calc_income_tax(input_data: IncomeTaxInput) -> IncomeTaxResult:
         income_tax_base=income_tax_base,
         dividend_credit=_dividend_credit,
         housing_loan_credit=_housing_loan_credit,
+        public_interest_donation_credit=_public_interest_donation_credit,
+        npo_donation_credit=_npo_donation_credit,
+        political_donation_credit=_political_donation_credit,
         total_tax_credits=total_tax_credits,
         income_tax_after_credits=income_tax_after_credits,
         reconstruction_tax=reconstruction_tax,
@@ -1420,6 +1568,8 @@ def calc_income_tax(input_data: IncomeTaxInput) -> IncomeTaxResult:
         loss_carryforward_applied=loss_applied,
         tax_due=tax_due,
         deductions_detail=deductions,
+        donation_adjustment=donation_adjustment if total_donation_amount > 0 else None,
+        donation_selection=donation_selection if total_donation_amount > 0 else None,
         warnings=warnings,
     )
 

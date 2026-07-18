@@ -1,6 +1,6 @@
 [project]
 name = "shinkoku"
-version = "0.8.1"
+version = "0.9.0"
 description = "確定申告自動化 Claude Code Plugin"
 readme = "README.md"
 license = "MIT"
