@@ -92,6 +92,31 @@ def test_calc_deductions_with_furusato(tmp_path: Path) -> None:
     assert "donation" in deduction_types
 
 
+def test_calc_deductions_invalid_dependent_birth_date_is_error(tmp_path: Path) -> None:
+    input_file = _write_input(
+        tmp_path,
+        {
+            "total_income": 3_000_000,
+            "fiscal_year": 2025,
+            "dependents": [
+                {
+                    "name": "不正日付",
+                    "relationship": "子",
+                    "birth_date": "2025-99-99",
+                    "income": 0,
+                }
+            ],
+        },
+    )
+
+    result = run_cli("tax", "calc-deductions", "--input", str(input_file))
+
+    assert result.returncode == 1
+    output = json.loads(result.stdout)
+    assert output["status"] == "error"
+    assert "扶養親族の生年月日 '2025-99-99' が不正です" in output["message"]
+
+
 def _donation_record(amount: int, donation_type: str) -> dict:
     """DonationRecordRecord に必要な全フィールドを含むヘルパー."""
     return {

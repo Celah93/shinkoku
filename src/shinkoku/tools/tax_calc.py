@@ -10,6 +10,7 @@ Rounding rules:
 
 from __future__ import annotations
 
+from datetime import date
 from typing import Any
 
 from shinkoku.models import (
@@ -32,11 +33,13 @@ from shinkoku.models import (
     TaxSanityCheckResult,
 )
 from shinkoku.tax_constants import (
+    DEPENDENT_AGE_ELDERLY,
+    DEPENDENT_AGE_MIN,
+    DEPENDENT_AGE_SPECIFIC_MAX,
+    DEPENDENT_AGE_SPECIFIC_MIN,
     DEPENDENT_ELDERLY,
     DEPENDENT_ELDERLY_COHABITING,
     DEPENDENT_GENERAL,
-    DEPENDENT_AGE_SPECIFIC_MAX,
-    DEPENDENT_AGE_SPECIFIC_MIN,
     DONATION_INCOME_DEDUCTION_RATIO,
     DONATION_SELF_BURDEN,
     NPO_DONATION_CREDIT_CAP_RATIO,
@@ -390,12 +393,24 @@ def calc_spouse_deduction(taxpayer_income: int, spouse_income: int | None) -> in
 # ============================================================
 
 
-def _calc_age(birth_date: str, fiscal_year_end: str = "2025-12-31") -> int:
-    """Calculate age at end of fiscal year from birth_date (YYYY-MM-DD)."""
-    by, bm, bd = (int(x) for x in birth_date.split("-"))
-    ey, em, ed = (int(x) for x in fiscal_year_end.split("-"))
-    age = ey - by
-    if (em, ed) < (bm, bd):
+def _calc_age(birth_date: str, fiscal_year: int) -> int:
+    """その年12月31日現在の年齢（年齢計算ニ関スル法律準拠）を返す。
+
+    年齢計算ニ関スル法律・民法143条により、年齢は誕生日前日の満了時に
+    加算される。12月31日現在の年齢は同日の満了時（翌年1月1日0時）の
+    年齢と一致するため、翌年1月1日を基準日として通常の誕生日到達判定を
+    行う。国税庁の「○年1月1日以前生まれ」というレンジ表記にも対応する。
+
+    birth_date が実在しない日付の場合は ValueError を送出する。
+    """
+    try:
+        birth = date.fromisoformat(birth_date)
+    except ValueError as exc:
+        raise ValueError(f"扶養親族の生年月日 '{birth_date}' が不正です") from exc
+
+    reference = date(fiscal_year + 1, 1, 1)
+    age = reference.year - birth.year
+    if (reference.month, reference.day) < (birth.month, birth.day):
         age -= 1
     return age
 
@@ -424,7 +439,6 @@ def calc_dependents_deduction(
     """
     items: list[DeductionItem] = []
     constants = get_income_tax_constants(fiscal_year)
-    fiscal_year_end = f"{fiscal_year}-12-31"
 
     for dep in dependents:
         # 他の納税者の扶養親族 → 二重控除防止のため除外
@@ -435,7 +449,7 @@ def calc_dependents_deduction(
         if dep.relationship == "配偶者":
             continue
 
-        age = _calc_age(dep.birth_date, fiscal_year_end)
+        age = _calc_age(dep.birth_date, fiscal_year)
         is_specific_age = DEPENDENT_AGE_SPECIFIC_MIN <= age < DEPENDENT_AGE_SPECIFIC_MAX
 
         # 所得要件: 19〜22歳は123万まで許容（特定親族特別控除）、それ以外は58万
@@ -447,7 +461,7 @@ def calc_dependents_deduction(
                 continue
 
         # 扶養控除（16歳以上のみ）
-        if age >= 70:
+        if age >= DEPENDENT_AGE_ELDERLY:
             # 老人扶養親族
             if dep.cohabiting:
                 deduction = DEPENDENT_ELDERLY_COHABITING  # 同居老親等
@@ -490,7 +504,7 @@ def calc_dependents_deduction(
                             details=f"{dep.name}（所得{dep.income}円）",
                         )
                     )
-        elif age >= 16:
+        elif age >= DEPENDENT_AGE_MIN:
             # 一般扶養親族
             items.append(
                 DeductionItem(
