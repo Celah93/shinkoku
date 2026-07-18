@@ -325,7 +325,11 @@ def calc_disability_deduction_self(status: str) -> int:
 
 
 def calc_working_student_deduction(flag: bool, total_income: int, fiscal_year: int = 2025) -> int:
-    """年分に応じた所得要件で勤労学生控除を計算する。"""
+    """勤労学生控除を計算する。
+
+    所得要件は年分により異なるため、tax_constants の年分別定数を参照する。
+    具体額は定数テーブルを単一の情報源とする。
+    """
     constants = get_income_tax_constants(fiscal_year)
     if flag and total_income <= constants.working_student_income_limit:
         return WORKING_STUDENT_DEDUCTION

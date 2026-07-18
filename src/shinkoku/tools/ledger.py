@@ -618,10 +618,11 @@ def ledger_update_journal(
 
         # Update journal header
         conn.execute(
-            "UPDATE journals SET date=?, description=?, counterparty=?, source=?, "
+            "UPDATE journals SET fiscal_year=?, date=?, description=?, counterparty=?, source=?, "
             "source_file=?, is_adjustment=?, content_hash=?, "
             "updated_at=datetime('now') WHERE id=?",
             (
+                fiscal_year,
                 entry.date,
                 entry.description,
                 entry.counterparty,

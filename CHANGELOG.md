@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.9.1] - 2026-07-18
+
+### Fixed
+- 仕訳更新で指定した年度が保存されず、年度またぎの訂正が黙って無視される問題を修正
+
+### Changed
+- 勤労学生控除のdocstringを年分別定数への参照に改め、改正のたびに金額記載が古くならない形へ整理
+
 ## [0.9.0] - 2026-07-18
 
 ### Added
