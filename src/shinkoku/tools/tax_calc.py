@@ -94,9 +94,10 @@ from shinkoku.tax_constants import (
     CONSUMPTION_TAX_REDUCED_NATIONAL_RATE,
     CONSUMPTION_TAX_REDUCED_NATIONAL_DENOM,
     LIFE_INSURANCE_COMBINED_MAX,
-    LIFE_INSURANCE_NEW_MAX,
-    LIFE_INSURANCE_OLD_MAX,
+    LIFE_INSURANCE_NEW_SCHEDULE,
+    LIFE_INSURANCE_OLD_SCHEDULE,
     LIFE_INSURANCE_TOTAL_MAX,
+    LifeInsuranceDeductionSchedule,
     NATIONAL_TAX_RATIO,
     MEDICAL_EXPENSE_INCOME_RATIO,
     MEDICAL_EXPENSE_MAX,
@@ -190,6 +191,19 @@ def calc_salary_deduction(salary_income: int, fiscal_year: int = 2025) -> int:
 # ============================================================
 
 
+def _calc_life_insurance_deduction_by_schedule(
+    premium: int,
+    schedule: LifeInsuranceDeductionSchedule,
+) -> int:
+    """不変スケジュールに従い、生命保険料控除を1円未満切上げで計算する。"""
+    if premium <= 0:
+        return 0
+    for premium_up_to, divisor, addition in schedule.rows:
+        if premium <= premium_up_to:
+            return -(-premium // divisor) + addition
+    return schedule.maximum
+
+
 def calc_life_insurance_deduction(premium: int) -> int:
     """Calculate life insurance deduction for one category (new system).
 
@@ -197,15 +211,7 @@ def calc_life_insurance_deduction(premium: int) -> int:
     This function calculates for a single category.
     所得税法第76条: 1円未満の端数は切り上げ。
     """
-    if premium <= 0:
-        return 0
-    if premium <= 20_000:
-        return premium
-    if premium <= 40_000:
-        return -(-premium // 2) + 10_000  # 1円未満切り上げ（所得税法76条）
-    if premium <= 80_000:
-        return -(-premium // 4) + 20_000  # 1円未満切り上げ（所得税法76条）
-    return LIFE_INSURANCE_NEW_MAX
+    return _calc_life_insurance_deduction_by_schedule(premium, LIFE_INSURANCE_NEW_SCHEDULE)
 
 
 # ============================================================
@@ -218,27 +224,29 @@ def calc_life_insurance_deduction_old(premium: int) -> int:
 
     所得税法第76条: 1円未満の端数は切り上げ。
     """
-    if premium <= 0:
-        return 0
-    if premium <= 25_000:
-        return premium
-    if premium <= 50_000:
-        return -(-premium // 2) + 12_500  # 1円未満切り上げ（所得税法76条）
-    if premium <= 100_000:
-        return -(-premium // 4) + 25_000  # 1円未満切り上げ（所得税法76条）
-    return LIFE_INSURANCE_OLD_MAX
+    return _calc_life_insurance_deduction_by_schedule(premium, LIFE_INSURANCE_OLD_SCHEDULE)
 
 
-def calc_life_insurance_category(new_premium: int, old_premium: int) -> int:
-    """新旧合算で1区分の控除額を計算（上限40,000円）。
+def calc_life_insurance_category(
+    new_premium: int,
+    old_premium: int,
+    *,
+    new_schedule: LifeInsuranceDeductionSchedule = LIFE_INSURANCE_NEW_SCHEDULE,
+    combined_limit: int = LIFE_INSURANCE_COMBINED_MAX,
+) -> int:
+    """新旧合算で1区分の控除額を計算する。
 
-    max(新のみ, 旧のみ, min(新+旧合算, 40,000))
+    max(新のみ, 旧のみ, min(新+旧合算, 年分別の併用限度額))
     """
-    new_only = calc_life_insurance_deduction(new_premium) if new_premium > 0 else 0
+    new_only = (
+        _calc_life_insurance_deduction_by_schedule(new_premium, new_schedule)
+        if new_premium > 0
+        else 0
+    )
     old_only = calc_life_insurance_deduction_old(old_premium) if old_premium > 0 else 0
 
     if new_premium > 0 and old_premium > 0:
-        combined = min(new_only + old_only, LIFE_INSURANCE_COMBINED_MAX)
+        combined = min(new_only + old_only, combined_limit)
         return max(new_only, old_only, combined)
     if new_premium > 0:
         return new_only
@@ -251,6 +259,9 @@ def calc_life_insurance_total(
     medical_care: int = 0,
     annuity_new: int = 0,
     annuity_old: int = 0,
+    *,
+    general_new_schedule: LifeInsuranceDeductionSchedule = LIFE_INSURANCE_NEW_SCHEDULE,
+    general_combined_limit: int = LIFE_INSURANCE_COMBINED_MAX,
 ) -> int:
     """生命保険料控除の3区分合計（上限120,000円）。
 
@@ -259,7 +270,12 @@ def calc_life_insurance_total(
     個人年金: 新旧合算
     合計: min(各区分合計, 120,000)
     """
-    general = calc_life_insurance_category(general_new, general_old)
+    general = calc_life_insurance_category(
+        general_new,
+        general_old,
+        new_schedule=general_new_schedule,
+        combined_limit=general_combined_limit,
+    )
     medical = calc_life_insurance_deduction(medical_care)  # 新制度のみ
     annuity = calc_life_insurance_category(annuity_new, annuity_old)
     return min(general + medical + annuity, LIFE_INSURANCE_TOTAL_MAX)
@@ -452,10 +468,31 @@ def _calc_age(birth_date: str, fiscal_year: int) -> int:
         raise ValueError(f"扶養親族の生年月日 '{birth_date}' が不正です") from exc
 
     reference = date(fiscal_year + 1, 1, 1)
+    if birth > date(fiscal_year, 12, 31):
+        raise ValueError(f"扶養親族の生年月日 '{birth_date}' は課税年分より後の日付です")
     age = reference.year - birth.year
     if (reference.month, reference.day) < (birth.month, birth.day):
         age -= 1
     return age
+
+
+def _has_under_23_dependent_for_life_insurance(
+    dependents: list[DependentInfo] | None,
+    fiscal_year: int,
+) -> bool:
+    """生命保険料控除特例の対象となる23歳未満の扶養親族がいるかを返す。"""
+    if not dependents:
+        return False
+
+    constants = get_income_tax_constants(fiscal_year)
+    for dependent in dependents:
+        # 措通41の15の5-1により、他方が扶養控除を取る親族も特例判定には含める。
+        if dependent.relationship == "配偶者":
+            continue
+        age = _calc_age(dependent.birth_date, fiscal_year)
+        if 0 <= age < 23 and dependent.income <= constants.dependent_income_limit:
+            return True
+    return False
 
 
 def calc_dependents_deduction(
@@ -909,6 +946,10 @@ def calc_deductions(
     """
     income_deductions: list[DeductionItem] = []
     tax_credits: list[DeductionItem] = []
+    constants = get_income_tax_constants(fiscal_year)
+    life_insurance_special = constants.life_insurance_under23_special
+    if not _has_under_23_dependent_for_life_insurance(dependents, fiscal_year):
+        life_insurance_special = None
 
     # 1. Basic deduction (always applied if > 0)
     basic = calc_basic_deduction(total_income, fiscal_year)
@@ -927,30 +968,49 @@ def calc_deductions(
 
     # 3. Life insurance（3区分対応: Phase 3）
     if life_insurance_detail is not None:
+        general_new_schedule = LIFE_INSURANCE_NEW_SCHEDULE
+        general_combined_limit = LIFE_INSURANCE_COMBINED_MAX
+        if life_insurance_special is not None:
+            general_new_schedule = life_insurance_special.new_general_schedule
+            general_combined_limit = life_insurance_special.combined_general_limit
         li_deduction = calc_life_insurance_total(
             general_new=life_insurance_detail.general_new,
             general_old=life_insurance_detail.general_old,
             medical_care=life_insurance_detail.medical_care,
             annuity_new=life_insurance_detail.annuity_new,
             annuity_old=life_insurance_detail.annuity_old,
+            general_new_schedule=general_new_schedule,
+            general_combined_limit=general_combined_limit,
         )
         if li_deduction > 0:
+            details = "3区分詳細"
+            if life_insurance_special is not None and life_insurance_detail.general_new > 0:
+                details += "（23歳未満扶養親族特例適用）"
             income_deductions.append(
                 DeductionItem(
                     type="life_insurance",
                     name="生命保険料控除",
                     amount=li_deduction,
-                    details="3区分詳細",
+                    details=details,
                 )
             )
     elif life_insurance_premium > 0:
-        li_deduction = calc_life_insurance_deduction(life_insurance_premium)
+        if life_insurance_special is None:
+            li_deduction = calc_life_insurance_deduction(life_insurance_premium)
+        else:
+            li_deduction = _calc_life_insurance_deduction_by_schedule(
+                life_insurance_premium,
+                life_insurance_special.new_general_schedule,
+            )
         if li_deduction > 0:
             income_deductions.append(
                 DeductionItem(
                     type="life_insurance",
                     name="生命保険料控除",
                     amount=li_deduction,
+                    details=(
+                        "23歳未満扶養親族特例適用" if life_insurance_special is not None else None
+                    ),
                 )
             )
 

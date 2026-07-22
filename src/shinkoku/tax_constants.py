@@ -54,6 +54,30 @@ SALARY_DEDUCTION_BRACKET_4 = 8_500_000  # 660万超〜850万: 収入×10%+110万
 # 生命保険料控除
 # 所得税法第76条
 # ============================================================
+
+LifeInsuranceDeductionRow = tuple[int, int, int]
+
+
+@dataclass(frozen=True)
+class LifeInsuranceDeductionSchedule:
+    """生命保険料控除の1区分を計算する不変スケジュール。
+
+    rows は（支払保険料の上限・除数・加算額）。上限以下の最初の行を使い、
+    表を超える支払額には maximum を適用する。
+    """
+
+    rows: tuple[LifeInsuranceDeductionRow, ...]
+    maximum: int
+
+
+@dataclass(frozen=True)
+class LifeInsuranceUnder23Special:
+    """23歳未満扶養親族特例の新一般表と新旧併用限度額。"""
+
+    new_general_schedule: LifeInsuranceDeductionSchedule
+    combined_general_limit: int
+
+
 # 新制度（平成24年1月1日以後の契約）
 LIFE_INSURANCE_NEW_MAX = 40_000  # 新制度1区分上限
 LIFE_INSURANCE_NEW_BRACKET_1 = 20_000  # ≤2万: 全額
@@ -70,6 +94,37 @@ LIFE_INSURANCE_OLD_BRACKET_3 = 100_000  # 5万超〜10万: 支払額/4+25,000
 
 LIFE_INSURANCE_COMBINED_MAX = 40_000  # 新旧合算1区分上限
 LIFE_INSURANCE_TOTAL_MAX = 120_000  # 3区分合計上限
+
+LIFE_INSURANCE_NEW_SCHEDULE = LifeInsuranceDeductionSchedule(
+    rows=(
+        (LIFE_INSURANCE_NEW_BRACKET_1, 1, 0),
+        (LIFE_INSURANCE_NEW_BRACKET_2, 2, 10_000),
+        (LIFE_INSURANCE_NEW_BRACKET_3, 4, 20_000),
+    ),
+    maximum=LIFE_INSURANCE_NEW_MAX,
+)
+
+LIFE_INSURANCE_OLD_SCHEDULE = LifeInsuranceDeductionSchedule(
+    rows=(
+        (LIFE_INSURANCE_OLD_BRACKET_1, 1, 0),
+        (LIFE_INSURANCE_OLD_BRACKET_2, 2, 12_500),
+        (LIFE_INSURANCE_OLD_BRACKET_3, 4, 25_000),
+    ),
+    maximum=LIFE_INSURANCE_OLD_MAX,
+)
+
+# 租税特別措置法41条の15の5第1項（令和8・9年分）。
+_LIFE_INSURANCE_UNDER23_SPECIAL = LifeInsuranceUnder23Special(
+    new_general_schedule=LifeInsuranceDeductionSchedule(
+        rows=(
+            (30_000, 1, 0),
+            (60_000, 2, 15_000),
+            (120_000, 4, 30_000),
+        ),
+        maximum=60_000,
+    ),
+    combined_general_limit=60_000,
+)
 
 # ============================================================
 # 地震保険料控除
@@ -190,6 +245,7 @@ class IncomeTaxYearConstants:
     salary_income_step_table: tuple[SalaryIncomeStep, ...] | None
     spouse_special_deduction_table: tuple[SpouseSpecialDeductionRow, ...]
     specific_relative_special_deduction_table: tuple[SpecificRelativeSpecialDeductionRow, ...]
+    life_insurance_under23_special: LifeInsuranceUnder23Special | None
 
 
 _INCOME_TAX_CONSTANTS_2025 = IncomeTaxYearConstants(
@@ -201,6 +257,7 @@ _INCOME_TAX_CONSTANTS_2025 = IncomeTaxYearConstants(
     salary_income_step_table=None,
     spouse_special_deduction_table=_SPOUSE_SPECIAL_DEDUCTION_TABLE_2025,
     specific_relative_special_deduction_table=(_SPECIFIC_RELATIVE_SPECIAL_DEDUCTION_TABLE_2025),
+    life_insurance_under23_special=None,
 )
 
 _INCOME_TAX_CONSTANTS_2026 = IncomeTaxYearConstants(
@@ -227,6 +284,7 @@ _INCOME_TAX_CONSTANTS_2026 = IncomeTaxYearConstants(
     ),
     spouse_special_deduction_table=_SPOUSE_SPECIAL_DEDUCTION_TABLE_2026,
     specific_relative_special_deduction_table=(_SPECIFIC_RELATIVE_SPECIAL_DEDUCTION_TABLE_2026),
+    life_insurance_under23_special=_LIFE_INSURANCE_UNDER23_SPECIAL,
 )
 
 # 令和8・9年分は同じ内容。不変オブジェクトなので安全に共有できる。

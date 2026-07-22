@@ -51,6 +51,7 @@ class TestIncomeTaxYearConstants:
             850_000,
             630_000,
         )
+        assert constants.life_insurance_under23_special is None
 
     def test_2026_values(self) -> None:
         constants = get_income_tax_constants(2026)
@@ -79,6 +80,14 @@ class TestIncomeTaxYearConstants:
             850_000,
             630_000,
         )
+        assert constants.life_insurance_under23_special is not None
+        assert constants.life_insurance_under23_special.combined_general_limit == 60_000
+        assert constants.life_insurance_under23_special.new_general_schedule.maximum == 60_000
+        assert constants.life_insurance_under23_special.new_general_schedule.rows == (
+            (30_000, 1, 0),
+            (60_000, 2, 15_000),
+            (120_000, 4, 30_000),
+        )
 
     def test_2027_shares_immutable_2026_values(self) -> None:
         assert get_income_tax_constants(2027) is get_income_tax_constants(2026)
@@ -90,8 +99,12 @@ class TestIncomeTaxYearConstants:
         assert isinstance(constants.salary_income_step_table, tuple)
         assert isinstance(constants.spouse_special_deduction_table, tuple)
         assert isinstance(constants.specific_relative_special_deduction_table, tuple)
+        assert constants.life_insurance_under23_special is not None
+        assert isinstance(constants.life_insurance_under23_special.new_general_schedule.rows, tuple)
         with pytest.raises(FrozenInstanceError):
             setattr(constants, "salary_deduction_min", 0)
+        with pytest.raises(FrozenInstanceError):
+            setattr(constants.life_insurance_under23_special, "combined_general_limit", 0)
 
     @pytest.mark.parametrize("fiscal_year", [2020, 2024, 2028])
     def test_unsupported_year_raises_with_supported_years(self, fiscal_year: int) -> None:

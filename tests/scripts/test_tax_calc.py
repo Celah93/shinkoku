@@ -186,6 +186,36 @@ def test_calc_income_keeps_2026_specific_relative_classification_in_json(
     ] == [("specific_relative_special", 630_000)]
 
 
+def test_calc_deductions_applies_2026_under23_life_insurance_special(
+    tmp_path: Path,
+) -> None:
+    input_file = _write_input(
+        tmp_path,
+        {
+            "total_income": 3_000_000,
+            "fiscal_year": 2026,
+            "life_insurance_detail": {"general_new": 120_000},
+            "dependents": [
+                {
+                    "name": "特例対象親族",
+                    "relationship": "子",
+                    "birth_date": "2004-01-02",
+                    "income": 0,
+                }
+            ],
+        },
+    )
+
+    result = run_cli("tax", "calc-deductions", "--input", str(input_file))
+
+    assert result.returncode == 0, result.stderr
+    output = json.loads(result.stdout)
+    life_items = [item for item in output["income_deductions"] if item["type"] == "life_insurance"]
+    assert [(item["amount"], item["details"]) for item in life_items] == [
+        (60_000, "3区分詳細（23歳未満扶養親族特例適用）")
+    ]
+
+
 def _donation_record(amount: int, donation_type: str) -> dict:
     """DonationRecordRecord に必要な全フィールドを含むヘルパー."""
     return {
