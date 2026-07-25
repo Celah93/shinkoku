@@ -142,7 +142,8 @@ uv run shinkoku profile --config shinkoku.config.yaml
 
 ### CLI モジュール規約
 
-- エントリーポイント: `src/shinkoku/cli/__init__.py` の `main()` で全サブコマンドを登録
+- parser 構築: `src/shinkoku/cli/__init__.py` の `build_parser()` で全サブコマンドを登録
+- エントリーポイント: 同ファイルの `main()` で引数解析・dispatch・エラー処理を行う
 - 各モジュール（`src/shinkoku/cli/*.py`）は `register(subparsers)` 関数を公開し、サブコマンドを登録する
 - 入力: 複雑なパラメータは `--input <json_file>` で JSON ファイル受け取り。単純パラメータは CLI 引数
 - 出力: JSON を stdout に出力
@@ -241,16 +242,18 @@ uv run shinkoku profile --config shinkoku.config.yaml
 
 ### CLI モジュール（src/shinkoku/cli/）
 
-| ファイルパス | サブコマンド数 | 役割 |
-|------------|-------------|------|
-| `src/shinkoku/cli/__init__.py` | — | CLI エントリーポイント（`main()` + サブコマンド登録） |
-| `src/shinkoku/cli/__main__.py` | — | `python -m shinkoku.cli` 実行用 |
-| `src/shinkoku/cli/ledger.py` | 71 | 帳簿管理 CLI（init, journal-add, search, trial-balance 等） |
-| `src/shinkoku/cli/tax_calc.py` | 8 | 税額計算 CLI（calc-income, calc-deductions 等） |
-| `src/shinkoku/cli/import_data.py` | 9 | データ取込 CLI（csv, receipt, invoice 等） |
-| `src/shinkoku/cli/pdf.py` | 2 | PDF ユーティリティ CLI（extract-text, to-image） |
-| `src/shinkoku/cli/furusato.py` | 4 | ふるさと納税 CLI（add, list, delete, summary） |
-| `src/shinkoku/cli/profile.py` | — | プロファイル取得 CLI（直接コマンド） |
+| ファイルパス | 役割 |
+|------------|------|
+| `src/shinkoku/cli/__init__.py` | CLI parser 構築・エントリーポイント |
+| `src/shinkoku/cli/__main__.py` | `python -m shinkoku.cli` 実行用 |
+| `src/shinkoku/cli/ledger.py` | 帳簿管理 CLI（init, journal-add, search, trial-balance 等） |
+| `src/shinkoku/cli/tax_calc.py` | 税額計算 CLI（calc-income, calc-deductions 等） |
+| `src/shinkoku/cli/import_data.py` | データ取込 CLI（csv, receipt, invoice 等） |
+| `src/shinkoku/cli/pdf.py` | PDF ユーティリティ CLI（extract-text, to-image） |
+| `src/shinkoku/cli/furusato.py` | ふるさと納税 CLI（add, list, delete, summary） |
+| `src/shinkoku/cli/profile.py` | 納税者プロファイル取得 CLI（直接コマンド） |
+
+正確なコマンド数と引数契約は `tests/fixtures/cli_contract.json` を参照する。
 
 ### スキル（skills/）
 

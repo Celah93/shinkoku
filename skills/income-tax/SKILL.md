@@ -88,10 +88,10 @@ config・引継書に記載がない項目は、ユーザーに直接確認し�
 
 給与所得がある場合、源泉徴収票からデータを取り込む。
 
-### `import_data.py import-withholding` の呼び出し
+### `shinkoku import withholding --file-path withholding.pdf` の呼び出し
 
 ```bash
-shinkoku import import-withholding --input withholding_input.json
+shinkoku import withholding --file-path withholding.pdf
 ```
 入力 JSON:
 ```json
@@ -161,8 +161,8 @@ OCR 結果の整合性を検証するため、「所得控除の額の合計額�
 
 ### DB からの読み込み
 
-1. `ledger.py get-spouse --db-path DB_PATH` で配偶者情報を取得する（登録済みの場合）
-2. `ledger.py list-dependents --db-path DB_PATH` で扶養親族のリストを取得する（登録済みの場合）
+1. `shinkoku ledger spouse-get --db-path DB_PATH --fiscal-year YEAR` で配偶者情報を取得する（登録済みの場合）
+2. `shinkoku ledger dep-list --db-path DB_PATH --fiscal-year YEAR` で扶養親族のリストを取得する（登録済みの場合）
 
 ### 未登録の場合の確認項目
 
@@ -170,7 +170,7 @@ OCR 結果の整合性を検証するため、「所得控除の額の合計額�
    - 令和7年分: 所得58万円以下 → 配偶者控除、58万円超133万円以下 → 配偶者特別控除
    - 令和8・9年分: 所得62万円以下 → 配偶者控除、62万円超133万円以下 → 配偶者特別控除
    - 納税者の所得が1,000万円超 → 配偶者控除なし
-   - 確認後 `ledger.py set-spouse --db-path DB_PATH --input spouse.json` で DB に登録する
+   - 確認後 `shinkoku ledger spouse-set --db-path DB_PATH --fiscal-year YEAR --input spouse.json` で DB に登録する
 
 2. **扶養親族**: 以下の情報を収集する
    - 氏名、続柄、生年月日、年間所得、障害の有無、同居の有無
@@ -182,7 +182,7 @@ OCR 結果の整合性を検証するため、「所得控除の額の合計額�
      16歳未満も対象になるため、扶養控除が0円でも登録する
    - 他の納税者が扶養控除を取る親族も、23歳未満の特例判定には使う。
      `other_taxpayer_dependent: true` を付けて登録し、親族情報を扶養親族リストに残す
-   - 確認後 `ledger.py add-dependent --db-path DB_PATH --input dependent.json` で各人を DB に登録する
+   - 確認後 `shinkoku ledger dep-add --db-path DB_PATH --fiscal-year YEAR --input dependent.json` で各人を DB に登録する
 
 3. **マイナンバーの収集**（申告書B第二表に記載が必要）:
    - 配偶者のマイナンバー（12桁）
@@ -205,11 +205,11 @@ OCR 結果の整合性を検証するため、「所得控除の額の合計額�
 - 住民税の均等割の非課税判定
 - 申告書B第二表「住民税に関する事項 - 16歳未満の扶養親族」欄への記載
 
-`ledger.py add-dependent` で登録する際、16歳未満でもスキップせずに登録すること。
+`shinkoku ledger dep-add --db-path DB_PATH --fiscal-year YEAR --input dependent.json` で登録する際、16歳未満でもスキップせずに登録すること。
 
 ## ステップ1.6: iDeCo・小規模企業共済の確認
 
-掛金払込証明書がある場合は `import_data.py import-deduction-certificate` で取り込むことができる。
+掛金払込証明書がある場合は `shinkoku import deduction-certificate --file-path PATH` で取り込むことができる。
 
 1. iDeCo（個人型確定拠出年金）の年間掛金を確認する
    - 小規模企業共済等掛金払込証明書から金額を確認
@@ -235,8 +235,8 @@ OCR 結果の整合性を検証するため、「所得控除の額の合計額�
 
 ### 医療費の登録・集計
 
-1. `ledger.py list-medical-expenses --db-path DB_PATH --input query.json` で登録済み医療費明細を取得する
-2. 未登録の医療費がある場合は `ledger.py add-medical-expense --db-path DB_PATH --input medical.json` で登録する:
+1. `shinkoku ledger me-list --db-path DB_PATH --fiscal-year YEAR` で登録済み医療費明細を取得する
+2. 未登録の医療費がある場合は `shinkoku ledger me-add --db-path DB_PATH --fiscal-year YEAR --input medical.json` で登録する:
    ```json
    {
      "fiscal_year": 2025,
@@ -258,7 +258,7 @@ OCR 結果の整合性を検証するため、「所得控除の額の合計額�
 
 ### 支払調書の取り込み
 
-1. `import_data.py import-payment-statement --input payment_input.json` で支払調書PDF/画像からデータを抽出する
+1. `shinkoku import payment-statement --file-path PATH` で支払調書PDF/画像からデータを抽出する
 
 #### 画像ファイルの場合: OCR 読み取り
 
@@ -273,7 +273,7 @@ OCR 結果の整合性を検証するため、「所得控除の額の合計額�
 - 差異のあるフィールドを明示する
 - A を採用 / B を採用 / 手動入力 の3択を AskUserQuestion で提示する
 
-2. `ledger.py add-business-withholding --db-path DB_PATH --input withholding.json` で取引先別の源泉徴収情報を登録する:
+2. `shinkoku ledger bw-add --db-path DB_PATH --fiscal-year YEAR --input withholding.json` で取引先別の源泉徴収情報を登録する:
    ```json
    {
      "fiscal_year": 2025,
@@ -284,15 +284,15 @@ OCR 結果の整合性を検証するため、「所得控除の額の合計額�
      }
    }
    ```
-3. `ledger.py list-business-withholding --db-path DB_PATH --input query.json` で登録済み情報を確認する
+3. `shinkoku ledger bw-list --db-path DB_PATH --fiscal-year YEAR` で登録済み情報を確認する
 4. 源泉徴収税額の合計を `business_withheld_tax` として所得税計算に使用する
 
 ## ステップ1.8.5: 税理士等報酬の登録
 
 税理士・弁護士等に報酬を支払っている場合、報酬明細を登録する。
 
-1. `ledger.py list-professional-fees --db-path DB_PATH --input query.json` で登録済みの税理士等報酬を確認する
-2. 未登録の場合は `ledger.py add-professional-fee --db-path DB_PATH --input fee.json` で登録する:
+1. `shinkoku ledger pf-list --db-path DB_PATH --fiscal-year YEAR` で登録済みの税理士等報酬を確認する
+2. 未登録の場合は `shinkoku ledger pf-add --db-path DB_PATH --fiscal-year YEAR --input fee.json` で登録する:
    ```json
    {
      "fiscal_year": 2025,
@@ -311,8 +311,8 @@ OCR 結果の整合性を検証するため、「所得控除の額の合計額�
 
 前年以前に事業で損失が発生し、青色申告している場合、繰越控除を適用できる。
 
-1. `ledger.py list-loss-carryforward --db-path DB_PATH --input query.json` で登録済みの繰越損失を確認する
-2. 未登録の場合は `ledger.py add-loss-carryforward --db-path DB_PATH --input loss.json` で登録する:
+1. `shinkoku ledger lc-list --db-path DB_PATH --fiscal-year YEAR` で登録済みの繰越損失を確認する
+2. 未登録の場合は `shinkoku ledger lc-add --db-path DB_PATH --fiscal-year YEAR --input loss.json` で登録する:
    ```json
    {
      "fiscal_year": 2025,
@@ -391,8 +391,8 @@ OCR 結果の整合性を検証するため、「所得控除の額の合計額�
 
 副業の原稿料、暗号資産の売却益、その他の雑収入。
 
-1. `ledger.py list-other-income --db-path DB_PATH --input query.json` で登録済み雑所得を確認する
-2. 未登録の収入がある場合は `ledger.py add-other-income --db-path DB_PATH --input other_income.json` で登録する:
+1. `shinkoku ledger oi-list --db-path DB_PATH --fiscal-year YEAR` で登録済み雑所得を確認する
+2. 未登録の収入がある場合は `shinkoku ledger oi-add --db-path DB_PATH --fiscal-year YEAR --input other_income.json` で登録する:
    ```json
    {
      "fiscal_year": 2025,
@@ -412,8 +412,8 @@ OCR 結果の整合性を検証するため、「所得控除の額の合計額�
 
 暗号資産の売却益は雑所得（総合課税）として申告する。
 
-1. `ledger.py list-crypto-income --db-path DB_PATH --input query.json` で登録済み仮想通貨所得を確認する
-2. 未登録の場合は `ledger.py add-crypto-income --db-path DB_PATH --input crypto.json` で取引所別に登録する:
+1. `shinkoku ledger ci-list --db-path DB_PATH --fiscal-year YEAR` で登録済み仮想通貨所得を確認する
+2. 未登録の場合は `shinkoku ledger ci-add --db-path DB_PATH --fiscal-year YEAR --input crypto.json` で取引所別に登録する:
    ```json
    {
      "fiscal_year": 2025,
@@ -430,16 +430,16 @@ OCR 結果の整合性を検証するため、「所得控除の額の合計額�
 
 総合課税を選択した配当は配当控除（税額控除）の対象となる。
 
-1. `ledger.py list-other-income --db-path DB_PATH --input query.json` で `income_type: "dividend_comprehensive"` を確認する
-2. 未登録の場合は `ledger.py add-other-income --db-path DB_PATH --input dividend.json` で登録する
+1. `shinkoku ledger oi-list --db-path DB_PATH --fiscal-year YEAR` で `income_type: "dividend_comprehensive"` を確認する
+2. 未登録の場合は `shinkoku ledger oi-add --db-path DB_PATH --fiscal-year YEAR --input dividend.json` で登録する
 3. 配当控除: 課税所得1,000万以下の部分 → 配当の10%、超える部分 → 5%
 
 ### 一時所得
 
 保険満期金、懸賞金等の一時的な所得。
 
-1. `ledger.py list-other-income --db-path DB_PATH --input query.json` で `income_type: "one_time"` を確認する
-2. 未登録の場合は `ledger.py add-other-income --db-path DB_PATH --input one_time.json` で登録する
+1. `shinkoku ledger oi-list --db-path DB_PATH --fiscal-year YEAR` で `income_type: "one_time"` を確認する
+2. 未登録の場合は `shinkoku ledger oi-add --db-path DB_PATH --fiscal-year YEAR --input one_time.json` で登録する
 3. 一時所得 = max(0, (収入 - 経費 - 特別控除50万円)) × 1/2
 
 ### `calc_income_tax` への反映
@@ -458,10 +458,10 @@ OCR 結果の整合性を検証するため、「所得控除の額の合計額�
 
 所得控除の内訳書に種別ごとの記載が必要なため、社会保険料を種別別に登録する。
 
-社会保険料の控除証明書がある場合は `import_data.py import-deduction-certificate` で取り込むことができる。
+社会保険料の控除証明書がある場合は `shinkoku import deduction-certificate --file-path PATH` で取り込むことができる。
 
-1. `ledger.py list-social-insurance-items --db-path DB_PATH --input query.json` で登録済み項目を確認する
-2. 未登録の場合は `ledger.py add-social-insurance-item --db-path DB_PATH --input insurance.json` で種別ごとに登録する:
+1. `shinkoku ledger si-list --db-path DB_PATH --fiscal-year YEAR` で登録済み項目を確認する
+2. 未登録の場合は `shinkoku ledger si-add --db-path DB_PATH --fiscal-year YEAR --input insurance.json` で種別ごとに登録する:
    ```json
    {
      "fiscal_year": 2025,
@@ -479,11 +479,11 @@ OCR 結果の整合性を検証するため、「所得控除の額の合計額�
 
 所得控除の内訳書に保険会社名の記載が必要なため、保険契約を登録する。
 
-控除証明書の画像・PDFがある場合は `import_data.py import-deduction-certificate` で取り込むことができる。
-取り込み後、抽出データに基づいて `ledger.py add-insurance-policy` で登録する。
+控除証明書の画像・PDFがある場合は `shinkoku import deduction-certificate --file-path PATH` で取り込むことができる。
+取り込み後、抽出データに基づいて `shinkoku ledger ip-add --db-path DB_PATH --fiscal-year YEAR --input policy.json` で登録する。
 
-1. `ledger.py list-insurance-policies --db-path DB_PATH --input query.json` で登録済み項目を確認する
-2. 未登録の場合は `ledger.py add-insurance-policy --db-path DB_PATH --input policy.json` で登録する:
+1. `shinkoku ledger ip-list --db-path DB_PATH --fiscal-year YEAR` で登録済み項目を確認する
+2. 未登録の場合は `shinkoku ledger ip-add --db-path DB_PATH --fiscal-year YEAR --input policy.json` で登録する:
    ```json
    {
      "fiscal_year": 2026,
@@ -501,8 +501,8 @@ OCR 結果の整合性を検証するため、「所得控除の額の合計額�
 
 政治活動寄附金、認定NPO法人、公益社団法人等への寄附金を確認する。
 
-1. `ledger.py list-donations --db-path DB_PATH --input query.json` で登録済み寄附金を確認する
-2. 未登録の場合は `ledger.py add-donation --db-path DB_PATH --input donation.json` で登録する:
+1. `shinkoku ledger don-list --db-path DB_PATH --fiscal-year YEAR` で登録済み寄附金を確認する
+2. 未登録の場合は `shinkoku ledger don-add --db-path DB_PATH --fiscal-year YEAR --input donation.json` で登録する:
    ```json
    {
      "fiscal_year": 2025,
@@ -525,7 +525,7 @@ OCR 結果の整合性を検証するため、「所得控除の額の合計額�
 
 ## ステップ2: 所得控除の計算
 
-### `tax_calc.py calc-deductions` の呼び出し
+### `shinkoku tax calc-deductions --input deductions_input.json` の呼び出し
 
 ```bash
 shinkoku tax calc-deductions --input deductions_input.json
@@ -604,7 +604,7 @@ shinkoku tax calc-deductions --input deductions_input.json
 
 ## ステップ3: 所得税額の計算
 
-### `tax_calc.py calc-income` の呼び出し
+### `shinkoku tax calc-income --input income_input.json` の呼び出し
 
 ```bash
 shinkoku tax calc-income --input income_input.json
@@ -685,7 +685,7 @@ shinkoku tax calc-income --input income_input.json
 
 `calc-income` の結果を自動検証する。このステップはスキップ不可。
 
-### `tax_calc.py sanity-check` の呼び出し
+### `shinkoku tax sanity-check --input sanity_input.json` の呼び出し
 
 ```bash
 shinkoku tax sanity-check --input sanity_input.json
@@ -716,7 +716,7 @@ shinkoku tax sanity-check --input sanity_input.json
 
 住宅ローン控除（初年度）を適用する場合、詳細情報を DB に登録する。
 
-1. `ledger.py add-housing-loan-detail --db-path DB_PATH --input housing.json` で住宅ローン控除の明細を登録する:
+1. `shinkoku ledger hl-add --db-path DB_PATH --fiscal-year YEAR --input housing.json` で住宅ローン控除の明細を登録する:
    ```json
    {
      "fiscal_year": 2025,

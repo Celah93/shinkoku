@@ -9,7 +9,8 @@ import sys
 from shinkoku import __version__
 
 
-def main() -> None:
+def build_parser() -> argparse.ArgumentParser:
+    """副作用なしでトップレベルのCLI parserを構築する。"""
     parser = argparse.ArgumentParser(
         prog="shinkoku",
         description="確定申告自動化 CLI",
@@ -33,6 +34,12 @@ def main() -> None:
     furusato.register(subparsers)
     profile.register(subparsers)
     pdf.register(subparsers)
+
+    return parser
+
+
+def main() -> None:
+    parser = build_parser()
 
     args = parser.parse_args()
     if not hasattr(args, "func"):

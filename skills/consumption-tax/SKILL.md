@@ -92,7 +92,7 @@ Q3. 簡易課税制度選択届出書を提出済みで、
 
 ## ステップ1: 課税売上の集計
 
-帳簿から課税売上高を税率区分別に集計する。`ledger.py trial-balance` や `ledger.py search` の結果から以下を算出する:
+帳簿から課税売上高を税率区分別に集計する。`shinkoku ledger trial-balance --db-path DB --fiscal-year YEAR` や `shinkoku ledger search --db-path DB --input search.json` の結果から以下を算出する:
 
 ### 集計項目
 

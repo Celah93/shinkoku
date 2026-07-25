@@ -26,8 +26,8 @@ journal スキルで日常仕訳の入力が完了していることを前提と
 ### パス解決の例
 
 config の `db_path` が `./shinkoku.db`、`output_dir` が `./output` で CWD が `/home/user/tax-2025/` の場合:
-- `ledger.py trial-balance --db-path /home/user/tax-2025/shinkoku.db --input query.json`
-- `shinkoku ledger bs --db-path /home/user/tax-2025/shinkoku.db --input query.json`
+- `shinkoku ledger trial-balance --db-path /home/user/tax-2025/shinkoku.db --fiscal-year 2025`
+- `shinkoku ledger bs --db-path /home/user/tax-2025/shinkoku.db --fiscal-year 2025`
 
 ## 進捗情報の読み込み
 
@@ -66,7 +66,7 @@ config の `db_path` が `./shinkoku.db`、`output_dir` が `./output` で CWD �
 
 ### 0-1. 期首残高の確認・設定
 
-1. `ledger.py ob-list --db-path DB --fiscal-year YEAR` で期首残高が設定済みか確認
+1. `shinkoku ledger ob-list --db-path DB --fiscal-year YEAR` で期首残高が設定済みか確認
 2. **未設定の場合**、ユーザーに以下を確認:
    - 開業初年度か？（→ 期首残高なし、スキップ）
    - 前年の確定申告書（青色申告決算書の貸借対照表）の期末列を提示してもらう
@@ -78,10 +78,10 @@ config の `db_path` が `./shinkoku.db`、`output_dir` が `./output` で CWD �
 
 ## ステップ1: 残高試算表の確認
 
-### `ledger.py trial-balance` の呼び出し
+### `shinkoku ledger trial-balance --db-path DB_PATH --fiscal-year YEAR` の呼び出し
 
 ```bash
-shinkoku ledger trial-balance --db-path DB_PATH --input query.json
+shinkoku ledger trial-balance --db-path DB_PATH --fiscal-year YEAR
 ```
 入力 JSON:
 ```json
@@ -105,7 +105,7 @@ shinkoku ledger trial-balance --db-path DB_PATH --input query.json
 
 ## ステップ2: 決算整理仕訳の登録
 
-以下の決算整理項目を順に確認・処理する。各仕訳は `ledger.py add-journal --db-path DB_PATH --input journal.json` で登録する。
+以下の決算整理項目を順に確認・処理する。各仕訳は `shinkoku ledger journal-add --db-path DB_PATH --fiscal-year YEAR --input journal.json` で登録する。
 
 ### 2-1. 減価償却費の計上
 
@@ -158,8 +158,8 @@ shinkoku tax calc-depreciation --input depreciation_input.json
 
 #### 在庫データの登録
 
-まず `ledger.py list-inventory --db-path DB_PATH --input query.json` で登録済みの棚卸データを確認する。
-未登録の場合は `ledger.py set-inventory --db-path DB_PATH --input inventory.json` で期首・期末の棚卸高を登録する:
+まず `shinkoku ledger inv-list --db-path DB_PATH --fiscal-year YEAR` で登録済みの棚卸データを確認する。
+未登録の場合は `shinkoku ledger inv-set --db-path DB_PATH --fiscal-year YEAR --input inventory.json` で期首・期末の棚卸高を登録する:
 
 ```json
 {
@@ -186,7 +186,7 @@ shinkoku tax calc-depreciation --input depreciation_input.json
 - 期末の在庫数量と単価をユーザーに確認する
 - 評価方法（最終仕入原価法等）を確認する
 - **売上原価の計算**: 期首棚卸高 + 仕入高 - 期末棚卸高
-- 登録した棚卸データは `ledger.py pl` と青色申告決算書 PDF に自動反映される
+- 登録した棚卸データは `shinkoku ledger pl --db-path DB_PATH --fiscal-year YEAR` と青色申告決算書 PDF に自動反映される
 
 ### 2-3. 未払費用の計上
 
@@ -227,10 +227,10 @@ shinkoku tax calc-depreciation --input depreciation_input.json
 
 事業で地代家賃を計上している場合、内訳を登録する（青色申告決算書の添付資料）。
 
-### `ledger.py add-rent-detail` の呼び出し
+### `shinkoku ledger rd-add --db-path DB_PATH --fiscal-year YEAR --input rent.json` の呼び出し
 
 ```bash
-shinkoku ledger add-rent-detail --db-path DB_PATH --input rent.json
+shinkoku ledger rd-add --db-path DB_PATH --fiscal-year YEAR --input rent.json
 ```
 入力 JSON:
 ```json
@@ -260,10 +260,10 @@ shinkoku ledger add-rent-detail --db-path DB_PATH --input rent.json
 
 決算整理仕訳がすべて登録された後、決算書を生成する。
 
-### 3-1. 損益計算書の確認（`ledger.py pl`）
+### 3-1. 損益計算書の確認（`shinkoku ledger pl --db-path DB_PATH --fiscal-year YEAR`）
 
 ```bash
-shinkoku ledger pl --db-path DB_PATH --input query.json
+shinkoku ledger pl --db-path DB_PATH --fiscal-year YEAR
 ```
 入力 JSON:
 ```json
@@ -281,10 +281,10 @@ shinkoku ledger pl --db-path DB_PATH --input query.json
 - 各経費科目が妥当か（異常に大きい・小さい科目がないか）
 - 青色申告特別控除前の所得金額を確認する
 
-### 3-2. 貸借対照表の確認（`ledger.py bs`）
+### 3-2. 貸借対照表の確認（`shinkoku ledger bs --db-path DB_PATH --fiscal-year YEAR`）
 
 ```bash
-shinkoku ledger bs --db-path DB_PATH --input query.json
+shinkoku ledger bs --db-path DB_PATH --fiscal-year YEAR
 ```
 入力 JSON:
 ```json

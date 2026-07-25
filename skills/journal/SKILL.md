@@ -210,8 +210,8 @@ CSVインポートのフローに重複チェックを組み込む:
 
 1. **ファイル重複チェック**: `check-imported` コマンドでファイルのハッシュを確認
    ```bash
-   shinkoku import check-imported \
-     --db-path DB --file-path /path/to/file.csv
+shinkoku import check-imported \
+  --db-path DB --fiscal-year YEAR --file-path /path/to/file.csv
    ```
    - 既にインポート済みの場合はユーザーに警告し、再インポートの意思を確認する
 2. **仕訳登録時の自動チェック**: `journal-batch-add` が自動的に重複を検出
@@ -223,8 +223,8 @@ CSVインポートのフローに重複チェックを組み込む:
    - ユーザーが「登録する」と回答した場合のみ `--force` を付けて再実行
 3. **インポート記録**: 登録成功後、`record-source` コマンドでインポート履歴を記録する
    ```bash
-   shinkoku import record-source \
-     --db-path DB --file-path /path/to/file.csv --source-type csv
+shinkoku import record-source \
+  --db-path DB --fiscal-year YEAR --file-path /path/to/file.csv
    ```
 
 ### 申告前の重複チェック
@@ -269,7 +269,7 @@ CSV取り込み等で複数の仕訳を一度に登録する場合に使用す�
 ```bash
 # entries.json に JournalEntry の配列を記述
 shinkoku ledger journal-batch-add \
-  --db-path DB --fiscal-year 2025 --input entries.json [--force]
+  --db-path DB --fiscal-year 2025 --input entries.json
 ```
 
 **登録前の確認事項:**

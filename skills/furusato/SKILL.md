@@ -35,7 +35,7 @@ description: >
 
 ### 1-1. ファイルの確認
 
-`import_data.py furusato-receipt --file-path PATH` でファイルの存在を確認する。
+`shinkoku import furusato-receipt --file-path PATH` でファイルの存在を確認する。
 
 ### 1-2. 画像の読み取り
 
@@ -131,10 +131,10 @@ shinkoku furusato summary --db-path DB --fiscal-year YEAR [--estimated-limit N]
 
 ### 控除上限の推定
 
-所得情報が把握できている場合は `tax_calc.py furusato-limit` で上限を推定する。
+所得情報が把握できている場合は `shinkoku tax calc-furusato-limit --input FILE` で上限を推定する。
 
 ```bash
-shinkoku tax furusato-limit --input FILE
+shinkoku tax calc-furusato-limit --input FILE
 ```
 
 上限超過の場合は警告を表示:

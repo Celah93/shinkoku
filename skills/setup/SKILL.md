@@ -356,7 +356,7 @@ shinkoku profile --config PATH
 ## ステップ6: データベースの初期化
 
 1. `db_path` の値を確認し、相対パスの場合は CWD を基準に絶対パスに変換する
-2. `ledger.py init` コマンドでデータベースを初期化する:
+2. `shinkoku ledger init --db-path DB --fiscal-year YEAR` コマンドでデータベースを初期化する:
    ```bash
    shinkoku ledger init --db-path DB --fiscal-year YEAR
    ```

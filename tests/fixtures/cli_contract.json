@@ -1,0 +1,3360 @@
+{
+  "commands": {
+    "furusato add": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "furusato delete": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--donation-id"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "donation_id",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "furusato list": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "furusato summary": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--estimated-limit"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "estimated_limit",
+          "kind": "optional",
+          "nargs": null,
+          "required": false,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "import check-imported": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--file-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "file_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "import csv": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--file-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "file_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "import deduction-certificate": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--file-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "file_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "import furusato-receipt": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--file-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "file_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "import invoice": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--file-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "file_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "import payment-statement": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--file-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "file_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "import receipt": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--file-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "file_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "import record-source": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--file-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "file_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--row-count"
+          ],
+          "choices": null,
+          "default": 0,
+          "destination": "row_count",
+          "kind": "optional",
+          "nargs": null,
+          "required": false,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "import withholding": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--file-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "file_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "ledger audit-log": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": false,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--format"
+          ],
+          "choices": [
+            "json",
+            "csv"
+          ],
+          "default": "json",
+          "destination": "format",
+          "kind": "optional",
+          "nargs": null,
+          "required": false,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--journal-id"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "journal_id",
+          "kind": "optional",
+          "nargs": null,
+          "required": false,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger bs": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--format"
+          ],
+          "choices": [
+            "json",
+            "csv"
+          ],
+          "default": "json",
+          "destination": "format",
+          "kind": "optional",
+          "nargs": null,
+          "required": false,
+          "type": null
+        }
+      ]
+    },
+    "ledger bw-add": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "ledger bw-delete": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--withholding-id"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "withholding_id",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger bw-list": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger check-duplicates": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--threshold"
+          ],
+          "choices": null,
+          "default": 70,
+          "destination": "threshold",
+          "kind": "optional",
+          "nargs": null,
+          "required": false,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger ci-add": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "ledger ci-delete": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--crypto-income-id"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "crypto_income_id",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "ledger ci-list": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger dep-add": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "ledger dep-delete": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--dependent-id"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "dependent_id",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger dep-list": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger don-add": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "ledger don-delete": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--donation-id"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "donation_id",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger don-list": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger fiscal-year-show": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger fiscal-year-update": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "ledger fx-add": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "ledger fx-delete": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fx-trading-id"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fx_trading_id",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger fx-list": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger fxlc-add": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "ledger fxlc-delete": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fx-loss-carryforward-id"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fx_loss_carryforward_id",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger fxlc-list": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger general-ledger": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--account-code"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "account_code",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.str"
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--format"
+          ],
+          "choices": [
+            "json",
+            "csv"
+          ],
+          "default": "json",
+          "destination": "format",
+          "kind": "optional",
+          "nargs": null,
+          "required": false,
+          "type": null
+        }
+      ]
+    },
+    "ledger hl-add": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "ledger hl-delete": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--housing-loan-detail-id"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "housing_loan_detail_id",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger hl-list": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger init": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger inv-delete": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--inventory-id"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "inventory_id",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger inv-list": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger inv-set": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "ledger ip-add": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "ledger ip-delete": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--insurance-policy-id"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "insurance_policy_id",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger ip-list": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger journal-add": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreTrueAction",
+          "aliases": [
+            "--force"
+          ],
+          "choices": null,
+          "default": false,
+          "destination": "force",
+          "kind": "optional",
+          "nargs": 0,
+          "required": false,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "ledger journal-batch-add": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreTrueAction",
+          "aliases": [
+            "--force"
+          ],
+          "choices": null,
+          "default": false,
+          "destination": "force",
+          "kind": "optional",
+          "nargs": 0,
+          "required": false,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "ledger journal-delete": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--journal-id"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "journal_id",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger journal-update": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreTrueAction",
+          "aliases": [
+            "--force"
+          ],
+          "choices": null,
+          "default": false,
+          "destination": "force",
+          "kind": "optional",
+          "nargs": 0,
+          "required": false,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--journal-id"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "journal_id",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger lc-add": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "ledger lc-delete": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--loss-carryforward-id"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "loss_carryforward_id",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger lc-list": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger me-add": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "ledger me-delete": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--medical-expense-id"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "medical_expense_id",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger me-list": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger ob-delete": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--opening-balance-id"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "opening_balance_id",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger ob-list": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger ob-set": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "ledger ob-set-batch": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "ledger oi-add": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "ledger oi-delete": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--other-income-id"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "other_income_id",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger oi-list": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger pf-add": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "ledger pf-delete": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--professional-fee-id"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "professional_fee_id",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger pf-list": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger pl": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--format"
+          ],
+          "choices": [
+            "json",
+            "csv"
+          ],
+          "default": "json",
+          "destination": "format",
+          "kind": "optional",
+          "nargs": null,
+          "required": false,
+          "type": null
+        }
+      ]
+    },
+    "ledger rd-add": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "ledger rd-delete": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--rent-detail-id"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "rent_detail_id",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger rd-list": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger search": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--format"
+          ],
+          "choices": [
+            "json",
+            "csv"
+          ],
+          "default": "json",
+          "destination": "format",
+          "kind": "optional",
+          "nargs": null,
+          "required": false,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "ledger si-add": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "ledger si-delete": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--social-insurance-item-id"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "social_insurance_item_id",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger si-list": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger slc-add": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "ledger slc-delete": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--stock-loss-carryforward-id"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "stock_loss_carryforward_id",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger slc-list": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger spouse-delete": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger spouse-get": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger spouse-set": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "ledger sta-add": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "ledger sta-delete": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--stock-trading-account-id"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "stock_trading_account_id",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger sta-list": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger trial-balance": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--format"
+          ],
+          "choices": [
+            "json",
+            "csv"
+          ],
+          "default": "json",
+          "destination": "format",
+          "kind": "optional",
+          "nargs": null,
+          "required": false,
+          "type": null
+        }
+      ]
+    },
+    "ledger ws-delete": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--withholding-slip-id"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "withholding_slip_id",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger ws-list": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        }
+      ]
+    },
+    "ledger ws-save": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "pdf extract-text": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--file-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "file_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "pdf to-image": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--dpi"
+          ],
+          "choices": null,
+          "default": 200,
+          "destination": "dpi",
+          "kind": "optional",
+          "nargs": null,
+          "required": false,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--file-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "file_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--output-dir"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "output_dir",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "profile": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--config"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "config",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "tax calc-consumption": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": false,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "tax calc-deductions": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "tax calc-depreciation": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "tax calc-furusato-limit": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "tax calc-income": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "tax calc-pension": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "tax calc-retirement": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "tax sanity-check": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    }
+  },
+  "global_arguments": [
+    {
+      "action": "_VersionAction",
+      "aliases": [
+        "--version"
+      ],
+      "choices": null,
+      "default": {
+        "sentinel": "argparse.SUPPRESS"
+      },
+      "destination": "version",
+      "kind": "optional",
+      "nargs": 0,
+      "required": false,
+      "type": null
+    }
+  ]
+}

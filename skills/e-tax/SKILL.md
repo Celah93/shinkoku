@@ -213,7 +213,7 @@ fiscal_year: {tax_year}
     - .shinkoku/progress/08-consumption-tax.md が存在し、status: completed であること
 
 [5] サニティチェック
-    - `tax_calc.py sanity-check` を実行する
+    - `shinkoku tax sanity-check --input sanity_input.json` を実行する
     - error > 0 の場合: 入力を中止し、`/income-tax` スキルで修正を促す
     - warning > 0 の場合: ユーザーに確認してから続行する
 ```

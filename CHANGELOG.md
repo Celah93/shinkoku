@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.12.1] - 2026-07-25
+
+### Added
+- argparseから99個の末端コマンドと引数契約を固定するCLIスナップショットテストを追加
+- スキル文書内のコマンド、必須引数、未知のオプション、廃止済みコマンド名を検査する契約テストを追加
+- 全末端コマンドの`--help`を副作用なしで確認するin-process smoke testを追加
+
+### Changed
+- CLI parser構築を副作用のない`build_parser()`へ分け、契約テストから再利用できるように変更
+- スキル文書に残っていた旧Pythonラッパー形式と廃止済みコマンド名を現行CLIへ同期
+- CLIモジュール表から古くなる固定コマンド数を削除し、parserスナップショットを参照する形へ変更
+
 ## [0.12.0] - 2026-07-22
 
 ### Added
