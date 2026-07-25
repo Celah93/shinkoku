@@ -11,6 +11,7 @@ from typing import NoReturn
 
 from shinkoku.models import (
     ConsumptionTaxInput,
+    DepreciationCalculationInput,
     DependentInfo,
     DonationRecordRecord,
     HousingLoanDetail,
@@ -19,6 +20,7 @@ from shinkoku.models import (
     LifeInsurancePremiumInput,
     PensionDeductionInput,
     RetirementIncomeInput,
+    SmallAssetTreatmentInput,
     SmallBusinessMutualAidInput,
 )
 from shinkoku.tools.ledger import ledger_get_fiscal_year_tax_profile
@@ -32,6 +34,7 @@ from shinkoku.tools.tax_calc import (
     calc_pension_deduction,
     calc_retirement_income,
     sanity_check_income_tax,
+    select_small_asset_treatment,
 )
 
 
@@ -151,35 +154,38 @@ def _handle_calc_income(args: argparse.Namespace) -> None:
 def _handle_calc_depreciation(args: argparse.Namespace) -> None:
     """calc-depreciation: 減価償却計算。"""
     params = _load_json(args.input)
-    method = params.pop("method", "straight_line")
+    if params.get("method") == "small_asset_treatment":
+        small_asset_input = SmallAssetTreatmentInput(**params)
+        result = select_small_asset_treatment(small_asset_input)
+        _output_json(result.model_dump(mode="json"))
+        return
 
-    if method == "declining_balance":
-        book_value = params.get("book_value")
-        declining_rate = params.get("declining_rate")
-        if book_value is None or declining_rate is None:
-            _error_exit("book_value and declining_rate required for declining balance")
+    calc_input = DepreciationCalculationInput(**params)
+    if calc_input.method == "declining_balance":
+        assert calc_input.book_value is not None
+        assert calc_input.declining_rate is not None
         amount = calc_depreciation_declining_balance(
-            book_value=book_value,
-            declining_rate=declining_rate,
-            business_use_ratio=params.get("business_use_ratio", 100),
-            months=params.get("months", 12),
+            book_value=calc_input.book_value,
+            declining_rate=calc_input.declining_rate,
+            business_use_ratio=calc_input.business_use_ratio,
+            months=calc_input.months,
         )
     else:
         amount = calc_depreciation_straight_line(
-            acquisition_cost=params.get("acquisition_cost", 0),
-            useful_life=params.get("useful_life", 1),
-            business_use_ratio=params.get("business_use_ratio", 100),
-            months=params.get("months", 12),
+            acquisition_cost=calc_input.acquisition_cost,
+            useful_life=calc_input.useful_life,
+            business_use_ratio=calc_input.business_use_ratio,
+            months=calc_input.months,
         )
 
     _output_json(
         {
-            "method": method,
+            "method": calc_input.method,
             "depreciation_amount": amount,
-            "acquisition_cost": params.get("acquisition_cost", 0),
-            "useful_life": params.get("useful_life", 0),
-            "business_use_ratio": params.get("business_use_ratio", 100),
-            "months": params.get("months", 12),
+            "acquisition_cost": calc_input.acquisition_cost,
+            "useful_life": calc_input.useful_life,
+            "business_use_ratio": calc_input.business_use_ratio,
+            "months": calc_input.months,
         }
     )
 

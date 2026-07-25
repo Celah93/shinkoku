@@ -149,7 +149,8 @@ shinkoku tax calc-depreciation --input depreciation_input.json
 
 - 耐用年数は references/depreciation-rules.md を参照する
 - 事業供用開始日が期中の場合は月割り計算を行う
-- 一括償却資産（1160）は取得原価の1/3を計上する（3年均等償却）
+- 一括償却資産（1160）の当年額は`method: "small_asset_treatment"`で取得原価の1/3を計算できる
+- 1160の選択保存、翌年以後の残額管理、自動仕訳は未実装のため、結果を確認して手動で記帳する
 - 家事按分がある場合は事業使用割合を乗じた金額のみ計上する
 
 ### 2-2. 棚卸資産の評価

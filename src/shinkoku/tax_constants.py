@@ -307,6 +307,56 @@ def get_income_tax_constants(fiscal_year: int) -> IncomeTaxYearConstants:
 
 
 # ============================================================
+# 少額減価償却資産（措法28条の2・所令138条・139条）
+# ============================================================
+
+SMALL_ASSET_IMMEDIATE_EXPENSE_EXCLUSIVE_MAX: Final[int] = 100_000
+SMALL_ASSET_POOLED_DEPRECIATION_EXCLUSIVE_MAX: Final[int] = 200_000
+SMALL_ASSET_SPECIAL_ANNUAL_CAP: Final[int] = 3_000_000
+
+
+@dataclass(frozen=True)
+class SmallAssetSpecialPeriod:
+    """取得日で切り替わる少額減価償却資産特例の要件。"""
+
+    start_date: date
+    end_date: date
+    acquisition_cost_exclusive_max: int
+    employee_max: int
+
+
+# 令和8年分は3月31日と4月1日で基準が変わるため、年分定数へ入れない。
+# 令和8年法律第12号7条・附則35条、令和8年政令第98号附則9条。
+SMALL_ASSET_SPECIAL_PERIODS: Final[tuple[SmallAssetSpecialPeriod, ...]] = (
+    SmallAssetSpecialPeriod(
+        start_date=date(2006, 4, 1),
+        end_date=date(2026, 3, 31),
+        acquisition_cost_exclusive_max=300_000,
+        employee_max=500,
+    ),
+    SmallAssetSpecialPeriod(
+        start_date=date(2026, 4, 1),
+        end_date=date(2029, 3, 31),
+        acquisition_cost_exclusive_max=400_000,
+        employee_max=400,
+    ),
+)
+
+
+def get_small_asset_special_period(acquisition_date: date) -> SmallAssetSpecialPeriod | None:
+    """取得日に対応する中小特例期間を返す。期限後はNone、法定始期前は拒否する。"""
+    if acquisition_date < SMALL_ASSET_SPECIAL_PERIODS[0].start_date:
+        raise ValueError(
+            "少額減価償却資産の処理選択は2006-04-01以後の取得に対応しています。"
+            "それより前の取得日は対応範囲外です"
+        )
+    for period in SMALL_ASSET_SPECIAL_PERIODS:
+        if period.start_date <= acquisition_date <= period.end_date:
+            return period
+    return None
+
+
+# ============================================================
 # 医療費控除（所得税法第73条）
 # ============================================================
 MEDICAL_EXPENSE_THRESHOLD = 100_000  # 控除適用の閾値（または所得の5%のうち低い方）

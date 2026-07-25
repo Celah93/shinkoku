@@ -928,6 +928,72 @@ def test_calc_depreciation_declining_missing_params(tmp_path: Path) -> None:
     assert output["status"] == "error"
 
 
+def test_calc_depreciation_rejects_unknown_method(tmp_path: Path) -> None:
+    input_file = _write_input(
+        tmp_path,
+        {
+            "method": "mystery_method",
+            "acquisition_cost": 350_000,
+            "useful_life": 4,
+        },
+    )
+
+    result = run_cli("tax", "calc-depreciation", "--input", str(input_file))
+
+    assert result.returncode == 1
+    output = json.loads(result.stdout)
+    assert output["status"] == "error"
+    assert "method" in output["message"]
+
+
+def test_calc_depreciation_rejects_extra_json_key(tmp_path: Path) -> None:
+    input_file = _write_input(
+        tmp_path,
+        {
+            "method": "straight_line",
+            "acquisition_cost": 350_000,
+            "useful_life": 4,
+            "ignored_date": "2026-04-01",
+        },
+    )
+
+    result = run_cli("tax", "calc-depreciation", "--input", str(input_file))
+
+    assert result.returncode == 1
+    output = json.loads(result.stdout)
+    assert output["status"] == "error"
+    assert "ignored_date" in output["message"]
+
+
+def test_calc_depreciation_selects_small_asset_treatment(tmp_path: Path) -> None:
+    input_file = _write_input(
+        tmp_path,
+        {
+            "method": "small_asset_treatment",
+            "acquisition_date": "2026-04-01",
+            "placed_in_service_date": "2026-04-01",
+            "acquisition_cost": 150_000,
+            "useful_life": 4,
+            "depreciation_method": "straight_line",
+            "is_blue_return": True,
+            "employee_count_at_acquisition": 400,
+            "employee_count_at_placed_in_service": 400,
+            "is_lending_use": False,
+            "is_main_business_lending": False,
+            "special_cap_used": 0,
+            "selected_treatment": "pooled_depreciation",
+        },
+    )
+
+    result = run_cli("tax", "calc-depreciation", "--input", str(input_file))
+
+    assert result.returncode == 0, result.stdout
+    output = json.loads(result.stdout)
+    assert output["status"] == "selected"
+    assert output["selected_treatment"] == "pooled_depreciation"
+    assert output["selected_current_year_expense"] == 50_000
+
+
 # ============================================================
 # calc-consumption
 # ============================================================

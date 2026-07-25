@@ -11,6 +11,7 @@ Rounding rules:
 from __future__ import annotations
 
 import warnings as python_warnings
+from calendar import monthrange
 from datetime import date
 from typing import Any, Literal
 
@@ -35,6 +36,9 @@ from shinkoku.models import (
     PensionDeductionResult,
     RetirementIncomeInput,
     RetirementIncomeResult,
+    SmallAssetTreatmentInput,
+    SmallAssetTreatmentOption,
+    SmallAssetTreatmentResult,
     TaxSanityCheckItem,
     TaxSanityCheckResult,
     TaxRateAmountBreakdown,
@@ -118,6 +122,10 @@ from shinkoku.tax_constants import (
     SIMPLIFIED_DEEMED_RATIOS,
     SINGLE_PARENT_DEDUCTION,
     SPECIAL_20PCT_RATE,
+    SMALL_ASSET_IMMEDIATE_EXPENSE_EXCLUSIVE_MAX,
+    SMALL_ASSET_POOLED_DEPRECIATION_EXCLUSIVE_MAX,
+    SMALL_ASSET_SPECIAL_ANNUAL_CAP,
+    SMALL_ASSET_SPECIAL_PERIODS,
     SPOUSE_DEDUCTION_AMOUNT_LE_1000,
     SPOUSE_DEDUCTION_AMOUNT_LE_900,
     SPOUSE_DEDUCTION_AMOUNT_LE_950,
@@ -131,6 +139,7 @@ from shinkoku.tax_constants import (
     WORKING_STUDENT_DEDUCTION,
     get_income_tax_constants,
     get_per_supplier_limit,
+    get_small_asset_special_period,
     get_transitional_credit_rate,
 )
 
@@ -1650,6 +1659,404 @@ def calc_depreciation_declining_balance(
         return 0
     amount = book_value * declining_rate * business_use_ratio * months // (1000 * 100 * 12)
     return amount
+
+
+def _small_asset_option(
+    treatment: Literal[
+        "immediate_expense",
+        "pooled_depreciation",
+        "small_asset_special",
+        "normal_depreciation",
+    ],
+    status: Literal["available", "ineligible", "indeterminate", "requires_confirmation"],
+    *,
+    legal_basis: str,
+    current_year_expense: int | None = None,
+    remaining_balance: int | None = None,
+    calculation_years: int | None = None,
+    monthly_proration_applied: bool | None = None,
+    continues_after_disposal: bool = False,
+    reason: str | None = None,
+    warnings: list[str] | None = None,
+) -> SmallAssetTreatmentOption:
+    """候補状態とeligibleの三値を一貫させて生成する。"""
+    eligible: bool | None
+    if status == "available":
+        eligible = True
+    elif status == "ineligible":
+        eligible = False
+    else:
+        eligible = None
+    return SmallAssetTreatmentOption(
+        treatment=treatment,
+        status=status,
+        eligible=eligible,
+        current_year_expense=current_year_expense,
+        remaining_balance=remaining_balance,
+        calculation_years=calculation_years,
+        monthly_proration_applied=monthly_proration_applied,
+        continues_after_disposal=continues_after_disposal,
+        reason=reason,
+        legal_basis=legal_basis,
+        warnings=warnings or [],
+    )
+
+
+def _small_asset_cap_limit(input_data: SmallAssetTreatmentInput) -> tuple[int | None, list[str]]:
+    """供用年の年300万円枠を返す。未確認の端数日は推測せずNoneにする。"""
+    year = input_data.placed_in_service_date.year
+    start_in_year = (
+        input_data.business_start_date
+        if input_data.business_start_date is not None
+        and input_data.business_start_date.year == year
+        else None
+    )
+    end_in_year = (
+        input_data.business_end_date
+        if input_data.business_end_date is not None and input_data.business_end_date.year == year
+        else None
+    )
+    if start_in_year is None and end_in_year is None:
+        return SMALL_ASSET_SPECIAL_ANNUAL_CAP, []
+
+    warnings: list[str] = []
+    # 月の途中で開廃業した場合の起算方法は一次資料の追加確認が必要なため、
+    # 7月1日開業のように端数が生じない場合だけ機械計算する。
+    if start_in_year is not None and start_in_year.day != 1:
+        warnings.append("月途中の開業における年300万円枠の起算方法が未確認のため判定できません")
+    if end_in_year is not None and end_in_year.day != monthrange(year, end_in_year.month)[1]:
+        warnings.append("月途中の廃業における年300万円枠の起算方法が未確認のため判定できません")
+    if warnings:
+        return None, warnings
+
+    first_month = start_in_year.month if start_in_year is not None else 1
+    last_month = end_in_year.month if end_in_year is not None else 12
+    months = last_month - first_month + 1
+    if months <= 0:
+        raise ValueError("業務を営んだ月数が0以下になる開廃業日は指定できません")
+    return SMALL_ASSET_SPECIAL_ANNUAL_CAP // 12 * months, []
+
+
+def _normal_depreciation_option(
+    input_data: SmallAssetTreatmentInput,
+) -> SmallAssetTreatmentOption:
+    """既存関数へ委譲して通常償却候補を作る。"""
+    if input_data.depreciation_method == "declining_balance":
+        assert input_data.book_value is not None
+        assert input_data.declining_rate is not None
+        amount = calc_depreciation_declining_balance(
+            book_value=input_data.book_value,
+            declining_rate=input_data.declining_rate,
+            business_use_ratio=input_data.business_use_ratio,
+            months=input_data.months,
+        )
+    else:
+        amount = calc_depreciation_straight_line(
+            acquisition_cost=input_data.acquisition_cost,
+            useful_life=input_data.useful_life,
+            business_use_ratio=input_data.business_use_ratio,
+            months=input_data.months,
+        )
+    return _small_asset_option(
+        "normal_depreciation",
+        "available",
+        legal_basis="所得税法49条・所得税法施行令120条以下",
+        current_year_expense=amount,
+        remaining_balance=max(0, input_data.acquisition_cost - amount),
+    )
+
+
+def select_small_asset_treatment(
+    input_data: SmallAssetTreatmentInput,
+) -> SmallAssetTreatmentResult:
+    """取得価額と適格要件から少額資産の4処理候補を返す。
+
+    措法28条の2は10万円未満を法律本文で除外する。法人税側には同じ下限が
+    ないため、法人側の制度から候補集合を類推しない。
+    """
+    period = get_small_asset_special_period(input_data.acquisition_date)
+    excluded_lending = input_data.is_lending_use and not input_data.is_main_business_lending
+    immediate_candidate = (
+        input_data.acquisition_cost < SMALL_ASSET_IMMEDIATE_EXPENSE_EXCLUSIVE_MAX
+        or input_data.usable_period_under_one_year
+    )
+
+    if not immediate_candidate:
+        immediate = _small_asset_option(
+            "immediate_expense",
+            "ineligible",
+            legal_basis="所得税法施行令138条",
+            reason="取得価額10万円未満または使用可能期間1年未満の要件を満たしません",
+        )
+    elif excluded_lending:
+        immediate = _small_asset_option(
+            "immediate_expense",
+            "ineligible",
+            legal_basis="所得税法施行令138条",
+            reason="主要な業務ではない貸付け用資産は対象外です",
+        )
+    elif input_data.business_use_ratio != 100:
+        warning = "即時必要経費と事業専用割合の計算順序・丸め位置が未確認です"
+        immediate = _small_asset_option(
+            "immediate_expense",
+            "indeterminate",
+            legal_basis="所得税法施行令138条",
+            reason=warning,
+            warnings=[warning],
+        )
+    else:
+        immediate = _small_asset_option(
+            "immediate_expense",
+            "available",
+            legal_basis="所得税法施行令138条",
+            current_year_expense=input_data.acquisition_cost,
+            remaining_balance=0,
+        )
+
+    if immediate_candidate:
+        pooled = _small_asset_option(
+            "pooled_depreciation",
+            "ineligible",
+            legal_basis="所得税法施行令139条",
+            reason="所得税法施行令138条の対象資産は一括償却資産の対象外です",
+        )
+    elif input_data.acquisition_cost >= SMALL_ASSET_POOLED_DEPRECIATION_EXCLUSIVE_MAX:
+        pooled = _small_asset_option(
+            "pooled_depreciation",
+            "ineligible",
+            legal_basis="所得税法施行令139条",
+            reason="取得価額が20万円未満ではありません",
+        )
+    elif excluded_lending:
+        pooled = _small_asset_option(
+            "pooled_depreciation",
+            "ineligible",
+            legal_basis="所得税法施行令139条",
+            reason="主要な業務ではない貸付け用資産は対象外です",
+        )
+    elif input_data.business_use_ratio != 100:
+        warning = "一括償却資産と事業専用割合の計算順序・丸め位置が未確認です"
+        pooled = _small_asset_option(
+            "pooled_depreciation",
+            "indeterminate",
+            legal_basis="所得税法施行令139条",
+            reason=warning,
+            warnings=[warning],
+        )
+    else:
+        # 決算書の必要経費算入額は1円未満切上げ。月割りはしない。
+        amount = -(-input_data.acquisition_cost // 3)
+        pooled = _small_asset_option(
+            "pooled_depreciation",
+            "available",
+            legal_basis="所得税法施行令139条",
+            current_year_expense=amount,
+            remaining_balance=max(0, input_data.acquisition_cost - amount),
+            calculation_years=3,
+            monthly_proration_applied=False,
+            continues_after_disposal=True,
+        )
+
+    cap_limit, cap_warnings = _small_asset_cap_limit(input_data)
+    cap_remaining_before = (
+        max(0, cap_limit - input_data.special_cap_used) if cap_limit is not None else None
+    )
+    cap_overage = (
+        max(0, input_data.acquisition_cost - cap_remaining_before)
+        if cap_remaining_before is not None
+        else 0
+    )
+
+    special_warnings = list(cap_warnings)
+    if input_data.acquisition_cost < SMALL_ASSET_IMMEDIATE_EXPENSE_EXCLUSIVE_MAX:
+        special = _small_asset_option(
+            "small_asset_special",
+            "ineligible",
+            legal_basis="租税特別措置法28条の2第1項",
+            reason="措法28条の2第1項により取得価額10万円未満は除外されます",
+        )
+    elif input_data.usable_period_under_one_year:
+        special = _small_asset_option(
+            "small_asset_special",
+            "ineligible",
+            legal_basis="租税特別措置法28条の2・措令18条の5第2項1号",
+            reason="使用可能期間1年未満で所得税法施行令138条の対象になるため候補外です",
+        )
+    elif period is None:
+        special = _small_asset_option(
+            "small_asset_special",
+            "ineligible",
+            legal_basis="租税特別措置法28条の2第1項",
+            reason="取得日が中小事業者の少額資産特例の法定期間外です",
+        )
+    elif input_data.acquisition_cost >= period.acquisition_cost_exclusive_max:
+        special = _small_asset_option(
+            "small_asset_special",
+            "ineligible",
+            legal_basis="租税特別措置法28条の2第1項",
+            reason=(
+                f"取得日の基準では取得価額{period.acquisition_cost_exclusive_max:,}円未満が要件です"
+            ),
+        )
+    elif excluded_lending:
+        special = _small_asset_option(
+            "small_asset_special",
+            "ineligible",
+            legal_basis="租税特別措置法施行令18条の5第2項",
+            reason="主要な業務ではない貸付け用資産は対象外です",
+        )
+    elif input_data.is_blue_return is None:
+        special = _small_asset_option(
+            "small_asset_special",
+            "indeterminate",
+            legal_basis="租税特別措置法28条の2第1項",
+            reason="青色申告書を提出するか未確認です",
+        )
+    elif not input_data.is_blue_return:
+        special = _small_asset_option(
+            "small_asset_special",
+            "ineligible",
+            legal_basis="租税特別措置法28条の2第1項",
+            reason="青色申告書を提出する中小事業者ではありません",
+        )
+    elif (
+        input_data.employee_count_at_acquisition is None
+        or input_data.employee_count_at_placed_in_service is None
+    ):
+        special = _small_asset_option(
+            "small_asset_special",
+            "indeterminate",
+            legal_basis="措置法通達28の2-1",
+            reason="取得日と供用日の常時使用する従業員数が両方必要です",
+        )
+    elif (
+        input_data.employee_count_at_acquisition > period.employee_max
+        and input_data.employee_count_at_placed_in_service > period.employee_max
+    ):
+        warning = (
+            "取得日・供用日の両方で従業員上限を超えています。"
+            "措置法通達28の2-1ただし書の年末判定に該当するか確認が必要です"
+        )
+        special = _small_asset_option(
+            "small_asset_special",
+            "indeterminate",
+            legal_basis="措置法通達28の2-1",
+            reason=warning,
+            warnings=[warning],
+        )
+    elif input_data.employee_count_at_acquisition > period.employee_max:
+        special = _small_asset_option(
+            "small_asset_special",
+            "ineligible",
+            legal_basis="措置法通達28の2-1・措令18条の5第1項",
+            reason=f"取得日の従業員数が上限{period.employee_max}人を超えています",
+        )
+    elif input_data.employee_count_at_placed_in_service > period.employee_max:
+        special = _small_asset_option(
+            "small_asset_special",
+            "ineligible",
+            legal_basis="措置法通達28の2-1・措令18条の5第1項",
+            reason=f"供用日の従業員数が上限{period.employee_max}人を超えています",
+        )
+    elif input_data.business_use_ratio != 100:
+        warning = "中小特例と事業専用割合の計算順序・丸め位置が未確認です"
+        special = _small_asset_option(
+            "small_asset_special",
+            "indeterminate",
+            legal_basis="租税特別措置法28条の2第1項",
+            reason=warning,
+            warnings=[warning],
+        )
+    elif input_data.placed_in_service_date > SMALL_ASSET_SPECIAL_PERIODS[-1].end_date:
+        warning = (
+            "取得期限内の取得ですが、2029-03-31後の供用期限の明文が未確認です。"
+            "国税庁の令和8年改正通達・手引の更新を確認してください"
+        )
+        special = _small_asset_option(
+            "small_asset_special",
+            "indeterminate",
+            legal_basis="租税特別措置法28条の2第1項・改正法附則35条",
+            reason=warning,
+            warnings=[warning],
+        )
+    elif cap_limit is None or cap_remaining_before is None:
+        special = _small_asset_option(
+            "small_asset_special",
+            "indeterminate",
+            legal_basis="租税特別措置法28条の2第1項・第2項",
+            reason="開廃業年の年300万円枠を確定できません",
+            warnings=special_warnings,
+        )
+    elif input_data.acquisition_cost > cap_remaining_before:
+        warning = "年300万円枠をまたぐ1資産の部分適用は未確認です。自動按分せず利用者確認が必要です"
+        special_warnings.append(warning)
+        special = _small_asset_option(
+            "small_asset_special",
+            "requires_confirmation",
+            legal_basis="租税特別措置法28条の2第1項",
+            reason=warning,
+            warnings=special_warnings,
+        )
+    else:
+        special = _small_asset_option(
+            "small_asset_special",
+            "available",
+            legal_basis="租税特別措置法28条の2第1項",
+            current_year_expense=input_data.acquisition_cost,
+            remaining_balance=0,
+        )
+
+    normal = _normal_depreciation_option(input_data)
+    options = [immediate, pooled, special, normal]
+    warnings = list(dict.fromkeys(warning for option in options for warning in option.warnings))
+
+    selected_treatment = None
+    selected_expense = None
+    if input_data.selected_treatment is not None:
+        selected = next(
+            option for option in options if option.treatment == input_data.selected_treatment
+        )
+        if selected.status != "available":
+            raise ValueError(
+                f"selected_treatment={input_data.selected_treatment!r} は選択できません: "
+                f"{selected.reason or selected.status}"
+            )
+        status: Literal["options_ready", "selected", "indeterminate", "requires_confirmation"] = (
+            "selected"
+        )
+        selected_treatment = selected.treatment
+        selected_expense = selected.current_year_expense
+    elif any(option.status == "requires_confirmation" for option in options):
+        status = "requires_confirmation"
+    elif any(option.status == "indeterminate" for option in options):
+        status = "indeterminate"
+    else:
+        status = "options_ready"
+
+    if cap_limit is None or cap_remaining_before is None:
+        cap_remaining_after = None
+    elif special.status == "available":
+        cap_remaining_after = cap_remaining_before - input_data.acquisition_cost
+    else:
+        cap_remaining_after = cap_remaining_before
+
+    return SmallAssetTreatmentResult(
+        status=status,
+        options=options,
+        selected_treatment=selected_treatment,
+        selected_current_year_expense=selected_expense,
+        special_period_start=period.start_date if period is not None else None,
+        special_period_end=period.end_date if period is not None else None,
+        special_acquisition_cost_exclusive_max=(
+            period.acquisition_cost_exclusive_max if period is not None else None
+        ),
+        special_employee_max=period.employee_max if period is not None else None,
+        special_cap_limit=cap_limit,
+        special_cap_used=input_data.special_cap_used,
+        special_cap_remaining=cap_remaining_after,
+        special_cap_overage=cap_overage,
+        warnings=warnings,
+    )
 
 
 # ============================================================

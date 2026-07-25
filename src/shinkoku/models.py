@@ -392,6 +392,138 @@ class DepreciationResult(BaseModel):
     total_depreciation: int
 
 
+SmallAssetTreatment = Literal[
+    "immediate_expense",
+    "pooled_depreciation",
+    "small_asset_special",
+    "normal_depreciation",
+]
+SmallAssetTreatmentStatus = Literal[
+    "available",
+    "ineligible",
+    "indeterminate",
+    "requires_confirmation",
+]
+
+
+class DepreciationCalculationInput(BaseModel):
+    """既存の定額法・定率法を計算する入力。"""
+
+    # 未知キーを警告だけで通すと、取得日など制度判定に必要な入力を受け取ったように
+    # 見せながら無視する旧挙動が残るため、警告ではなくエラーに固定する。
+    model_config = ConfigDict(extra="forbid")
+
+    method: Literal["straight_line", "declining_balance"] = "straight_line"
+    acquisition_cost: int = Field(gt=0, description="税法上確定済みの取得価額（円）")
+    useful_life: int = Field(gt=0, description="法定耐用年数")
+    business_use_ratio: int = Field(default=100, ge=0, le=100)
+    months: int = Field(default=12, ge=1, le=12)
+    book_value: int | None = Field(default=None, gt=0)
+    declining_rate: int | None = Field(default=None, gt=0)
+
+    @model_validator(mode="after")
+    def validate_method_parameters(self) -> DepreciationCalculationInput:
+        """償却方式ごとの必須値と未使用値を検証する。"""
+        if self.method == "declining_balance":
+            if self.book_value is None or self.declining_rate is None:
+                raise ValueError("定率法では book_value と declining_rate が必要です")
+        elif self.book_value is not None or self.declining_rate is not None:
+            raise ValueError("book_value と declining_rate は定率法でのみ指定できます")
+        return self
+
+
+class SmallAssetTreatmentInput(BaseModel):
+    """少額減価償却資産の処理候補を選ぶ入力。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    method: Literal["small_asset_treatment"] = "small_asset_treatment"
+    acquisition_date: date
+    placed_in_service_date: date
+    # 税込・税抜の変換をこの層へ入れると経理方式の確認まで範囲が広がるため、
+    # 取得価額は税法上の判定額として確定済みの円額を必須にする。
+    acquisition_cost: int = Field(gt=0, description="税法上確定済みの取得価額（円）")
+    useful_life: int = Field(gt=0, description="通常償却を選ぶ場合の法定耐用年数")
+    depreciation_method: Literal["straight_line", "declining_balance"] = "straight_line"
+    business_use_ratio: int = Field(default=100, ge=0, le=100)
+    months: int = Field(default=12, ge=1, le=12)
+    book_value: int | None = Field(default=None, gt=0)
+    declining_rate: int | None = Field(default=None, gt=0)
+    usable_period_under_one_year: bool = False
+    is_blue_return: bool | None = None
+    employee_count_at_acquisition: int | None = Field(default=None, ge=0)
+    employee_count_at_placed_in_service: int | None = Field(default=None, ge=0)
+    is_lending_use: bool
+    is_main_business_lending: bool
+    special_cap_used: int = Field(ge=0, description="供用年に既に特例適用した取得価額")
+    business_start_date: date | None = None
+    business_end_date: date | None = None
+    selected_treatment: SmallAssetTreatment | None = None
+
+    @model_validator(mode="after")
+    def validate_related_fields(self) -> SmallAssetTreatmentInput:
+        """償却方式・貸付け・業務期間の相関を検証する。"""
+        if self.placed_in_service_date < self.acquisition_date:
+            raise ValueError("placed_in_service_date は acquisition_date 以後である必要があります")
+        if self.depreciation_method == "declining_balance":
+            if self.book_value is None or self.declining_rate is None:
+                raise ValueError("定率法では book_value と declining_rate が必要です")
+        elif self.book_value is not None or self.declining_rate is not None:
+            raise ValueError("book_value と declining_rate は定率法でのみ指定できます")
+
+        if self.is_main_business_lending and not self.is_lending_use:
+            raise ValueError("主要業務としての貸付けは is_lending_use=true の場合のみ指定できます")
+        if self.business_start_date is not None and (
+            self.business_start_date > self.placed_in_service_date
+        ):
+            raise ValueError("business_start_date は業務供用日以前である必要があります")
+        if self.business_end_date is not None and (
+            self.business_end_date < self.placed_in_service_date
+        ):
+            raise ValueError("business_end_date は業務供用日以後である必要があります")
+        if (
+            self.business_start_date is not None
+            and self.business_end_date is not None
+            and self.business_start_date > self.business_end_date
+        ):
+            raise ValueError("business_start_date は business_end_date 以前である必要があります")
+        return self
+
+
+class SmallAssetTreatmentOption(BaseModel):
+    """少額資産について選べる一つの処理候補。"""
+
+    treatment: SmallAssetTreatment
+    status: SmallAssetTreatmentStatus
+    eligible: bool | None
+    current_year_expense: int | None = None
+    remaining_balance: int | None = None
+    calculation_years: int | None = None
+    monthly_proration_applied: bool | None = None
+    continues_after_disposal: bool = False
+    reason: str | None = None
+    legal_basis: str
+    warnings: list[str] = Field(default_factory=list)
+
+
+class SmallAssetTreatmentResult(BaseModel):
+    """少額資産の処理候補、選択結果、年300万円枠の状態。"""
+
+    status: Literal["options_ready", "selected", "indeterminate", "requires_confirmation"]
+    options: list[SmallAssetTreatmentOption]
+    selected_treatment: SmallAssetTreatment | None = None
+    selected_current_year_expense: int | None = None
+    special_period_start: date | None = None
+    special_period_end: date | None = None
+    special_acquisition_cost_exclusive_max: int | None = None
+    special_employee_max: int | None = None
+    special_cap_limit: int | None = None
+    special_cap_used: int
+    special_cap_remaining: int | None = None
+    special_cap_overage: int = 0
+    warnings: list[str] = Field(default_factory=list)
+
+
 class DependentInfo(BaseModel):
     """扶養親族の情報。"""
 
