@@ -75,6 +75,39 @@ def test_calc_deductions_basic(tmp_path: Path) -> None:
     assert output["total_income_deductions"] > 0
 
 
+def test_calc_income_2026_housing_loan_json_contract(tmp_path: Path) -> None:
+    input_file = _write_input(
+        tmp_path,
+        {
+            "fiscal_year": 2026,
+            "business_revenue": 5_000_000,
+            "blue_return_deduction": 0,
+            "taxpayer_birth_date": "1987-07-01",
+            "spouse_income": 0,
+            "spouse_birth_date": "1980-01-01",
+            "housing_loan_detail": {
+                "housing_type": "new_custom",
+                "housing_category": "certified",
+                "move_in_date": "2026-04-01",
+                "year_end_balance": 50_000_000,
+            },
+        },
+    )
+
+    result = run_cli("tax", "calc-income", "--input", str(input_file))
+
+    assert result.returncode == 0, result.stderr
+    output = json.loads(result.stdout)
+    entry = output["housing_loan_credit_entries"][0]
+    assert entry["move_in_year"] == 2026
+    assert entry["claim_fiscal_year"] == 2026
+    assert entry["claim_year_number"] == 1
+    assert entry["credit_period"] == 13
+    assert entry["balance_limit"] == 50_000_000
+    assert entry["credit"] == 350_000
+    assert entry["status"] == "active"
+
+
 def test_calc_deductions_with_furusato(tmp_path: Path) -> None:
     input_file = _write_input(
         tmp_path,

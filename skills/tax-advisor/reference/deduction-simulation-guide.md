@@ -31,7 +31,9 @@ shinkoku tax calc-deductions --input deductions.json
 | `furusato_nozei` | int | ふるさと納税の合計寄附額 |
 | `housing_loan_balance` | int | 住宅ローンの年末残高 |
 | `housing_loan_detail` | object | 住宅ローンの詳細（住宅区分等） |
+| `taxpayer_birth_date` | string | 本人の生年月日。住宅ローン特例判定に使う |
 | `spouse_income` | int | 配偶者の合計所得金額 |
+| `spouse_birth_date` | string | 配偶者の生年月日。住宅ローン特例判定に使う |
 | `ideco_contribution` | int | iDeCoの年間掛金 |
 | `small_business_mutual_aid` | int | 小規模企業共済の年間掛金 |
 | `dependents` | array | 扶養親族の情報（年齢、障害者区分等） |
@@ -54,6 +56,12 @@ shinkoku tax calc-deductions --input deductions.json
     {"type": "housing_loan", "name": "住宅ローン控除", "amount": 245000},
     ...
   ],
+  "housing_loan_credit_entries": [
+    {"move_in_year": 2026, "claim_fiscal_year": 2026, "claim_year_number": 1,
+     "credit_period": 13, "balance_limit": 35000000, "credit": 245000,
+     "status": "active"}
+  ],
+  "warnings": [],
   "total_income_deductions": 2380000,
   "total_tax_credits": 245000
 }
@@ -264,14 +272,19 @@ shinkoku tax calc-income --input salary_plus_business.json
 ```json
 {
   "total_income": 6000000,
+  "fiscal_year": 2026,
   "social_insurance": 900000,
   "ideco_contribution": 276000,
   "furusato_nozei": 100000,
-  "housing_loan_balance": 35000000,
+  "taxpayer_birth_date": "1980-01-01",
+  "spouse_income": null,
+  "spouse_birth_date": null,
   "housing_loan_detail": {
-    "housing_type": "zeh",
-    "move_in_year": 2025,
-    "is_new_construction": true
+    "housing_type": "used",
+    "housing_category": "zeh",
+    "move_in_date": "2026-04-01",
+    "year_end_balance": 35000000,
+    "is_special_target_individual": false
   }
 }
 ```
@@ -280,6 +293,8 @@ shinkoku tax calc-income --input salary_plus_business.json
 - 住宅ローン控除で所得税が0になる場合、ふるさと納税の所得税控除分が無効化
 - 住民税からの控除上限（課税所得×5%、最大97,500円）を確認
 - iDeCoは所得控除なので住宅ローン控除（税額控除）とは別の段階で効果がある
+- `housing_loan_credit_entries`の控除期間と状態、`warnings`の未確認事項を確認する
+- 旧`resale`は使わず、買取再販は`broker_renovated_resale`、通常中古は`used`とする
 
 ## シミュレーション時の注意事項
 

@@ -10,6 +10,7 @@ Rounding rules:
 
 from __future__ import annotations
 
+import warnings as python_warnings
 from datetime import date
 from typing import Any, Literal
 
@@ -77,13 +78,10 @@ from shinkoku.tax_constants import (
     FURUSATO_INCOME_RATIO,
     FURUSATO_RESIDENTIAL_TAX_RATIO,
     FURUSATO_SELF_BURDEN,
-    HOUSING_LOAN_DEFAULT_LIMIT,
-    HOUSING_LOAN_GENERAL_R5_CONFIRMED,
-    HOUSING_LOAN_LIMITS_R4_R5,
-    HOUSING_LOAN_LIMITS_R6_R7,
-    HOUSING_LOAN_LIMITS_R6_R7_CHILDCARE,
+    HOUSING_LOAN_RULES_BY_MOVE_IN_YEAR,
     HOUSING_LOAN_RATE,
     HOUSING_LOAN_RATE_DENOMINATOR,
+    HousingLoanRule,
     INCOME_TAX_TABLE,
     INCOME_TAX_TOP_DEDUCTION,
     INCOME_TAX_TOP_RATE,
@@ -426,8 +424,9 @@ def _resolve_spouse_deduction(
         amount_index = 4
 
     if spouse_income <= constants.spouse_income_limit:
-        # Why not: 老人控除対象配偶者は生年月日を受ける経路がないため別Issueで扱う。
-        # ここでは年齢を推測せず、一般の配偶者控除額だけを返す。
+        # Why not: IncomeTaxInput の spouse_birth_date は住宅ローン特例判定用に追加したが、
+        # 配偶者控除の計算経路にはまだ渡していない。老人控除対象配偶者（70歳以上）の
+        # 48万・32万・16万円は別Issueで扱い、ここでは年齢を推測せず一般額を返す。
         return regular_amount, "spouse"
 
     for row in constants.spouse_special_deduction_table:
@@ -452,8 +451,14 @@ def calc_spouse_deduction(
 # ============================================================
 
 
-def _calc_age(birth_date: str, fiscal_year: int) -> int:
-    """その年12月31日現在の年齢（年齢計算ニ関スル法律準拠）を返す。
+def _calc_age_at_year_end(
+    birth_date: str,
+    reference_year: int,
+    *,
+    subject_name: str,
+    year_name: str,
+) -> int:
+    """指定年12月31日現在の年齢（年齢計算ニ関スル法律準拠）を返す。
 
     年齢計算ニ関スル法律・民法143条により、年齢は誕生日前日の満了時に
     加算される。12月31日現在の年齢は同日の満了時（翌年1月1日0時）の
@@ -465,15 +470,25 @@ def _calc_age(birth_date: str, fiscal_year: int) -> int:
     try:
         birth = date.fromisoformat(birth_date)
     except ValueError as exc:
-        raise ValueError(f"扶養親族の生年月日 '{birth_date}' が不正です") from exc
+        raise ValueError(f"{subject_name}の生年月日 '{birth_date}' が不正です") from exc
 
-    reference = date(fiscal_year + 1, 1, 1)
-    if birth > date(fiscal_year, 12, 31):
-        raise ValueError(f"扶養親族の生年月日 '{birth_date}' は課税年分より後の日付です")
+    reference = date(reference_year + 1, 1, 1)
+    if birth > date(reference_year, 12, 31):
+        raise ValueError(f"{subject_name}の生年月日 '{birth_date}' は{year_name}より後の日付です")
     age = reference.year - birth.year
     if (reference.month, reference.day) < (birth.month, birth.day):
         age -= 1
     return age
+
+
+def _calc_age(birth_date: str, fiscal_year: int) -> int:
+    """課税年分末の扶養親族の年齢を返す既存互換ラッパー。"""
+    return _calc_age_at_year_end(
+        birth_date,
+        fiscal_year,
+        subject_name="扶養親族",
+        year_name="課税年分",
+    )
 
 
 def _has_under_23_dependent_for_life_insurance(
@@ -662,39 +677,255 @@ def calc_furusato_deduction(donation: int, total_income: int | None = None) -> i
 # ============================================================
 
 
-def _get_balance_limit(detail: HousingLoanDetail) -> int:
-    """住宅ローン控除の借入限度額を取得する。
+_LEGACY_HOUSING_LOAN_WARNING = (
+    "住宅ローン詳細がない残高のみの計算経路は非推奨です。居住年、取得区分、性能区分、"
+    "特例対象個人を含む housing_loan_detail を指定してください。"
+)
 
-    入居年・住宅区分・世帯区分に基づき、年末残高上限テーブルから限度額を返す。
-    """
-    move_in_year = int(detail.move_in_date[:4])
-    key = (detail.housing_category, detail.is_new_construction)
 
-    # 入居年に応じたテーブル選択
-    if move_in_year <= 2023:
-        limits = HOUSING_LOAN_LIMITS_R4_R5
-    elif detail.is_childcare_household:
-        limits = HOUSING_LOAN_LIMITS_R6_R7_CHILDCARE
-    else:
-        limits = HOUSING_LOAN_LIMITS_R6_R7
+def _parse_move_in_year(detail: HousingLoanDetail) -> int:
+    try:
+        return date.fromisoformat(detail.move_in_date).year
+    except ValueError as exc:
+        raise ValueError(f"入居日 '{detail.move_in_date}' が不正です") from exc
 
-    limit = limits.get(key, HOUSING_LOAN_DEFAULT_LIMIT)
 
-    # 一般住宅新築 R6-R7: R5確認済みなら特例上限（2,000万/控除期間10年）
-    if (
-        limit == 0
+def _resolve_explicit_special_status(detail: HousingLoanDetail) -> bool | None:
+    current = detail.is_special_target_individual
+    legacy = detail.is_childcare_household
+    if current is not None and legacy is not None and current != legacy:
+        raise ValueError(
+            "is_special_target_individual と非推奨の is_childcare_household が矛盾しています"
+        )
+    return current if current is not None else legacy
+
+
+def _derive_special_target_individual(
+    *,
+    move_in_year: int,
+    taxpayer_birth_date: str | None,
+    spouse_birth_date: str | None,
+    spouse_income: int | None,
+    dependents: list[DependentInfo] | None,
+) -> bool | None:
+    """入居年末の世帯情報から特例対象個人を導出する。"""
+    dependent_income_limit = None
+    if dependents:
+        if move_in_year in (2022, 2023, 2024):
+            dependent_income_limit = 480_000
+        else:
+            dependent_income_limit = get_income_tax_constants(move_in_year).dependent_income_limit
+    for dependent in dependents or []:
+        if dependent.relationship == "配偶者":
+            continue
+        age = _calc_age_at_year_end(
+            dependent.birth_date,
+            move_in_year,
+            subject_name=f"扶養親族（{dependent.name}）",
+            year_name="入居年",
+        )
+        # 措通41の15の5-1により、他の納税者が控除を取る親族も除外しない。
+        if (
+            0 <= age < 19
+            and dependent_income_limit is not None
+            and dependent.income <= dependent_income_limit
+        ):
+            return True
+
+    taxpayer_age = None
+    if taxpayer_birth_date is not None:
+        taxpayer_age = _calc_age_at_year_end(
+            taxpayer_birth_date,
+            move_in_year,
+            subject_name="本人",
+            year_name="入居年",
+        )
+
+    spouse_age = None
+    if spouse_birth_date is not None:
+        spouse_age = _calc_age_at_year_end(
+            spouse_birth_date,
+            move_in_year,
+            subject_name="配偶者",
+            year_name="入居年",
+        )
+
+    spouse_exists = spouse_income is not None or spouse_birth_date is not None
+    if not spouse_exists:
+        return False
+    if taxpayer_age is not None and taxpayer_age < 40:
+        return True
+    if spouse_age is not None and spouse_age < 40:
+        return True
+    if taxpayer_age is not None and spouse_age is not None:
+        return False
+    return None
+
+
+def _resolve_special_target_individual(
+    detail: HousingLoanDetail,
+    *,
+    move_in_year: int,
+    taxpayer_birth_date: str | None,
+    spouse_birth_date: str | None,
+    spouse_income: int | None,
+    dependents: list[DependentInfo] | None,
+) -> bool:
+    explicit = _resolve_explicit_special_status(detail)
+    has_household_context = any(
+        (
+            taxpayer_birth_date is not None,
+            spouse_birth_date is not None,
+            spouse_income is not None,
+            bool(dependents),
+        )
+    )
+    derived = _derive_special_target_individual(
+        move_in_year=move_in_year,
+        taxpayer_birth_date=taxpayer_birth_date,
+        spouse_birth_date=spouse_birth_date,
+        spouse_income=spouse_income,
+        dependents=dependents,
+    )
+
+    if explicit is not None:
+        if has_household_context and derived is not None and explicit != derived:
+            raise ValueError(
+                "is_special_target_individual の明示値が世帯情報からの導出結果と矛盾しています"
+            )
+        return explicit
+    if derived is None:
+        raise ValueError(
+            "特例対象個人か判定できません。配偶者の生年月日を指定するか、"
+            "is_special_target_individual を明示してください"
+        )
+    return derived
+
+
+def resolve_housing_loan_rule(
+    detail: HousingLoanDetail,
+    *,
+    taxpayer_birth_date: str | None = None,
+    spouse_birth_date: str | None = None,
+    spouse_income: int | None = None,
+    dependents: list[DependentInfo] | None = None,
+) -> HousingLoanRule:
+    """入居年・取得区分・性能区分から住宅ローン控除ルールを解決する。"""
+    move_in_year = _parse_move_in_year(detail)
+    if detail.housing_type == "resale":
+        raise ValueError(
+            "旧 housing_type='resale' は意味を確定できません。通常の既存住宅は used、"
+            "宅地建物取引業者の買取再販住宅は broker_renovated_resale を指定してください"
+        )
+
+    expected_new = detail.housing_type in ("new_custom", "new_subdivision")
+    if detail.is_new_construction is not None and detail.is_new_construction != expected_new:
+        raise ValueError(
+            "housing_type と旧 is_new_construction の値が矛盾しています。"
+            "取得区分は housing_type で指定してください"
+        )
+
+    year_rules = HOUSING_LOAN_RULES_BY_MOVE_IN_YEAR.get(move_in_year)
+    if year_rules is None:
+        raise ValueError(f"{move_in_year}年入居の住宅ローン控除ルールは実装範囲外です")
+
+    special = _resolve_special_target_individual(
+        detail,
+        move_in_year=move_in_year,
+        taxpayer_birth_date=taxpayer_birth_date,
+        spouse_birth_date=spouse_birth_date,
+        spouse_income=spouse_income,
+        dependents=dependents,
+    )
+    transition = bool(
+        detail.has_pre_r6_building_permit
+        and expected_new
         and detail.housing_category == "general"
-        and detail.is_new_construction
-        and detail.has_pre_r6_building_permit
-    ):
-        limit = HOUSING_LOAN_GENERAL_R5_CONFIRMED
+        and move_in_year in (2024, 2025, 2026)
+    )
+    key = (detail.housing_type, detail.housing_category, special, transition)
+    rule = year_rules.get(key)
+    if rule is None:
+        raise ValueError(
+            "住宅ローン控除ルールが未定義です: "
+            f"入居年={move_in_year}, housing_type={detail.housing_type}, "
+            f"housing_category={detail.housing_category}, "
+            f"is_special_target_individual={special}, transition={transition}"
+        )
 
-    return limit
+    # 床面積、合計所得、償還期間、気候風土適応住宅の証明状態は本層では検証しない。
+    return rule
+
+
+def _calculate_housing_loan_entry(
+    *,
+    detail: HousingLoanDetail,
+    balance: int,
+    claim_fiscal_year: int,
+    proration_ratio_pct: int,
+    allow_expired: bool,
+    taxpayer_birth_date: str | None,
+    spouse_birth_date: str | None,
+    spouse_income: int | None,
+    dependents: list[DependentInfo] | None,
+) -> tuple[HousingLoanCreditEntry, HousingLoanRule]:
+    rule = resolve_housing_loan_rule(
+        detail,
+        taxpayer_birth_date=taxpayer_birth_date,
+        spouse_birth_date=spouse_birth_date,
+        spouse_income=spouse_income,
+        dependents=dependents,
+    )
+    move_in_year = _parse_move_in_year(detail)
+    claim_year_number = claim_fiscal_year - move_in_year + 1
+    if claim_year_number <= 0:
+        raise ValueError(f"申告年分{claim_fiscal_year}年は入居前です（入居年: {move_in_year}年）")
+
+    if claim_year_number > rule.credit_period:
+        if not allow_expired:
+            raise ValueError(
+                f"申告年分{claim_fiscal_year}年は控除期間{rule.credit_period}年を超えています"
+            )
+        status = "expired"
+        capped = 0
+        credit = 0
+    elif not rule.eligible:
+        status = "ineligible"
+        capped = 0
+        credit = 0
+    else:
+        status = "active"
+        capped = min(max(0, balance), rule.balance_limit)
+        credit = capped * rule.rate_numerator // rule.rate_denominator
+        credit = (credit // TAX_AMOUNT_ROUNDING) * TAX_AMOUNT_ROUNDING
+
+    return (
+        HousingLoanCreditEntry(
+            housing_type=detail.housing_type,
+            move_in_year=move_in_year,
+            claim_fiscal_year=claim_fiscal_year,
+            claim_year_number=claim_year_number,
+            credit_period=rule.credit_period,
+            prorated_balance=max(0, balance),
+            balance_limit=rule.balance_limit,
+            capped_balance=capped,
+            credit=credit,
+            proration_ratio_pct=proration_ratio_pct,
+            status=status,
+        ),
+        rule,
+    )
 
 
 def calc_housing_loan_credit(
     balance: int,
     detail: HousingLoanDetail | None = None,
+    *,
+    claim_fiscal_year: int | None = None,
+    taxpayer_birth_date: str | None = None,
+    spouse_birth_date: str | None = None,
+    spouse_income: int | None = None,
+    dependents: list[DependentInfo] | None = None,
 ) -> int:
     """Calculate housing loan tax credit.
 
@@ -709,24 +940,42 @@ def calc_housing_loan_credit(
 
     detail が None の場合は従来のシンプル計算（balance * 0.7%）を行う。
     """
+    if detail is not None:
+        move_in_year = _parse_move_in_year(detail)
+        entry, rule = _calculate_housing_loan_entry(
+            detail=detail,
+            balance=balance,
+            claim_fiscal_year=(
+                claim_fiscal_year if claim_fiscal_year is not None else move_in_year
+            ),
+            proration_ratio_pct=10_000,
+            allow_expired=False,
+            taxpayer_birth_date=taxpayer_birth_date,
+            spouse_birth_date=spouse_birth_date,
+            spouse_income=spouse_income,
+            dependents=dependents,
+        )
+        if rule.warning is not None:
+            python_warnings.warn(rule.warning, UserWarning, stacklevel=2)
+        return entry.credit
+
+    python_warnings.warn(_LEGACY_HOUSING_LOAN_WARNING, DeprecationWarning, stacklevel=2)
     if balance <= 0:
         return 0
-
-    if detail is not None:
-        limit = _get_balance_limit(detail)
-        capped = min(detail.year_end_balance, limit)
-        # 住宅ローン控除額: 100円未満切捨（租税特別措置法第41条第2項）
-        credit = capped * HOUSING_LOAN_RATE // HOUSING_LOAN_RATE_DENOMINATOR
-        return (credit // TAX_AMOUNT_ROUNDING) * TAX_AMOUNT_ROUNDING
-
     # 住宅ローン控除額: 100円未満切捨（租税特別措置法第41条第2項）
     credit = balance * HOUSING_LOAN_RATE // HOUSING_LOAN_RATE_DENOMINATOR
     return (credit // TAX_AMOUNT_ROUNDING) * TAX_AMOUNT_ROUNDING
 
 
-def calc_housing_loan_credit_dual(
+def _calc_housing_loan_credit_dual_details(
     details: list[HousingLoanDetail],
-) -> tuple[int, list[HousingLoanCreditEntry]]:
+    *,
+    claim_fiscal_year: int | None,
+    taxpayer_birth_date: str | None,
+    spouse_birth_date: str | None,
+    spouse_income: int | None,
+    dependents: list[DependentInfo] | None,
+) -> tuple[int, list[HousingLoanCreditEntry], list[str]]:
     """重複適用（中古住宅購入＋リフォーム同時）の按分計算。
 
     同一 dual_application_group に属する複数の明細を受け取り、
@@ -751,11 +1000,17 @@ def calc_housing_loan_credit_dual(
                 f"cost_for_proration は正の整数が必要です（housing_type={d.housing_type}）"
             )
 
-    # 共有年末残高（全明細で同一のはず）
+    balances = {detail.year_end_balance for detail in details}
+    if len(balances) != 1:
+        raise ValueError("重複適用グループの year_end_balance は全明細で同じ値が必要です")
+
+    # 共有年末残高
     shared_balance = details[0].year_end_balance
     total_cost = sum(d.cost_for_proration for d in details)
 
     entries: list[HousingLoanCreditEntry] = []
+    rules: list[HousingLoanRule] = []
+    warning_messages: list[str] = []
     allocated_so_far = 0
 
     for i, detail in enumerate(details):
@@ -767,41 +1022,70 @@ def calc_housing_loan_credit_dual(
             # 端数調整: 合計が元の年末残高と一致するようにする
             prorated = shared_balance - allocated_so_far
 
-        # 限度額の取得と適用
-        limit = _get_balance_limit(detail)
-        capped = min(prorated, limit)
-
-        # 控除額: 100円未満切捨（租税特別措置法第41条第2項）
-        credit = capped * HOUSING_LOAN_RATE // HOUSING_LOAN_RATE_DENOMINATOR
-        credit = (credit // TAX_AMOUNT_ROUNDING) * TAX_AMOUNT_ROUNDING
-
         # 按分比率（万分率）
         ratio_pct = detail.cost_for_proration * 10000 // total_cost
-
-        entries.append(
-            HousingLoanCreditEntry(
-                housing_type=detail.housing_type,
-                prorated_balance=prorated,
-                balance_limit=limit,
-                capped_balance=capped,
-                credit=credit,
-                proration_ratio_pct=ratio_pct,
-            )
+        move_in_year = _parse_move_in_year(detail)
+        entry, rule = _calculate_housing_loan_entry(
+            detail=detail,
+            balance=prorated,
+            claim_fiscal_year=(
+                claim_fiscal_year if claim_fiscal_year is not None else move_in_year
+            ),
+            proration_ratio_pct=ratio_pct,
+            allow_expired=True,
+            taxpayer_birth_date=taxpayer_birth_date,
+            spouse_birth_date=spouse_birth_date,
+            spouse_income=spouse_income,
+            dependents=dependents,
         )
+        entries.append(entry)
+        rules.append(rule)
+        if rule.warning is not None and rule.warning not in warning_messages:
+            warning_messages.append(rule.warning)
 
-    total_credit = sum(e.credit for e in entries)
+    active_pairs = [
+        (entry, rule) for entry, rule in zip(entries, rules) if entry.status == "active"
+    ]
+    if not active_pairs and all(entry.status == "expired" for entry in entries):
+        raise ValueError("重複適用グループの全明細が控除期間を超えています")
+
+    total_credit = sum(entry.credit for entry, _rule in active_pairs)
 
     # ㉓欄の上限: 各取得等の控除限度額のうち最も高いもの
-    # 控除限度額 = 借入限度額 × 控除率（100円未満切捨）
-    max_annual_limit = max(
-        (e.balance_limit * HOUSING_LOAN_RATE // HOUSING_LOAN_RATE_DENOMINATOR)
-        // TAX_AMOUNT_ROUNDING
-        * TAX_AMOUNT_ROUNDING
-        for e in entries
-    )
-    total_credit = min(total_credit, max_annual_limit)
+    # 期間内かつ適用対象の明細だけで算定する。
+    if active_pairs:
+        max_annual_limit = max(
+            (entry.balance_limit * rule.rate_numerator // rule.rate_denominator)
+            // TAX_AMOUNT_ROUNDING
+            * TAX_AMOUNT_ROUNDING
+            for entry, rule in active_pairs
+        )
+        total_credit = min(total_credit, max_annual_limit)
 
-    return total_credit, entries
+    return total_credit, entries, warning_messages
+
+
+def calc_housing_loan_credit_dual(
+    details: list[HousingLoanDetail],
+    *,
+    claim_fiscal_year: int | None = None,
+    taxpayer_birth_date: str | None = None,
+    spouse_birth_date: str | None = None,
+    spouse_income: int | None = None,
+    dependents: list[DependentInfo] | None = None,
+) -> tuple[int, list[HousingLoanCreditEntry]]:
+    """重複適用の合計控除額と個別明細を返す。"""
+    total, entries, warning_messages = _calc_housing_loan_credit_dual_details(
+        details,
+        claim_fiscal_year=claim_fiscal_year,
+        taxpayer_birth_date=taxpayer_birth_date,
+        spouse_birth_date=spouse_birth_date,
+        spouse_income=spouse_income,
+        dependents=dependents,
+    )
+    for message in warning_messages:
+        python_warnings.warn(message, UserWarning, stacklevel=2)
+    return total, entries
 
 
 # ============================================================
@@ -926,6 +1210,8 @@ def calc_deductions(
     furusato_nozei: int = 0,
     housing_loan_balance: int = 0,
     spouse_income: int | None = None,
+    taxpayer_birth_date: str | None = None,
+    spouse_birth_date: str | None = None,
     ideco_contribution: int = 0,
     small_business_mutual_aid: int = 0,
     dependents: list[DependentInfo] | None = None,
@@ -1216,6 +1502,8 @@ def calc_deductions(
     # Tax credits
     # Housing loan credit — 重複適用（dual application）対応
     _hl_credit_total = 0
+    housing_loan_credit_entries: list[HousingLoanCreditEntry] = []
+    calculation_warnings: list[str] = []
     if housing_loan_details:
         # dual_application_group でグループ化して按分計算
         grouped: dict[str | None, list[HousingLoanDetail]] = {}
@@ -1225,20 +1513,57 @@ def calc_deductions(
         for group_key, group_details in grouped.items():
             if group_key is not None and len(group_details) >= 2:
                 # 重複適用グループ: 按分計算
-                credit, _entries = calc_housing_loan_credit_dual(group_details)
+                credit, entries, group_warnings = _calc_housing_loan_credit_dual_details(
+                    group_details,
+                    claim_fiscal_year=fiscal_year,
+                    taxpayer_birth_date=taxpayer_birth_date,
+                    spouse_birth_date=spouse_birth_date,
+                    spouse_income=spouse_income,
+                    dependents=dependents,
+                )
                 _hl_credit_total += credit
+                housing_loan_credit_entries.extend(entries)
+                calculation_warnings.extend(group_warnings)
             else:
-                # 単独明細: 従来の計算
+                # 単独明細
                 for d in group_details:
-                    credit = calc_housing_loan_credit(d.year_end_balance, detail=d)
-                    _hl_credit_total += credit
+                    entry, rule = _calculate_housing_loan_entry(
+                        detail=d,
+                        balance=d.year_end_balance,
+                        claim_fiscal_year=fiscal_year,
+                        proration_ratio_pct=10_000,
+                        allow_expired=False,
+                        taxpayer_birth_date=taxpayer_birth_date,
+                        spouse_birth_date=spouse_birth_date,
+                        spouse_income=spouse_income,
+                        dependents=dependents,
+                    )
+                    _hl_credit_total += entry.credit
+                    housing_loan_credit_entries.append(entry)
+                    if rule.warning is not None:
+                        calculation_warnings.append(rule.warning)
     else:
         # 従来の単一明細パス（後方互換）
-        hl_balance = housing_loan_balance
         if housing_loan_detail is not None:
-            hl_balance = housing_loan_detail.year_end_balance
-        if hl_balance > 0:
-            _hl_credit_total = calc_housing_loan_credit(hl_balance, detail=housing_loan_detail)
+            entry, rule = _calculate_housing_loan_entry(
+                detail=housing_loan_detail,
+                balance=housing_loan_detail.year_end_balance,
+                claim_fiscal_year=fiscal_year,
+                proration_ratio_pct=10_000,
+                allow_expired=False,
+                taxpayer_birth_date=taxpayer_birth_date,
+                spouse_birth_date=spouse_birth_date,
+                spouse_income=spouse_income,
+                dependents=dependents,
+            )
+            _hl_credit_total = entry.credit
+            housing_loan_credit_entries.append(entry)
+            if rule.warning is not None:
+                calculation_warnings.append(rule.warning)
+        elif housing_loan_balance > 0:
+            credit = housing_loan_balance * HOUSING_LOAN_RATE // HOUSING_LOAN_RATE_DENOMINATOR
+            _hl_credit_total = (credit // TAX_AMOUNT_ROUNDING) * TAX_AMOUNT_ROUNDING
+            calculation_warnings.append(_LEGACY_HOUSING_LOAN_WARNING)
 
     if _hl_credit_total > 0:
         tax_credits.append(
@@ -1275,6 +1600,8 @@ def calc_deductions(
         tax_credits=tax_credits,
         total_income_deductions=total_income_deductions,
         total_tax_credits=total_tax_credits,
+        housing_loan_credit_entries=housing_loan_credit_entries,
+        warnings=list(dict.fromkeys(calculation_warnings)),
         notes=notes,
     )
 
@@ -1430,7 +1757,9 @@ def calc_income_tax(input_data: IncomeTaxInput) -> IncomeTaxResult:
         "self_medication_expenses": input_data.self_medication_expenses,
         "self_medication_eligible": input_data.self_medication_eligible,
         "housing_loan_balance": input_data.housing_loan_balance,
+        "taxpayer_birth_date": input_data.taxpayer_birth_date,
         "spouse_income": input_data.spouse_income,
+        "spouse_birth_date": input_data.spouse_birth_date,
         "ideco_contribution": input_data.ideco_contribution,
         "small_business_mutual_aid": (
             mutual_aid_total - input_data.ideco_contribution
@@ -1664,6 +1993,7 @@ def calc_income_tax(input_data: IncomeTaxInput) -> IncomeTaxResult:
         income_tax_base=income_tax_base,
         dividend_credit=_dividend_credit,
         housing_loan_credit=_housing_loan_credit,
+        housing_loan_credit_entries=deductions.housing_loan_credit_entries,
         public_interest_donation_credit=_public_interest_donation_credit,
         npo_donation_credit=_npo_donation_credit,
         political_donation_credit=_political_donation_credit,
@@ -1679,7 +2009,7 @@ def calc_income_tax(input_data: IncomeTaxInput) -> IncomeTaxResult:
         deductions_detail=deductions,
         donation_adjustment=donation_adjustment if total_donation_amount > 0 else None,
         donation_selection=donation_selection if total_donation_amount > 0 else None,
-        warnings=warnings,
+        warnings=warnings + deductions.warnings,
     )
 
 

@@ -328,6 +328,8 @@ class DeductionsResult(BaseModel):
     tax_credits: list[DeductionItem] = Field(default_factory=list, description="税額控除")
     total_income_deductions: int = 0
     total_tax_credits: int = 0
+    housing_loan_credit_entries: list[HousingLoanCreditEntry] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list, description="計算上の警告")
     notes: list[str] = Field(default_factory=list, description="注意事項")
 
 
@@ -406,9 +408,10 @@ class HousingLoanDetail(BaseModel):
     """住宅ローン控除の詳細情報。"""
 
     housing_type: str = Field(
-        pattern=r"^(new_custom|new_subdivision|resale|used|renovation)$",
+        pattern=(r"^(new_custom|new_subdivision|broker_renovated_resale|resale|used|renovation)$"),
         description="住宅区分: new_custom=注文新築, new_subdivision=分譲新築, "
-        "resale=中古, used=既存, renovation=増改築",
+        "broker_renovated_resale=買取再販, used=通常の既存住宅, renovation=増改築。"
+        "resaleは旧入力の検出専用",
     )
     housing_category: str = Field(
         pattern=r"^(general|certified|zeh|energy_efficient)$",
@@ -416,9 +419,10 @@ class HousingLoanDetail(BaseModel):
         "zeh=ZEH水準省エネ, energy_efficient=省エネ基準適合",
     )
     move_in_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
-    year_end_balance: int  # 年末残高
-    is_new_construction: bool = True  # 新築=True, 中古=False
-    is_childcare_household: bool = False  # 子育て世帯・若者夫婦世帯
+    year_end_balance: int = Field(ge=0, description="年末残高（円）")
+    is_new_construction: bool | None = None  # 旧入力との整合確認にのみ使う
+    is_special_target_individual: bool | None = None  # 特例対象個人。Noneは世帯情報から導出
+    is_childcare_household: bool | None = None  # 非推奨エイリアス
     has_pre_r6_building_permit: bool = False  # R5以前の建築確認済み（一般住宅のみ関連）
     dual_application_group: str | None = None  # 重複適用グループID
     cost_for_proration: int = 0  # 按分用コスト（円）: 購入価格 or リフォーム費用
@@ -428,15 +432,16 @@ class HousingLoanDetailInput(BaseModel):
     """住宅ローン控除詳細の登録入力。"""
 
     housing_type: str = Field(
-        pattern=r"^(new_custom|new_subdivision|resale|used|renovation)$",
+        pattern=(r"^(new_custom|new_subdivision|broker_renovated_resale|resale|used|renovation)$"),
     )
     housing_category: str = Field(
         pattern=r"^(general|certified|zeh|energy_efficient)$",
     )
     move_in_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
     year_end_balance: int = Field(ge=0, description="年末残高（円）")
-    is_new_construction: bool = True
-    is_childcare_household: bool = False
+    is_new_construction: bool | None = None
+    is_special_target_individual: bool | None = None
+    is_childcare_household: bool | None = None
     has_pre_r6_building_permit: bool = False
     purchase_date: str | None = None  # 住宅購入日
     purchase_price: int = 0  # 住宅の価格（円）
@@ -457,8 +462,9 @@ class HousingLoanDetailRecord(BaseModel):
     housing_category: str
     move_in_date: str
     year_end_balance: int
-    is_new_construction: bool
-    is_childcare_household: bool = False
+    is_new_construction: bool | None = None
+    is_special_target_individual: bool | None = None
+    is_childcare_household: bool | None = None
     has_pre_r6_building_permit: bool = False
     purchase_date: str | None = None
     purchase_price: int = 0
@@ -474,11 +480,16 @@ class HousingLoanCreditEntry(BaseModel):
     """重複適用の個別明細の計算結果。"""
 
     housing_type: str
+    move_in_year: int
+    claim_fiscal_year: int
+    claim_year_number: int
+    credit_period: int
     prorated_balance: int  # 按分後の年末残高
     balance_limit: int  # 適用される借入限度額
     capped_balance: int  # min(按分後残高, 限度額)
     credit: int  # 控除額（100円未満切捨）
     proration_ratio_pct: int  # 按分比率（万分率: 6667 = 66.67%）
+    status: str = Field(pattern=r"^(active|expired|ineligible)$")
 
 
 class LifeInsurancePremiumInput(BaseModel):
@@ -526,7 +537,9 @@ class IncomeTaxInput(BaseModel):
     housing_loan_details: list[HousingLoanDetail] = Field(
         default_factory=list, description="複数明細（重複適用対応）"
     )
+    taxpayer_birth_date: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
     spouse_income: int | None = None
+    spouse_birth_date: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
     dependents: list[DependentInfo] = Field(default_factory=list)
     ideco_contribution: int = 0  # iDeCo掛金（小規模企業共済等掛金控除）
     small_business_mutual_aid: SmallBusinessMutualAidInput | None = None  # Phase 7
@@ -563,6 +576,7 @@ class IncomeTaxResult(BaseModel):
     income_tax_base: int = 0
     dividend_credit: int = 0  # 配当控除（税額控除）
     housing_loan_credit: int = 0  # 住宅ローン控除（税額控除）
+    housing_loan_credit_entries: list[HousingLoanCreditEntry] = Field(default_factory=list)
     public_interest_donation_credit: int = 0  # 公益社団法人等寄附金特別控除
     npo_donation_credit: int = 0  # 認定NPO法人等寄附金特別控除
     political_donation_credit: int = 0  # 政党等寄附金特別控除

@@ -1637,24 +1637,44 @@ def ledger_add_housing_loan_detail(
     *, db_path: str, fiscal_year: int, detail: HousingLoanDetailInput
 ) -> dict:
     """Add a housing loan detail entry."""
+    if (
+        detail.is_special_target_individual is not None
+        and detail.is_childcare_household is not None
+        and detail.is_special_target_individual != detail.is_childcare_household
+    ):
+        raise ValueError(
+            "is_special_target_individual と非推奨の is_childcare_household が矛盾しています"
+        )
+    special_status = (
+        detail.is_special_target_individual
+        if detail.is_special_target_individual is not None
+        else detail.is_childcare_household
+    )
+    is_new_construction = (
+        detail.is_new_construction
+        if detail.is_new_construction is not None
+        else detail.housing_type in ("new_custom", "new_subdivision")
+    )
     conn = get_connection(db_path)
     try:
         cursor = conn.execute(
             "INSERT INTO housing_loan_details "
             "(fiscal_year, housing_type, housing_category, move_in_date, "
             "year_end_balance, is_new_construction, is_childcare_household, "
-            "has_pre_r6_building_permit, purchase_date, purchase_price, "
+            "is_special_target_individual, has_pre_r6_building_permit, "
+            "purchase_date, purchase_price, "
             "total_floor_area, residential_floor_area, property_number, "
             "application_submitted, dual_application_group, cost_for_proration) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 fiscal_year,
                 detail.housing_type,
                 detail.housing_category,
                 detail.move_in_date,
                 detail.year_end_balance,
-                1 if detail.is_new_construction else 0,
-                1 if detail.is_childcare_household else 0,
+                1 if is_new_construction else 0,
+                1 if special_status else 0,
+                None if special_status is None else (1 if special_status else 0),
                 1 if detail.has_pre_r6_building_permit else 0,
                 detail.purchase_date,
                 detail.purchase_price,
@@ -1683,7 +1703,8 @@ def ledger_list_housing_loan_details(*, db_path: str, fiscal_year: int) -> dict:
         rows = conn.execute(
             "SELECT id, fiscal_year, housing_type, housing_category, "
             "move_in_date, year_end_balance, is_new_construction, "
-            "is_childcare_household, has_pre_r6_building_permit, "
+            "is_childcare_household, is_special_target_individual, "
+            "has_pre_r6_building_permit, "
             "purchase_date, purchase_price, total_floor_area, "
             "residential_floor_area, property_number, application_submitted, "
             "dual_application_group, cost_for_proration "
@@ -1699,16 +1720,17 @@ def ledger_list_housing_loan_details(*, db_path: str, fiscal_year: int) -> dict:
                 "move_in_date": r[4],
                 "year_end_balance": r[5],
                 "is_new_construction": bool(r[6]),
-                "is_childcare_household": bool(r[7]),
-                "has_pre_r6_building_permit": bool(r[8]),
-                "purchase_date": r[9],
-                "purchase_price": r[10],
-                "total_floor_area": r[11],
-                "residential_floor_area": r[12],
-                "property_number": r[13],
-                "application_submitted": bool(r[14]),
-                "dual_application_group": r[15],
-                "cost_for_proration": r[16],
+                "is_special_target_individual": None if r[8] is None else bool(r[8]),
+                "is_childcare_household": None if r[8] is None else bool(r[7]),
+                "has_pre_r6_building_permit": bool(r[9]),
+                "purchase_date": r[10],
+                "purchase_price": r[11],
+                "total_floor_area": r[12],
+                "residential_floor_area": r[13],
+                "property_number": r[14],
+                "application_submitted": bool(r[15]),
+                "dual_application_group": r[16],
+                "cost_for_proration": r[17],
             }
             for r in rows
         ]

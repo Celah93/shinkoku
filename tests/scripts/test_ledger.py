@@ -754,11 +754,11 @@ class TestHousingLoanDetail:
         f = write_json(
             tmp_path,
             {
-                "housing_type": "new_custom",
-                "housing_category": "general",
-                "move_in_date": "2024-04-01",
+                "housing_type": "broker_renovated_resale",
+                "housing_category": "certified",
+                "move_in_date": "2026-04-01",
                 "year_end_balance": 30000000,
-                "is_new_construction": True,
+                "is_special_target_individual": True,
             },
         )
         out = run_ledger(
@@ -782,6 +782,9 @@ class TestHousingLoanDetail:
         )
         assert out["status"] == "ok"
         assert out["count"] == 1
+        assert out["details"][0]["housing_type"] == "broker_renovated_resale"
+        assert out["details"][0]["is_new_construction"] is False
+        assert out["details"][0]["is_special_target_individual"] is True
 
         out = run_ledger(
             "hl-delete",

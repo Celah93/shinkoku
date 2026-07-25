@@ -122,6 +122,70 @@ def test_migrate_fiscal_year_tax_profile_columns_from_interrupted_state(tmp_path
     conn.close()
 
 
+def test_migrate_housing_loan_table_preserves_rows_and_allows_broker_resale(tmp_path):
+    """旧住宅区分を保持したまま、特例フラグと買取再販区分を追加する。"""
+    db_path = str(tmp_path / "legacy-housing.db")
+    legacy = sqlite3.connect(db_path)
+    legacy.executescript(
+        """
+        CREATE TABLE fiscal_years (
+            year INTEGER PRIMARY KEY,
+            status TEXT NOT NULL DEFAULT 'open',
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        INSERT INTO fiscal_years (year) VALUES (2026);
+        CREATE TABLE housing_loan_details (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            fiscal_year INTEGER NOT NULL REFERENCES fiscal_years(year),
+            housing_type TEXT NOT NULL CHECK (housing_type IN (
+                'new_custom', 'new_subdivision', 'resale', 'used', 'renovation'
+            )),
+            housing_category TEXT NOT NULL,
+            move_in_date TEXT NOT NULL,
+            year_end_balance INTEGER NOT NULL,
+            is_new_construction INTEGER NOT NULL DEFAULT 1,
+            is_childcare_household INTEGER NOT NULL DEFAULT 0,
+            has_pre_r6_building_permit INTEGER NOT NULL DEFAULT 0,
+            purchase_date TEXT,
+            purchase_price INTEGER NOT NULL DEFAULT 0,
+            total_floor_area INTEGER NOT NULL DEFAULT 0,
+            residential_floor_area INTEGER NOT NULL DEFAULT 0,
+            property_number TEXT,
+            application_submitted INTEGER NOT NULL DEFAULT 0,
+            dual_application_group TEXT,
+            cost_for_proration INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        INSERT INTO housing_loan_details (
+            fiscal_year, housing_type, housing_category, move_in_date,
+            year_end_balance, is_new_construction, is_childcare_household
+        ) VALUES (2026, 'resale', 'certified', '2025-04-01', 30000000, 0, 1);
+        """
+    )
+    legacy.commit()
+    legacy.close()
+
+    conn = init_db(db_path)
+    migrated = conn.execute(
+        "SELECT housing_type, is_special_target_individual FROM housing_loan_details WHERE id = 1"
+    ).fetchone()
+    assert tuple(migrated) == ("resale", 1)
+
+    conn.execute(
+        "INSERT INTO housing_loan_details ("
+        "fiscal_year, housing_type, housing_category, move_in_date, year_end_balance, "
+        "is_new_construction, is_special_target_individual"
+        ") VALUES (2026, 'broker_renovated_resale', 'certified', '2026-04-01', "
+        "30000000, 0, 0)"
+    )
+    conn.commit()
+    assert (
+        conn.execute("SELECT housing_type FROM housing_loan_details WHERE id = 2").fetchone()[0]
+        == "broker_renovated_resale"
+    )
+    conn.close()
+
+
 def test_foreign_keys_enabled(tmp_path):
     db_path = str(tmp_path / "test.db")
     conn = init_db(db_path)

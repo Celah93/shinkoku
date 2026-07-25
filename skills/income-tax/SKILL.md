@@ -166,7 +166,7 @@ OCR 結果の整合性を検証するため、「所得控除の額の合計額�
 
 ### 未登録の場合の確認項目
 
-1. **配偶者**: 配偶者の有無と年間所得金額を確認する
+1. **配偶者**: 配偶者の有無、生年月日、年間所得金額を確認する
    - 令和7年分: 所得58万円以下 → 配偶者控除、58万円超133万円以下 → 配偶者特別控除
    - 令和8・9年分: 所得62万円以下 → 配偶者控除、62万円超133万円以下 → 配偶者特別控除
    - 納税者の所得が1,000万円超 → 配偶者控除なし
@@ -183,6 +183,8 @@ OCR 結果の整合性を検証するため、「所得控除の額の合計額�
    - 他の納税者が扶養控除を取る親族も、23歳未満の特例判定には使う。
      `other_taxpayer_dependent: true` を付けて登録し、親族情報を扶養親族リストに残す
    - 確認後 `shinkoku ledger dep-add --db-path DB_PATH --fiscal-year YEAR --input dependent.json` で各人を DB に登録する
+   - 住宅ローン控除の特例対象個人は入居年末時点で判定するため、19歳未満の親族も
+     `other_taxpayer_dependent: true`を理由に除外しない
 
 3. **マイナンバーの収集**（申告書B第二表に記載が必要）:
    - 配偶者のマイナンバー（12桁）
@@ -540,7 +542,9 @@ shinkoku tax calc-deductions --input deductions_input.json
   "medical_expenses": 200000,
   "furusato_nozei": 50000,
   "housing_loan_balance": 0,
+  "taxpayer_birth_date": null,
   "spouse_income": null,
+  "spouse_birth_date": null,
   "ideco_contribution": 276000,
   "dependents": [],
   "fiscal_year": 2025,
@@ -553,6 +557,8 @@ shinkoku tax calc-deductions --input deductions_input.json
 - `tax_credits`: 税額控除の一覧（housing_loan_credit, public_interest_donation, npo_donation, political_donation 等）
 - `total_income_deductions`: 所得控除合計
 - `total_tax_credits`: 税額控除合計
+- `housing_loan_credit_entries`: 入居年、申告年分、適用年数、控除期間、限度額、控除額、状態
+- `warnings`: 一般新築の未対応経過措置や残高だけの旧入力経路など、確認が必要な事項
 
 **各控除の確認事項:**
 
@@ -623,7 +629,9 @@ shinkoku tax calc-income --input income_input.json
   "medical_expenses": 0,
   "furusato_nozei": 50000,
   "housing_loan_balance": 0,
+  "taxpayer_birth_date": null,
   "spouse_income": null,
+  "spouse_birth_date": null,
   "ideco_contribution": 276000,
   "withheld_tax": 100000,
   "business_withheld_tax": 30000,
@@ -639,6 +647,7 @@ shinkoku tax calc-income --input income_input.json
 - `taxable_income`: 課税所得金額（1,000円未満切り捨て）
 - `income_tax_base`: 算出税額
 - `total_tax_credits`: 税額控除合計
+- `housing_loan_credit_entries`: 住宅ローン控除の年数・期間・状態を含む個別明細
 - `income_tax_after_credits`: 税額控除後
 - `reconstruction_tax`: 復興特別所得税（基準所得税額 x 2.1%）
 - `total_tax`: 所得税及び復興特別所得税の額（端数処理なし）
@@ -719,26 +728,25 @@ shinkoku tax sanity-check --input sanity_input.json
 1. `shinkoku ledger hl-add --db-path DB_PATH --fiscal-year YEAR --input housing.json` で住宅ローン控除の明細を登録する:
    ```json
    {
-     "fiscal_year": 2025,
-     "detail": {
-       "housing_type": "new_custom",
-       "housing_category": "certified",
-       "move_in_date": "2024-03-15",
-       "year_end_balance": 30000000,
-       "is_new_construction": true,
-       "is_childcare_household": false,
-       "has_pre_r6_building_permit": false,
-       "purchase_date": "2024-01-20",
-       "purchase_price": 40000000,
-       "total_floor_area": 8000,
-       "residential_floor_area": 8000,
-       "property_number": null,  // 不動産番号（13桁）を入力すると登記事項証明書の添付省略可（令和3年度改正）
-       "application_submitted": false
-     }
+     "housing_type": "new_custom",
+     "housing_category": "certified",
+     "move_in_date": "2026-03-15",
+     "year_end_balance": 30000000,
+     "is_special_target_individual": false,
+     "has_pre_r6_building_permit": false,
+     "purchase_date": "2026-01-20",
+     "purchase_price": 40000000,
+     "total_floor_area": 8000,
+     "residential_floor_area": 8000,
+     "property_number": null,
+     "application_submitted": false
    }
    ```
 
-住宅区分別の年末残高上限テーブルは `references/deduction-tables.md` を参照。
+`housing_type`は新築、買取再販`broker_renovated_resale`、通常中古`used`、増改築を
+区別する。旧`resale`は使わない。本人・配偶者の生年月日と扶養親族はDBから計算JSONへ
+渡し、計算結果の`housing_loan_credit_entries`と`warnings`を確認する。住宅区分別の
+年末残高上限テーブルは `references/deduction-tables.md` を参照。
 
 ## ステップ6: 計算結果サマリーの提示
 

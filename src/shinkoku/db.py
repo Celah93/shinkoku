@@ -53,3 +53,67 @@ def _migrate(conn: sqlite3.Connection) -> None:
             "ALTER TABLE housing_loan_details "
             "ADD COLUMN cost_for_proration INTEGER NOT NULL DEFAULT 0"
         )
+    if "is_special_target_individual" not in hl_cols:
+        conn.execute(
+            "ALTER TABLE housing_loan_details ADD COLUMN is_special_target_individual INTEGER"
+        )
+        conn.execute(
+            "UPDATE housing_loan_details SET is_special_target_individual = is_childcare_household"
+        )
+
+    table_row = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'housing_loan_details'"
+    ).fetchone()
+    if table_row is not None and "broker_renovated_resale" not in table_row[0]:
+        _rebuild_housing_loan_details(conn)
+
+
+def _rebuild_housing_loan_details(conn: sqlite3.Connection) -> None:
+    """旧CHECK制約を更新し、買取再販区分を保存できるようにする。"""
+    conn.execute("ALTER TABLE housing_loan_details RENAME TO housing_loan_details_legacy")
+    conn.execute(
+        """
+        CREATE TABLE housing_loan_details (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            fiscal_year INTEGER NOT NULL REFERENCES fiscal_years(year),
+            housing_type TEXT NOT NULL CHECK (housing_type IN (
+                'new_custom', 'new_subdivision', 'broker_renovated_resale',
+                'resale', 'used', 'renovation'
+            )),
+            housing_category TEXT NOT NULL CHECK (housing_category IN (
+                'general', 'certified', 'zeh', 'energy_efficient'
+            )),
+            move_in_date TEXT NOT NULL,
+            year_end_balance INTEGER NOT NULL CHECK (year_end_balance >= 0),
+            is_new_construction INTEGER NOT NULL DEFAULT 1,
+            is_childcare_household INTEGER NOT NULL DEFAULT 0,
+            is_special_target_individual INTEGER,
+            has_pre_r6_building_permit INTEGER NOT NULL DEFAULT 0,
+            purchase_date TEXT,
+            purchase_price INTEGER NOT NULL DEFAULT 0,
+            total_floor_area INTEGER NOT NULL DEFAULT 0,
+            residential_floor_area INTEGER NOT NULL DEFAULT 0,
+            property_number TEXT,
+            application_submitted INTEGER NOT NULL DEFAULT 0,
+            dual_application_group TEXT,
+            cost_for_proration INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+        """
+    )
+    columns = (
+        "id, fiscal_year, housing_type, housing_category, move_in_date, year_end_balance, "
+        "is_new_construction, is_childcare_household, is_special_target_individual, "
+        "has_pre_r6_building_permit, purchase_date, purchase_price, total_floor_area, "
+        "residential_floor_area, property_number, application_submitted, "
+        "dual_application_group, cost_for_proration, created_at"
+    )
+    conn.execute(
+        f"INSERT INTO housing_loan_details ({columns}) "
+        f"SELECT {columns} FROM housing_loan_details_legacy"
+    )
+    conn.execute("DROP TABLE housing_loan_details_legacy")
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_housing_loan_details_fiscal_year "
+        "ON housing_loan_details(fiscal_year)"
+    )

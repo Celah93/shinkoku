@@ -29,6 +29,7 @@ def _make_detail(
         is_new_construction=is_new_construction,
         dual_application_group=dual_application_group,
         cost_for_proration=cost_for_proration,
+        is_special_target_individual=False,
     )
 
 
@@ -228,6 +229,50 @@ class TestCalcHousingLoanCreditDual:
         # 42,800,000 / 47,800,000 * 10000 = 8953 (切捨)
         assert entries[0].proration_ratio_pct == 42_800_000 * 10000 // 47_800_000
         assert entries[1].proration_ratio_pct == 5_000_000 * 10000 // 47_800_000
+
+    def test_mixed_period_keeps_active_entry_after_renovation_expires(self):
+        """11年目は13年の既存取得だけを計算し、10年の増改築をexpiredにする。"""
+        purchase = _make_detail(
+            housing_type="used",
+            housing_category="energy_efficient",
+            year_end_balance=60_000_000,
+            cost_for_proration=50_000_000,
+        ).model_copy(update={"move_in_date": "2026-04-01"})
+        renovation = _make_detail(
+            housing_type="renovation",
+            housing_category="general",
+            year_end_balance=60_000_000,
+            cost_for_proration=10_000_000,
+        ).model_copy(update={"move_in_date": "2026-04-01"})
+
+        total_credit, entries = calc_housing_loan_credit_dual(
+            [purchase, renovation], claim_fiscal_year=2036
+        )
+
+        assert entries[0].status == "active"
+        assert entries[0].claim_year_number == 11
+        assert entries[0].credit_period == 13
+        assert entries[1].status == "expired"
+        assert entries[1].credit == 0
+        assert entries[1].credit_period == 10
+        assert total_credit == entries[0].credit
+
+    def test_mixed_period_all_entries_expired_is_error(self):
+        purchase = _make_detail(
+            housing_type="used",
+            housing_category="energy_efficient",
+            year_end_balance=60_000_000,
+            cost_for_proration=50_000_000,
+        ).model_copy(update={"move_in_date": "2026-04-01"})
+        renovation = _make_detail(
+            housing_type="renovation",
+            housing_category="general",
+            year_end_balance=60_000_000,
+            cost_for_proration=10_000_000,
+        ).model_copy(update={"move_in_date": "2026-04-01"})
+
+        with pytest.raises(ValueError, match="全明細.*控除期間"):
+            calc_housing_loan_credit_dual([purchase, renovation], claim_fiscal_year=2039)
 
 
 class TestCalcDeductionsDualApplication:
