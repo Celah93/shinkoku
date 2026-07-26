@@ -163,8 +163,17 @@ uv run shinkoku profile --config shinkoku.config.yaml
 
 ### コミットメッセージ
 
-- 形式: `[type]: [description]`（英語）
-- type: `feat` / `fix` / `ci` / `refactor` / `test` / `docs`
+- 0.14.1以降は件名・本文とも日本語で書く。0.14.0以前の英語コミットは旧規約による
+- Conventional Commitsの型プレフィクスを残す: `feat` / `fix` / `ci` / `refactor` / `test` / `docs`
+- 形式: `[type]: [20〜25文字程度の日本語件名]`
+- 件名の直後と`Refs: fix-NN`行の直前の2か所に空行を置き、本文の末尾に同trailerを必ず入れる
+- 型プレフィクスは、`fix`をPATCH、`feat`をMINORとする版種別の判断根拠に使う
+- コミット後は次の2コマンドで件名と`Refs:` trailerを検証する（引用符もこのまま使う）
+
+```bash
+git log -1 --format=%s <SHA>
+git log -1 --format='%(trailers:key=Refs,valueonly)' <SHA>
+```
 
 ### バージョン管理
 

@@ -414,7 +414,13 @@ class DepreciationCalculationInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     method: Literal["straight_line", "declining_balance"] = "straight_line"
-    acquisition_cost: int = Field(gt=0, description="税法上確定済みの取得価額（円）")
+    acquisition_cost: int = Field(
+        gt=0,
+        description=(
+            "税込経理なら税込額、税抜経理なら税抜額で確定した"
+            "税法上の取得価額（円）。この入力層は経理方式を変換しない"
+        ),
+    )
     useful_life: int = Field(gt=0, description="法定耐用年数")
     business_use_ratio: int = Field(default=100, ge=0, le=100)
     months: int = Field(default=12, ge=1, le=12)
@@ -442,7 +448,13 @@ class SmallAssetTreatmentInput(BaseModel):
     placed_in_service_date: date
     # 税込・税抜の変換をこの層へ入れると経理方式の確認まで範囲が広がるため、
     # 取得価額は税法上の判定額として確定済みの円額を必須にする。
-    acquisition_cost: int = Field(gt=0, description="税法上確定済みの取得価額（円）")
+    acquisition_cost: int = Field(
+        gt=0,
+        description=(
+            "税込経理なら税込額、税抜経理なら税抜額で確定した"
+            "税法上の取得価額（円）。この入力層は経理方式を変換しない"
+        ),
+    )
     useful_life: int = Field(gt=0, description="通常償却を選ぶ場合の法定耐用年数")
     depreciation_method: Literal["straight_line", "declining_balance"] = "straight_line"
     business_use_ratio: int = Field(default=100, ge=0, le=100)

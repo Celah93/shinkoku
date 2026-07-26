@@ -8,7 +8,11 @@ import pytest
 from pydantic import ValidationError
 
 from shinkoku.models import SmallAssetTreatmentInput
-from shinkoku.tax_constants import get_small_asset_special_period
+from shinkoku.tax_constants import (
+    SMALL_ASSET_INCOME_TAX_ORDER_138_EXCLUSIVE_MAX,
+    SMALL_ASSET_SPECIAL_TAX_MEASURES_ACT_28_2_EXCLUDED_BELOW,
+    get_small_asset_special_period,
+)
 from shinkoku.tools.tax_calc import select_small_asset_treatment
 
 
@@ -60,6 +64,31 @@ def test_treatment_candidates_follow_income_tax_thresholds(
     if cost == 99_999:
         assert "措法28条の2第1項" in options["small_asset_special"].reason
         assert "10万円未満" in options["small_asset_special"].reason
+
+
+def test_income_tax_order_138_threshold_has_its_own_constant() -> None:
+    below = _options(_input(acquisition_cost=99_999))
+    boundary = _options(_input(acquisition_cost=100_000))
+
+    assert SMALL_ASSET_INCOME_TAX_ORDER_138_EXCLUSIVE_MAX == 100_000
+    assert below["immediate_expense"].status == "available"
+    assert boundary["immediate_expense"].status == "ineligible"
+
+
+def test_special_tax_measures_act_28_2_exclusion_has_its_own_constant() -> None:
+    below = _options(_input(acquisition_cost=99_999))
+    boundary = _options(_input(acquisition_cost=100_000))
+
+    assert SMALL_ASSET_SPECIAL_TAX_MEASURES_ACT_28_2_EXCLUDED_BELOW == 100_000
+    assert below["small_asset_special"].status == "ineligible"
+    assert boundary["small_asset_special"].status == "available"
+
+
+def test_independent_100k_thresholds_currently_have_the_same_value() -> None:
+    assert (
+        SMALL_ASSET_INCOME_TAX_ORDER_138_EXCLUSIVE_MAX
+        == SMALL_ASSET_SPECIAL_TAX_MEASURES_ACT_28_2_EXCLUDED_BELOW
+    )
 
 
 @pytest.mark.parametrize(
@@ -193,24 +222,91 @@ def test_acquisition_before_statutory_start_is_rejected_as_unsupported() -> None
         )
 
 
-def test_annual_cap_exact_and_july_first_opening_proration() -> None:
-    full_year = select_small_asset_treatment(
+def test_annual_cap_exact() -> None:
+    result = select_small_asset_treatment(
         _input(acquisition_cost=399_999, special_cap_used=2_600_001)
     )
-    opening_year = select_small_asset_treatment(
+
+    assert result.special_cap_limit == 3_000_000
+    assert result.special_cap_remaining == 0
+    assert result.special_cap_overage == 0
+
+
+@pytest.mark.parametrize(
+    ("business_start_date", "expected_limit"),
+    [
+        (date(2026, 1, 15), 3_000_000),
+        (date(2026, 3, 1), 2_500_000),
+        (date(2026, 7, 1), 1_500_000),
+        (date(2026, 11, 20), 500_000),
+        (date(2026, 12, 31), 250_000),
+    ],
+)
+def test_opening_year_cap_counts_partial_opening_month(
+    business_start_date: date, expected_limit: int
+) -> None:
+    result = select_small_asset_treatment(
         _input(
-            acquisition_cost=399_999,
-            placed_in_service_date=date(2026, 7, 1),
-            business_start_date=date(2026, 7, 1),
-            special_cap_used=1_100_001,
+            acquisition_date=business_start_date,
+            placed_in_service_date=business_start_date,
+            acquisition_cost=250_000,
+            business_start_date=business_start_date,
         )
     )
 
-    assert full_year.special_cap_limit == 3_000_000
-    assert full_year.special_cap_remaining == 0
-    assert full_year.special_cap_overage == 0
-    assert opening_year.special_cap_limit == 1_500_000
-    assert opening_year.special_cap_remaining == 0
+    assert result.special_cap_limit == expected_limit
+
+
+@pytest.mark.parametrize(
+    ("business_end_date", "expected_limit"),
+    [
+        (date(2026, 1, 15), 250_000),
+        (date(2026, 3, 1), 750_000),
+        (date(2026, 7, 1), 1_750_000),
+        (date(2026, 11, 20), 2_750_000),
+        (date(2026, 12, 31), 3_000_000),
+    ],
+)
+def test_closing_year_cap_counts_partial_closing_month(
+    business_end_date: date, expected_limit: int
+) -> None:
+    result = select_small_asset_treatment(
+        _input(
+            acquisition_date=date(2026, 1, 1),
+            placed_in_service_date=date(2026, 1, 1),
+            acquisition_cost=250_000,
+            business_end_date=business_end_date,
+        )
+    )
+
+    assert result.special_cap_limit == expected_limit
+
+
+@pytest.mark.parametrize(
+    ("business_start_date", "business_end_date"),
+    [
+        (date(2026, 3, 31), date(2026, 4, 1)),
+        (date(2026, 1, 31), date(2026, 12, 1)),
+    ],
+)
+def test_same_year_opening_and_closing_keeps_cap_indeterminate(
+    business_start_date: date, business_end_date: date
+) -> None:
+    result = select_small_asset_treatment(
+        _input(
+            acquisition_date=business_start_date,
+            placed_in_service_date=business_start_date,
+            acquisition_cost=250_000,
+            business_start_date=business_start_date,
+            business_end_date=business_end_date,
+        )
+    )
+    special = next(o for o in result.options if o.treatment == "small_asset_special")
+
+    assert result.status == "indeterminate"
+    assert result.special_cap_limit is None
+    assert special.current_year_expense is None
+    assert result.warnings == ["同一年内に開業と廃業がある場合の月数の起算方法が未確認である"]
 
 
 def test_seventh_asset_leaves_200007_yen_cap() -> None:

@@ -310,7 +310,11 @@ def get_income_tax_constants(fiscal_year: int) -> IncomeTaxYearConstants:
 # 少額減価償却資産（措法28条の2・所令138条・139条）
 # ============================================================
 
-SMALL_ASSET_IMMEDIATE_EXPENSE_EXCLUSIVE_MAX: Final[int] = 100_000
+# 所得税法施行令138条の即時必要経費の入口。
+SMALL_ASSET_INCOME_TAX_ORDER_138_EXCLUSIVE_MAX: Final[int] = 100_000
+# 租税特別措置法28条の2第1項括弧書きの特例除外。
+# 所令138条と根拠が別なので、現行値が同じでも定数を共有しない。
+SMALL_ASSET_SPECIAL_TAX_MEASURES_ACT_28_2_EXCLUDED_BELOW: Final[int] = 100_000
 SMALL_ASSET_POOLED_DEPRECIATION_EXCLUSIVE_MAX: Final[int] = 200_000
 SMALL_ASSET_SPECIAL_ANNUAL_CAP: Final[int] = 3_000_000
 

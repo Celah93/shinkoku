@@ -946,6 +946,25 @@ def test_calc_depreciation_rejects_unknown_method(tmp_path: Path) -> None:
     assert "method" in output["message"]
 
 
+def test_calc_depreciation_unknown_method_lists_all_valid_values(tmp_path: Path) -> None:
+    input_file = _write_input(
+        tmp_path,
+        {
+            "method": "mystery_method",
+            "acquisition_cost": 350_000,
+            "useful_life": 4,
+        },
+    )
+
+    result = run_cli("tax", "calc-depreciation", "--input", str(input_file))
+
+    assert result.returncode == 1
+    message = json.loads(result.stdout)["message"]
+    assert "straight_line" in message
+    assert "declining_balance" in message
+    assert "small_asset_treatment" in message
+
+
 def test_calc_depreciation_rejects_extra_json_key(tmp_path: Path) -> None:
     input_file = _write_input(
         tmp_path,

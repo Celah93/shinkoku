@@ -11,7 +11,6 @@ Rounding rules:
 from __future__ import annotations
 
 import warnings as python_warnings
-from calendar import monthrange
 from datetime import date
 from typing import Any, Literal
 
@@ -122,10 +121,11 @@ from shinkoku.tax_constants import (
     SIMPLIFIED_DEEMED_RATIOS,
     SINGLE_PARENT_DEDUCTION,
     SPECIAL_20PCT_RATE,
-    SMALL_ASSET_IMMEDIATE_EXPENSE_EXCLUSIVE_MAX,
+    SMALL_ASSET_INCOME_TAX_ORDER_138_EXCLUSIVE_MAX,
     SMALL_ASSET_POOLED_DEPRECIATION_EXCLUSIVE_MAX,
     SMALL_ASSET_SPECIAL_ANNUAL_CAP,
     SMALL_ASSET_SPECIAL_PERIODS,
+    SMALL_ASSET_SPECIAL_TAX_MEASURES_ACT_28_2_EXCLUDED_BELOW,
     SPOUSE_DEDUCTION_AMOUNT_LE_1000,
     SPOUSE_DEDUCTION_AMOUNT_LE_900,
     SPOUSE_DEDUCTION_AMOUNT_LE_950,
@@ -1703,7 +1703,7 @@ def _small_asset_option(
 
 
 def _small_asset_cap_limit(input_data: SmallAssetTreatmentInput) -> tuple[int | None, list[str]]:
-    """供用年の年300万円枠を返す。未確認の端数日は推測せずNoneにする。"""
+    """供用年の年300万円枠を返す。"""
     year = input_data.placed_in_service_date.year
     start_in_year = (
         input_data.business_start_date
@@ -1719,21 +1719,22 @@ def _small_asset_cap_limit(input_data: SmallAssetTreatmentInput) -> tuple[int | 
     if start_in_year is None and end_in_year is None:
         return SMALL_ASSET_SPECIAL_ANNUAL_CAP, []
 
-    warnings: list[str] = []
-    # 月の途中で開廃業した場合の起算方法は一次資料の追加確認が必要なため、
-    # 7月1日開業のように端数が生じない場合だけ機械計算する。
-    if start_in_year is not None and start_in_year.day != 1:
-        warnings.append("月途中の開業における年300万円枠の起算方法が未確認のため判定できません")
-    if end_in_year is not None and end_in_year.day != monthrange(year, end_in_year.month)[1]:
-        warnings.append("月途中の廃業における年300万円枠の起算方法が未確認のため判定できません")
-    if warnings:
-        return None, warnings
+    # 同一年内の開廃業に「廃業月 - 開業月 + 1」は使わない。
+    # 開業年だけ・廃業年だけなら端数切上げで起算方法は結果を変えないが、
+    # 同一年内は両端が年境界でなく、暦日数の計算と最大1か月ずれる。
+    # 2026-03-31開業・2026-04-01廃業は1か月に対し月番号だと2か月となり、
+    # 過大な枠で本来枠外の資産を特例へ通すため、起算方法の確認まで計算しない。
+    if start_in_year is not None and end_in_year is not None:
+        warning = "同一年内に開業と廃業がある場合の月数の起算方法が未確認である"
+        return None, [warning]
 
-    first_month = start_in_year.month if start_in_year is not None else 1
-    last_month = end_in_year.month if end_in_year is not None else 12
-    months = last_month - first_month + 1
-    if months <= 0:
-        raise ValueError("業務を営んだ月数が0以下になる開廃業日は指定できません")
+    # 開業年だけ・廃業年だけなら、月途中の端数を1か月に切り上げるため、
+    # 日によらず開業月から12月、または1月から廃業月までの月番号で確定できる。
+    if start_in_year is not None:
+        months = 13 - start_in_year.month
+    else:
+        assert end_in_year is not None
+        months = end_in_year.month
     return SMALL_ASSET_SPECIAL_ANNUAL_CAP // 12 * months, []
 
 
@@ -1773,11 +1774,14 @@ def select_small_asset_treatment(
 
     措法28条の2は10万円未満を法律本文で除外する。法人税側には同じ下限が
     ないため、法人側の制度から候補集合を類推しない。
+
+    acquisition_costは、税込経理なら税込額、税抜経理なら税抜額で
+    確定した税法上の取得価額を受け取る。この関数は経理方式を変換しない。
     """
     period = get_small_asset_special_period(input_data.acquisition_date)
     excluded_lending = input_data.is_lending_use and not input_data.is_main_business_lending
     immediate_candidate = (
-        input_data.acquisition_cost < SMALL_ASSET_IMMEDIATE_EXPENSE_EXCLUSIVE_MAX
+        input_data.acquisition_cost < SMALL_ASSET_INCOME_TAX_ORDER_138_EXCLUSIVE_MAX
         or input_data.usable_period_under_one_year
     )
 
@@ -1868,7 +1872,7 @@ def select_small_asset_treatment(
     )
 
     special_warnings = list(cap_warnings)
-    if input_data.acquisition_cost < SMALL_ASSET_IMMEDIATE_EXPENSE_EXCLUSIVE_MAX:
+    if input_data.acquisition_cost < SMALL_ASSET_SPECIAL_TAX_MEASURES_ACT_28_2_EXCLUDED_BELOW:
         special = _small_asset_option(
             "small_asset_special",
             "ineligible",

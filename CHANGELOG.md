@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.14.1] - 2026-07-26
+
+### Changed
+- 開業日が1日でない開業年と、廃業日が月末でない廃業年でも、月途中の端数を1か月に切り上げて少額資産特例の年300万円枠を確定計算するように変更。0.14.0では起算方法が未確認のため`indeterminate`を返していた
+- 同一年内に開業と廃業の両方がある場合は、月番号の計算で年枠が過大になるため、引き続き`indeterminate`として起算方法の確認を求める
+- 所令138条の10万円未満判定と措法28条の2第1項の10万円未満除外を、別根拠の定数として分離
+- `calc-depreciation`の未知の`method`エラーに、有効な3値（`straight_line` / `declining_balance` / `small_asset_treatment`）をすべて表示
+- コミットメッセージは0.14.1から日本語に統一し、Conventional Commitsの型と`Refs: fix-NN`を維持
+
 ## [0.14.0] - 2026-07-26
 
 ### Added

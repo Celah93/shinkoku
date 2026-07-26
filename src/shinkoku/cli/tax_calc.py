@@ -37,6 +37,12 @@ from shinkoku.tools.tax_calc import (
     select_small_asset_treatment,
 )
 
+_DEPRECIATION_METHODS = (
+    "straight_line",
+    "declining_balance",
+    "small_asset_treatment",
+)
+
 
 def _load_json(path: str) -> dict:
     """JSON ファイルを読み込んで dict を返す。"""
@@ -154,7 +160,12 @@ def _handle_calc_income(args: argparse.Namespace) -> None:
 def _handle_calc_depreciation(args: argparse.Namespace) -> None:
     """calc-depreciation: 減価償却計算。"""
     params = _load_json(args.input)
-    if params.get("method") == "small_asset_treatment":
+    method = params.get("method", "straight_line")
+    if method not in _DEPRECIATION_METHODS:
+        valid_methods = " / ".join(f"'{value}'" for value in _DEPRECIATION_METHODS)
+        raise ValueError(f"method は {valid_methods} のいずれかを指定してください")
+
+    if method == "small_asset_treatment":
         small_asset_input = SmallAssetTreatmentInput(**params)
         result = select_small_asset_treatment(small_asset_input)
         _output_json(result.model_dump(mode="json"))
