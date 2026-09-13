@@ -268,6 +268,7 @@ def test_all_pass() -> None:
         total_tax_credits=0,
         income_tax_after_credits=202_500,
         reconstruction_tax=4_252,
+        total_tax=206_752,
     )
     check = sanity_check_income_tax(inp, res)
     assert check.passed

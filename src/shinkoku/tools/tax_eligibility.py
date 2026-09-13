@@ -90,7 +90,8 @@ def check_blue_return_eligibility(
     checks.require("eligible_business_income", facts.eligible_business_income, True)
 
     if requested_deduction <= 100_000:
-        if fiscal_year == 2027:
+        # 措法25の2②: 所法67条の現金主義選択者は10万円控除の適用除外から除かれる。
+        if fiscal_year == 2027 and facts.cash_basis_special is not True:
             if facts.bookkeeping is None:
                 checks.missing.append("bookkeeping")
             elif facts.bookkeeping == "simple":
@@ -98,17 +99,12 @@ def check_blue_return_eligibility(
                 if revenue is None:
                     checks.missing.append("prior_prior_year_business_revenue")
                 elif revenue > 10_000_000:
-                    # 現金主義特例との併用関係は、この資料だけで適格と断定しない。
-                    if facts.cash_basis_special is not False:
-                        return TaxEligibilityCheck(
-                            scheme="blue_return",
-                            fiscal_year=fiscal_year,
-                            status="unsupported",
-                            reasons=[
-                                "簡易記帳・収入1,000万円超と現金主義特例の関係は追加確認が必要です"
-                            ],
+                    if facts.cash_basis_special is None:
+                        checks.missing.append("cash_basis_special")
+                    else:
+                        checks.failures.append(
+                            "簡易記帳で前々年の事業収入が1,000万円を超えています"
                         )
-                    checks.failures.append("簡易記帳で前々年の事業収入が1,000万円を超えています")
         return checks.result("blue_return", fiscal_year)
 
     checks.require("bookkeeping", facts.bookkeeping, "double_entry")
@@ -198,19 +194,13 @@ def check_invoice_special_eligibility(
     if facts.inheritance_taxation_applies is None:
         checks.missing.append("inheritance_taxation_applies")
     elif facts.inheritance_taxation_applies:
-        if method == "special_30pct":
-            return TaxEligibilityCheck(
-                scheme=method,
-                fiscal_year=fiscal_year,
-                status="unsupported",
-                reasons=["相続による免税制限と3割特例の例外は追加確認が必要です"],
-            )
         if facts.inheritance_date is None:
             checks.missing.append("inheritance_date")
         if facts.invoice_registration_date is None:
             checks.missing.append("invoice_registration_date")
         if facts.inheritance_date is not None and facts.invoice_registration_date is not None:
-            # Q&A問115: 相続のあった年に、登録が相続日以前なら、この事由だけで除外しない。
+            # 平成28年改正法附則51の3①は2割特例と同じ相続の除外規定を適用する。
+            # 相続のあった年に登録が相続日以前なら、この事由だけで除外しない。
             if (
                 facts.inheritance_date.year != fiscal_year
                 or facts.invoice_registration_date > facts.inheritance_date

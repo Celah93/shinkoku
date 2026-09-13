@@ -101,7 +101,7 @@ def test_special_30_does_not_ignore_unhandled_local_interim_payments() -> None:
         ({"base_period_taxable_sales": 10_000_001}, "INELIGIBLE"),
         ({"domestic_individual": False}, "UNSUPPORTED"),
         ({"shortened_tax_period": True}, "INELIGIBLE"),
-        ({"inheritance_taxation_applies": True}, "UNSUPPORTED"),
+        ({"inheritance_taxation_applies": True}, "UNCONFIRMED"),
     ],
 )
 def test_special_30_filing_does_not_bypass_exclusions(changes: dict, code: str) -> None:

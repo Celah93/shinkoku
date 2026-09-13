@@ -105,11 +105,13 @@ def test_2027_simple_books_revenue_boundary(revenue: int, status: str) -> None:
     assert check_blue_return_eligibility(2026, 100_000, facts).status == "eligible"
 
 
-def test_unresolved_cash_basis_combination_does_not_claim_eligibility() -> None:
+def test_cash_basis_election_is_excluded_from_the_2027_simple_books_restriction() -> None:
     facts = verified_blue_facts(
         bookkeeping="simple", cash_basis_special=True, prior_prior_year_business_revenue=10_000_001
     )
-    assert check_blue_return_eligibility(2027, 100_000, facts).status == "unsupported"
+    assert check_blue_return_eligibility(2027, 100_000, facts).status == "eligible"
+    facts.cash_basis_special = None
+    assert check_blue_return_eligibility(2027, 100_000, facts).status == "indeterminate"
 
 
 def test_missing_blue_facts_are_not_assumed_true() -> None:
@@ -186,11 +188,12 @@ def test_inheritance_exception_requires_same_year_and_registration_by_inheritanc
     assert check_invoice_special_eligibility(2026, "special_20pct", facts).status == status
 
 
-def test_special_30_does_not_guess_inheritance_exception() -> None:
+def test_special_30_requires_dates_for_inheritance_exception() -> None:
     result = check_invoice_special_eligibility(
         2027, "special_30pct", verified_invoice_facts(inheritance_taxation_applies=True)
     )
-    assert result.status == "unsupported"
+    assert result.status == "indeterminate"
+    assert set(result.missing_fields) == {"inheritance_date", "invoice_registration_date"}
 
 
 @pytest.mark.parametrize("value", ["false", 0, "yes"])
@@ -243,18 +246,19 @@ def test_filing_special_20_requires_facts_and_preserves_tax_arithmetic() -> None
     assert result.eligibility_checks[0].status == "eligible"
 
 
-def test_future_eligibility_does_not_enable_unfinished_annual_income_tax() -> None:
+def test_2027_eligibility_flows_into_annual_income_tax() -> None:
     facts = verified_blue_facts(
         qualified_electronic_books=True, electronic_books_notice_requirement_met=True
     )
     assert check_blue_return_eligibility(2027, 750_000, facts).status == "eligible"
-    with pytest.raises(ValueError, match="fiscal_year=2027 は未対応"):
-        calc_income_tax(
-            IncomeTaxInput(
-                fiscal_year=2027,
-                business_revenue=3_000_000,
-                blue_return_deduction=750_000,
-                calculation_mode="filing",
-                blue_return_eligibility=facts,
-            )
+    result = calc_income_tax(
+        IncomeTaxInput(
+            fiscal_year=2027,
+            business_revenue=3_000_000,
+            blue_return_deduction=750_000,
+            calculation_mode="filing",
+            blue_return_eligibility=facts,
         )
+    )
+    assert result.effective_blue_return_deduction == 750_000
+    assert result.eligibility_checks[0].status == "eligible"

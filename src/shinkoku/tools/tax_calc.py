@@ -28,6 +28,7 @@ from shinkoku.models import (
     HousingLoanDetail,
     IncomeTaxInput,
     IncomeTaxResult,
+    IncomeSpecialTaxResult,
     LifeInsurancePremiumInput,
     ConsumptionTaxInput,
     ConsumptionTaxResult,
@@ -107,7 +108,6 @@ from shinkoku.tax_constants import (
     ONE_TIME_INCOME_SPECIAL_DEDUCTION,
     PERSONAL_DEDUCTION_INCOME_LIMIT,
     RECONSTRUCTION_TAX_DENOMINATOR,
-    RECONSTRUCTION_TAX_RATE,
     RETIREMENT_DEDUCTION_BASE_20,
     RETIREMENT_DEDUCTION_DISABILITY_ADD,
     RETIREMENT_DEDUCTION_MIN,
@@ -116,10 +116,13 @@ from shinkoku.tax_constants import (
     RETIREMENT_OFFICER_SHORT_SERVICE_YEARS,
     RETIREMENT_SHORT_SERVICE_HALF_LIMIT,
     SALARY_DEDUCTION_MAX,
+    SALARY_ADJUSTMENT_REVENUE_THRESHOLD,
+    SALARY_ADJUSTMENT_REVENUE_CAP,
+    SALARY_PENSION_ADJUSTMENT_CAP,
+    MINIMUM_TAX_REVIEW_THRESHOLD_2027,
     SELF_MEDICATION_MAX,
     SELF_MEDICATION_THRESHOLD,
     SIMPLIFIED_DEEMED_RATIOS,
-    SINGLE_PARENT_DEDUCTION,
     SPECIAL_20PCT_RATE,
     SPECIAL_30PCT_RATE,
     SMALL_ASSET_INCOME_TAX_ORDER_138_EXCLUSIVE_MAX,
@@ -333,16 +336,17 @@ def calc_earthquake_insurance_deduction(
 # ============================================================
 
 
-def calc_widow_deduction(status: str, total_income: int) -> int:
+def calc_widow_deduction(status: str, total_income: int, fiscal_year: int = 2025) -> int:
     """寡婦/ひとり親控除。
 
-    ひとり親: 350,000（所得500万以下）
+    ひとり親: 年分別定数（所得500万以下）
     寡婦: 270,000（所得500万以下）
     """
+    constants = get_income_tax_constants(fiscal_year)
     if total_income > PERSONAL_DEDUCTION_INCOME_LIMIT:
         return 0
     if status == "single_parent":
-        return SINGLE_PARENT_DEDUCTION
+        return constants.single_parent_deduction
     if status == "widow":
         return WIDOW_DEDUCTION
     return 0
@@ -1243,6 +1247,7 @@ def calc_deductions(
     dividend_income_comprehensive: int = 0,
     taxable_income_for_dividend_credit: int = 0,
     donations: list[DonationRecordRecord] | None = None,
+    aggregate_income: int | None = None,
 ) -> DeductionsResult:
     """控除の一覧を返す。
 
@@ -1250,6 +1255,8 @@ def calc_deductions(
     申告に使う確定値は calc_income_tax が最大8候補を比較して決める。
     """
     require_supported_tax_year(fiscal_year, "income_deductions")
+    # 合計所得金額（人的控除等）は繰越控除前。医療費・寄附金の総所得金額等とは分ける。
+    personal_income = total_income if aggregate_income is None else aggregate_income
     income_deductions: list[DeductionItem] = []
     tax_credits: list[DeductionItem] = []
     constants = get_income_tax_constants(fiscal_year)
@@ -1258,7 +1265,7 @@ def calc_deductions(
         life_insurance_special = None
 
     # 1. Basic deduction (always applied if > 0)
-    basic = calc_basic_deduction(total_income, fiscal_year)
+    basic = calc_basic_deduction(personal_income, fiscal_year)
     if basic > 0:
         income_deductions.append(DeductionItem(type="basic", name="基礎控除", amount=basic))
 
@@ -1477,7 +1484,7 @@ def calc_deductions(
     # 8. Spouse deduction
     if spouse_income is not None:
         spouse, spouse_type = _resolve_spouse_deduction(
-            total_income,
+            personal_income,
             spouse_income,
             fiscal_year,
         )
@@ -1491,14 +1498,14 @@ def calc_deductions(
     if dependents:
         dep_items = calc_dependents_deduction(
             dependents=dependents,
-            taxpayer_income=total_income,
+            taxpayer_income=personal_income,
             fiscal_year=fiscal_year,
         )
         income_deductions.extend(dep_items)
 
     # 10. 寡婦/ひとり親控除（Phase 5）
     if widow_status != "none":
-        widow = calc_widow_deduction(widow_status, total_income)
+        widow = calc_widow_deduction(widow_status, personal_income, fiscal_year)
         if widow > 0:
             name = "ひとり親控除" if widow_status == "single_parent" else "寡婦控除"
             income_deductions.append(DeductionItem(type="widow", name=name, amount=widow))
@@ -1513,7 +1520,7 @@ def calc_deductions(
 
     # 12. 勤労学生控除（Phase 5）
     if working_student:
-        ws = calc_working_student_deduction(True, total_income, fiscal_year)
+        ws = calc_working_student_deduction(True, personal_income, fiscal_year)
         if ws > 0:
             income_deductions.append(
                 DeductionItem(type="working_student", name="勤労学生控除", amount=ws)
@@ -2090,6 +2097,76 @@ def _calc_income_tax_from_table(taxable_income: int) -> int:
     return taxable_income * INCOME_TAX_TOP_RATE // 100 - INCOME_TAX_TOP_DEDUCTION
 
 
+def calc_income_special_taxes(base_income_tax: int, fiscal_year: int) -> IncomeSpecialTaxResult:
+    """防衛財確法5の22: 個別税の端数を失わず、整数の分子を合算して計算する。
+
+    各税目の円単位値は参考内訳。合算で生じる1円はrounding_adjustmentへ明示する。
+    納付額の100円未満切捨ては、源泉徴収・予定納税の控除後に行う。
+    """
+    if type(base_income_tax) is not int or base_income_tax < 0:
+        raise ValueError("base_income_tax は0以上の円単位整数で指定してください")
+    constants = get_income_tax_constants(fiscal_year)
+    denominator = RECONSTRUCTION_TAX_DENOMINATOR
+    reconstruction_numerator = base_income_tax * constants.reconstruction_tax_rate_per_mille
+    defense_numerator = base_income_tax * constants.defense_tax_rate_per_mille
+    reconstruction_tax = reconstruction_numerator // denominator
+    defense_tax = defense_numerator // denominator
+    combined = (reconstruction_numerator + defense_numerator) // denominator
+    return IncomeSpecialTaxResult(
+        reconstruction_tax=reconstruction_tax,
+        defense_tax=defense_tax,
+        combined_special_tax=combined,
+        rounding_adjustment=combined - reconstruction_tax - defense_tax,
+        reconstruction_numerator=reconstruction_numerator,
+        defense_numerator=defense_numerator,
+        denominator=denominator,
+    )
+
+
+def _calc_salary_child_adjustment(input_data: IncomeTaxInput, warnings: list[str]) -> int:
+    """No.1411の子ども・特別障害者等の所得金額調整。旧入力の試算契約は維持する。"""
+    if input_data.salary_income <= SALARY_ADJUSTMENT_REVENUE_THRESHOLD:
+        return 0
+    if (
+        input_data.fiscal_year < 2027
+        and input_data.salary_income_adjustment_eligible is None
+        and input_data.pension_income == 0
+    ):
+        return 0
+    constants = get_income_tax_constants(input_data.fiscal_year)
+    known_eligible = input_data.disability_status == "special"
+    for dependent in input_data.dependents:
+        if dependent.income > constants.dependent_income_limit:
+            continue
+        if dependent.disability in ("special", "special_cohabiting"):
+            known_eligible = True
+        if (
+            dependent.relationship != "配偶者"
+            and _calc_age(dependent.birth_date, input_data.fiscal_year) < 23
+        ):
+            # 他の所得者の扶養でも、この調整控除は夫婦双方が適用できる。
+            known_eligible = True
+    confirmed = input_data.salary_income_adjustment_eligible
+    if confirmed is False and known_eligible:
+        raise ValueError("給与の所得金額調整控除の確認値が、本人・扶養親族の情報と矛盾します")
+    if known_eligible:
+        confirmed = True
+    if confirmed is None:
+        if input_data.calculation_mode == "filing":
+            raise ValueError(
+                "salary_income_adjustment_eligible で子ども・特別障害者等の要件を確認してください"
+            )
+        warnings.append("給与の所得金額調整控除の要件が未確認のため、適用なしで試算しています")
+        return 0
+    if not confirmed:
+        return 0
+    excess = (
+        min(input_data.salary_income, SALARY_ADJUSTMENT_REVENUE_CAP)
+        - SALARY_ADJUSTMENT_REVENUE_THRESHOLD
+    )
+    return (excess + 9) // 10  # 10%、1円未満切上げ
+
+
 def calc_income_tax(input_data: IncomeTaxInput) -> IncomeTaxResult:
     """Full income tax calculation flow for supported filing years.
 
@@ -2101,7 +2178,7 @@ def calc_income_tax(input_data: IncomeTaxInput) -> IncomeTaxResult:
     5. Taxable income (truncate to 1,000 yen, min 0)
     6. Tax from table
     7. Tax credits (housing loan)
-    8. Reconstruction tax = tax * 2.1% (truncate to 1 yen)
+    8. 年分別の復興・防衛特別所得税を端数保持で合算
     9. Filing tax amount (truncate to 100 yen)
     10. Difference = filing amount - withheld tax
     """
@@ -2115,6 +2192,8 @@ def calc_income_tax(input_data: IncomeTaxInput) -> IncomeTaxResult:
     # Step 2: Business income（赤字の場合は負値 → 給与所得と損益通算）
     # 青色申告特別控除は事業所得（収入−経費）を上限とする（租特法25条の2）
     warnings: list[str] = []
+    salary_child_adjustment = _calc_salary_child_adjustment(input_data, warnings)
+    salary_income_after -= salary_child_adjustment
     business_profit_before_deduction = input_data.business_revenue - input_data.business_expenses
     blue_eligibility = check_blue_return_eligibility(
         input_data.fiscal_year,
@@ -2145,7 +2224,43 @@ def calc_income_tax(input_data: IncomeTaxInput) -> IncomeTaxResult:
     # 一時所得 = max(0, (収入 - 経費 - 特別控除50万)) × 1/2
     one_time_income = max(0, input_data.one_time_income - ONE_TIME_INCOME_SPECIAL_DEDUCTION) // 2
 
+    pension_result: PensionDeductionResult | None = None
+    salary_pension_adjustment = 0
+    if input_data.pension_income > 0:
+        if input_data.pension_is_over_65 is None:
+            raise ValueError("pension_income がある場合は pension_is_over_65 を確認してください")
+        # 国税庁手引のC-F: 子ども等の調整後、給与・年金の調整前。繰越損失も引かない。
+        pension_other_income = max(
+            0, total_income_raw + misc_income + dividend_comprehensive + one_time_income
+        )
+        pension_result = calc_pension_deduction(
+            PensionDeductionInput(
+                pension_income=input_data.pension_income,
+                is_over_65=input_data.pension_is_over_65,
+                other_income=pension_other_income,
+                fiscal_year=input_data.fiscal_year,
+                salary_income_deduction=salary_deduction,
+            )
+        )
+        # 措法41の3の11④六: 280万円上限の適用前の年金所得を使う。
+        salary_pension_adjustment = max(
+            0,
+            min(salary_income_after, SALARY_PENSION_ADJUSTMENT_CAP)
+            + min(
+                pension_result.taxable_pension_income_before_salary_cap,
+                SALARY_PENSION_ADJUSTMENT_CAP,
+            )
+            - SALARY_PENSION_ADJUSTMENT_CAP,
+        )
+        salary_income_after -= salary_pension_adjustment
+        total_income_raw += pension_result.taxable_pension_income - salary_pension_adjustment
+
     total_income_raw += misc_income + dividend_comprehensive + one_time_income
+    aggregate_income = max(0, total_income_raw)
+    if input_data.fiscal_year == 2027 and aggregate_income > MINIMUM_TAX_REVIEW_THRESHOLD_2027:
+        raise ValueError(
+            "基準所得金額1億6,500万円超の課税特例は専用計算が必要です。この所得域は未対応です"
+        )
 
     # Step 3.5: 繰越損失の適用（青色申告の場合、3年繰越）
     loss_applied = 0
@@ -2176,6 +2291,7 @@ def calc_income_tax(input_data: IncomeTaxInput) -> IncomeTaxResult:
     # calc_deductions() の共通引数。寄附金は各候補で一括調整層から追加する。
     common_args: dict[str, Any] = {
         "total_income": total_income,
+        "aggregate_income": aggregate_income,
         "social_insurance": input_data.social_insurance,
         "life_insurance_premium": input_data.life_insurance_premium,
         "life_insurance_detail": input_data.life_insurance_detail,
@@ -2330,13 +2446,12 @@ def calc_income_tax(input_data: IncomeTaxInput) -> IncomeTaxResult:
                 candidate_income_tax_after_credits = max(
                     0, candidate_income_tax_base - candidate.total_tax_credits
                 )
-                candidate_reconstruction_tax = (
-                    candidate_income_tax_after_credits
-                    * RECONSTRUCTION_TAX_RATE
-                    // RECONSTRUCTION_TAX_DENOMINATOR
+                candidate_special_taxes = calc_income_special_taxes(
+                    candidate_income_tax_after_credits, input_data.fiscal_year
                 )
                 candidate_total_tax = (
-                    candidate_income_tax_after_credits + candidate_reconstruction_tax
+                    candidate_income_tax_after_credits
+                    + candidate_special_taxes.combined_special_tax
                 )
 
                 if (
@@ -2368,13 +2483,13 @@ def calc_income_tax(input_data: IncomeTaxInput) -> IncomeTaxResult:
     total_tax_credits = deductions.total_tax_credits
     income_tax_after_credits = max(0, income_tax_base - total_tax_credits)
 
-    # Step 8: Reconstruction tax = 2.1% (truncate to 1 yen)
-    reconstruction_tax = int(
-        income_tax_after_credits * RECONSTRUCTION_TAX_RATE // RECONSTRUCTION_TAX_DENOMINATOR
-    )
+    # Step 8: 各税目の円未満を保持して合算する。
+    special_taxes = calc_income_special_taxes(income_tax_after_credits, input_data.fiscal_year)
+    reconstruction_tax = special_taxes.reconstruction_tax
 
-    # Step 9: 所得税及び復興特別所得税の額（㊺）— 端数処理なし
-    total_tax = income_tax_after_credits + reconstruction_tax
+    # Step 9: 通則法基本通達119関係6の算出過程の円未満切捨てを合算値に適用。
+    # 防衛財確法5の22の合算を保ち、税目別内訳の丸め差も含める。
+    total_tax = income_tax_after_credits + special_taxes.combined_special_tax
 
     # Step 10: Difference（給与源泉+事業源泉+その他源泉+予定納税を差し引く）
     total_withheld = (
@@ -2386,7 +2501,7 @@ def calc_income_tax(input_data: IncomeTaxInput) -> IncomeTaxResult:
     tax_due_raw = total_tax - total_withheld
 
     # 国税通則法 第119条: 納付すべき確定金額は100円未満切捨て
-    # 国税通則法 第120条: 還付金は1円単位（1円未満切捨て）
+    # 還付は計算済みの円単位税額で精算し、100円単位には丸めない。
     if tax_due_raw > 0:
         tax_due = (tax_due_raw // TAX_AMOUNT_ROUNDING) * TAX_AMOUNT_ROUNDING
     else:
@@ -2415,6 +2530,14 @@ def calc_income_tax(input_data: IncomeTaxInput) -> IncomeTaxResult:
         calculation_mode=input_data.calculation_mode,
         eligibility_checks=[blue_eligibility],
         salary_income_after_deduction=salary_income_after,
+        salary_child_adjustment=salary_child_adjustment,
+        salary_pension_adjustment=salary_pension_adjustment,
+        pension_income_after_deduction=pension_result.taxable_pension_income
+        if pension_result
+        else 0,
+        pension_deduction=pension_result.deduction_amount if pension_result else 0,
+        pension_salary_cap_adjustment=pension_result.salary_cap_adjustment if pension_result else 0,
+        aggregate_income_before_loss_carryforward=aggregate_income,
         business_income=business_income,
         total_income=total_income,
         effective_blue_return_deduction=effective_blue_deduction,
@@ -2430,6 +2553,9 @@ def calc_income_tax(input_data: IncomeTaxInput) -> IncomeTaxResult:
         total_tax_credits=total_tax_credits,
         income_tax_after_credits=income_tax_after_credits,
         reconstruction_tax=reconstruction_tax,
+        defense_tax=special_taxes.defense_tax,
+        special_tax_rounding_adjustment=special_taxes.rounding_adjustment,
+        income_special_tax_detail=special_taxes,
         total_tax=total_tax,
         withheld_tax=input_data.withheld_tax,
         business_withheld_tax=input_data.business_withheld_tax,
@@ -2487,8 +2613,12 @@ def calc_consumption_tax(input_data: ConsumptionTaxInput) -> ConsumptionTaxResul
     - standard: 本則課税 = 消費税額(国税) - 実際の仕入税額(国税部分)
     """
     require_supported_consumption_tax_year(input_data.fiscal_year, input_data.method)
-    if input_data.method == "special_30pct" and input_data.interim_payment != 0:
-        raise ValueError("3割特例の中間納付がある計算は、地方消費税の中間納付対応まで未対応です")
+    if (
+        input_data.calculation_mode == "filing"
+        and input_data.interim_payment > 0
+        and input_data.local_interim_payment is None
+    ):
+        raise ValueError("申告用計算では地方消費税の中間納付額を明示してください（納付なしは0）")
     eligibility_checks = []
     if input_data.method == "special_20pct" or input_data.method == "special_30pct":
         special_eligibility = check_invoice_special_eligibility(
@@ -2721,9 +2851,14 @@ def calc_consumption_tax(input_data: ConsumptionTaxInput) -> ConsumptionTaxResul
     else:
         local_tax = 0
 
-    # NOTE: 地方消費税の中間納付譲渡割額は入力モデルに存在しないため
-    # total_due に反映されない（Issue: 中間納付譲渡割額の入力対応）。
-    total_due = tax_due - refund_shortfall + local_tax
+    # 国税庁の申告書第一表: 地方税の年税額・中間納付・中間納付還付を別々に扱う。
+    # local_tax_due は従来どおり中間納付前の年税額を保持する。
+    local_interim_payment = input_data.local_interim_payment or 0
+    if input_data.local_interim_payment is None and interim_payment > 0:
+        warnings.append("地方消費税の中間納付額が未確認のため、0円として試算しています")
+    local_due_after_interim = local_tax - local_interim_payment
+    local_interim_refund = max(0, local_interim_payment - max(0, local_tax))
+    total_due = tax_due - refund_shortfall + local_due_after_interim
 
     return ConsumptionTaxResult(
         fiscal_year=input_data.fiscal_year,
@@ -2757,6 +2892,9 @@ def calc_consumption_tax(input_data: ConsumptionTaxInput) -> ConsumptionTaxResul
         net_tax=net_tax,
         refund_shortfall=refund_shortfall,
         interim_payment=interim_payment,
+        local_interim_payment=local_interim_payment,
+        local_tax_due_after_interim_payment=local_due_after_interim,
+        local_interim_refund=local_interim_refund,
         tax_due=tax_due,
         local_tax_due=local_tax,
         total_due=total_due,
@@ -2836,7 +2974,8 @@ def calc_furusato_deduction_limit(
 
 
 def calc_pension_deduction(input_data: PensionDeductionInput) -> PensionDeductionResult:
-    """公的年金等控除額を計算する（所得税法第35条、令和7年改正）。"""
+    """所得税法35条の公的年金等控除と、令和9年分の給与との合計上限を計算する。"""
+    constants = get_income_tax_constants(input_data.fiscal_year)
     pension = input_data.pension_income
     if pension <= 0:
         return PensionDeductionResult(
@@ -2844,6 +2983,7 @@ def calc_pension_deduction(input_data: PensionDeductionInput) -> PensionDeductio
             deduction_amount=0,
             taxable_pension_income=0,
             is_over_65=input_data.is_over_65,
+            fiscal_year=input_data.fiscal_year,
         )
 
     # テーブル選択
@@ -2857,11 +2997,13 @@ def calc_pension_deduction(input_data: PensionDeductionInput) -> PensionDeductio
     for upper_limit, rate, fixed in table:
         if pension <= upper_limit:
             if rate == 100:
-                deduction = pension  # 全額控除
+                # 他所得による最低控除額の減額後に収入で上限を付ける。
+                deduction = table[1][2]
             elif rate == 0:
                 deduction = fixed  # 固定額
             else:
-                deduction = pension * rate // 100 + fixed
+                # 雑所得額の1円未満切捨てに対応する控除額は、率計算部分を切り上げる。
+                deduction = (pension * rate + 99) // 100 + fixed
             break
 
     # 所得金額調整（公的年金等以外の所得が1,000万超）
@@ -2871,8 +3013,21 @@ def calc_pension_deduction(input_data: PensionDeductionInput) -> PensionDeductio
     elif input_data.other_income > PENSION_OTHER_INCOME_BRACKET_1:
         other_income_adj = PENSION_OTHER_INCOME_ADJUSTMENT_1
 
-    deduction = max(0, deduction - other_income_adj)
-    taxable = max(0, pension - deduction)
+    deduction_before_cap = min(pension, max(0, deduction - other_income_adj))
+    salary_cap_adjustment = 0
+    if constants.salary_pension_deduction_cap is not None:
+        if input_data.salary_income_deduction is None:
+            raise ValueError(
+                "2027年分は salary_income_deduction が必要です。給与がない場合も0を明示してください"
+            )
+        salary_cap_adjustment = max(
+            0,
+            input_data.salary_income_deduction
+            + deduction_before_cap
+            - constants.salary_pension_deduction_cap,
+        )
+    deduction = max(0, deduction_before_cap - salary_cap_adjustment)
+    taxable = pension - deduction
 
     return PensionDeductionResult(
         pension_income=pension,
@@ -2880,6 +3035,10 @@ def calc_pension_deduction(input_data: PensionDeductionInput) -> PensionDeductio
         taxable_pension_income=taxable,
         is_over_65=input_data.is_over_65,
         other_income_adjustment=other_income_adj,
+        fiscal_year=input_data.fiscal_year,
+        deduction_before_salary_cap=deduction_before_cap,
+        taxable_pension_income_before_salary_cap=pension - deduction_before_cap,
+        salary_cap_adjustment=salary_cap_adjustment,
     )
 
 
@@ -2974,6 +3133,37 @@ def sanity_check_income_tax(
             raise ValueError(
                 "試算結果を申告用の検算に使えません。filing モードで再計算してください"
             )
+        # 保存後に入力・要件が変わった場合も、現行の申告用計算を通して検出する。
+        recalculated = calc_income_tax(input_data)
+        compared_fields = (
+            "salary_income_after_deduction",
+            "salary_child_adjustment",
+            "salary_pension_adjustment",
+            "pension_income_after_deduction",
+            "pension_deduction",
+            "pension_salary_cap_adjustment",
+            "business_income",
+            "total_income",
+            "effective_blue_return_deduction",
+            "total_income_deductions",
+            "taxable_income",
+            "income_tax_base",
+            "total_tax_credits",
+            "income_tax_after_credits",
+            "total_tax",
+            "tax_due",
+        )
+        mismatches = [
+            name for name in compared_fields if getattr(result, name) != getattr(recalculated, name)
+        ]
+        if mismatches:
+            items.append(
+                TaxSanityCheckItem(
+                    severity="error",
+                    code="FILING_CALCULATION_MISMATCH",
+                    message="申告用の再計算結果と保存値が一致しません: " + ", ".join(mismatches),
+                )
+            )
 
     # 1. BLUE_DEDUCTION_ON_LOSS — 赤字なのに控除適用（Part A 修正後は防御的チェック）
     if business_profit < 0 and result.effective_blue_return_deduction > 0:
@@ -3040,9 +3230,10 @@ def sanity_check_income_tax(
         )
 
     # 7. RECONSTRUCTION_TAX_MISMATCH — 復興特別所得税の計算不一致
-    expected_reconstruction = int(
-        result.income_tax_after_credits * RECONSTRUCTION_TAX_RATE // RECONSTRUCTION_TAX_DENOMINATOR
+    expected_special = calc_income_special_taxes(
+        result.income_tax_after_credits, input_data.fiscal_year
     )
+    expected_reconstruction = expected_special.reconstruction_tax
     if result.reconstruction_tax != expected_reconstruction:
         items.append(
             TaxSanityCheckItem(
@@ -3051,6 +3242,46 @@ def sanity_check_income_tax(
                 message=f"復興特別所得税の計算が不一致です"
                 f"（実際: {result.reconstruction_tax:,}円、"
                 f"期待: {expected_reconstruction:,}円）",
+            )
+        )
+
+    for code, label, actual, expected in (
+        (
+            "DEFENSE_TAX_MISMATCH",
+            "防衛特別所得税",
+            result.defense_tax,
+            expected_special.defense_tax,
+        ),
+        (
+            "SPECIAL_TAX_ROUNDING_MISMATCH",
+            "特別所得税の合算端数",
+            result.special_tax_rounding_adjustment,
+            expected_special.rounding_adjustment,
+        ),
+        (
+            "TOTAL_TAX_MISMATCH",
+            "所得税と特別所得税の合計",
+            result.total_tax,
+            result.income_tax_after_credits + expected_special.combined_special_tax,
+        ),
+    ):
+        if actual != expected:
+            items.append(
+                TaxSanityCheckItem(
+                    severity="error",
+                    code=code,
+                    message=f"{label}の計算が不一致です（実際: {actual:,}円、期待: {expected:,}円）",
+                )
+            )
+    if (
+        result.income_special_tax_detail is not None
+        and result.income_special_tax_detail != expected_special
+    ):
+        items.append(
+            TaxSanityCheckItem(
+                severity="error",
+                code="SPECIAL_TAX_DETAIL_MISMATCH",
+                message="特別所得税の計算内訳が、対象年分の税率・合算額と一致しません",
             )
         )
 

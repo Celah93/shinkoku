@@ -84,10 +84,13 @@ shinkoku tax calc-consumption --input consumption_input.json
 - `calculation_method`: `tax_inclusive_total`（割戻し計算）
 - `net_tax`: 差引税額（100円切捨て、正の場合のみ）
 - `refund_shortfall`: 控除不足還付税額（仕入 > 売上の場合）
-- `interim_payment`: 中間納付税額
+- `interim_payment`: 国税の中間納付税額
+- `local_interim_payment`: 地方消費税の中間納付税額。国税の中間納付が正なら申告用では必須。実額が0円なら0を明示する
 - `tax_due`: 後方互換の符号付き集計値 = net_tax - interim_payment（正 = 納付、負 = 中間納付分の還付）
-- `local_tax_due`: 地方消費税額（納付時は100円未満切捨て、還付時は1円未満切捨て）
-- `total_due`: 合計納付または還付額 = tax_due - refund_shortfall + local_tax_due（負 = 還付。地方の中間納付は未考慮）
+- `local_tax_due`: 中間納付前の地方消費税額（納付時は100円未満切捨て、還付時は1円未満切捨て）
+- `local_tax_due_after_interim_payment`: 地方消費税の精算後の符号付き額
+- `local_interim_refund`: 地方消費税の中間納付に対する還付額
+- `total_due`: 合計納付または還付額 = tax_due - refund_shortfall + local_tax_due_after_interim_payment（負 = 還付）
 
 ### 2割特例の計算ロジック
 

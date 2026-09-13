@@ -36,22 +36,27 @@ shinkoku tax calc-income --input income_input.json
 }
 ```
 出力 (IncomeTaxResult):
-- `salary_income_after_deduction`: 給与所得控除後の金額
+- `salary_income_after_deduction`: 給与所得控除・所得金額調整後の金額
+- `salary_child_adjustment` / `salary_pension_adjustment`: 給与の所得金額調整の内訳
+- `pension_income_after_deduction` / `pension_deduction` / `pension_salary_cap_adjustment`: 年金所得・控除・給与との合計上限による減額
 - `business_income`: 事業所得
-- `total_income`: 合計所得金額（繰越損失適用後）
+- `aggregate_income_before_loss_carryforward`: 人的控除の所得制限に使う合計所得金額（繰越控除前）
+- `total_income`: 総所得金額等（繰越控除後）
 - `total_income_deductions`: 所得控除合計
 - `taxable_income`: 課税所得金額（1,000円未満切り捨て）
 - `income_tax_base`: 算出税額
 - `total_tax_credits`: 税額控除合計
 - `housing_loan_credit_entries`: 住宅ローン控除の年数・期間・状態を含む個別明細
 - `income_tax_after_credits`: 税額控除後
-- `reconstruction_tax`: 復興特別所得税（基準所得税額 x 2.1%）
-- `total_tax`: 所得税及び復興特別所得税の額（端数処理なし）
+- `reconstruction_tax`: 復興特別所得税の円単位参考内訳（2025・2026年2.1%、2027年1.1%）
+- `defense_tax`: 防衛特別所得税の円単位参考内訳（2027年1%）
+- `special_tax_rounding_adjustment` / `income_special_tax_detail`: 合算端数・整数の分子と分母。内訳だけを足して税額を作り直さない
+- `total_tax`: 所得税と特別所得税の合算額（円単位、精算前）
 - `withheld_tax`: 源泉徴収税額（給与分）
 - `business_withheld_tax`: 事業所得の源泉徴収税額
 - `estimated_tax_payment`: 予定納税額
 - `loss_carryforward_applied`: 適用した繰越損失額
-- `tax_due`: 申告納税額（= total_tax - withheld_tax - business_withheld_tax - estimated_tax_payment）
+- `tax_due`: 合計税額から給与・事業・その他所得の源泉徴収と予定納税を引いた額。納付だけ100円未満切捨て、負は還付
 
 **寄附金控除の反映:**
 
@@ -79,7 +84,7 @@ shinkoku tax calc-income --input income_input.json
 2. `effective_blue_return_deduction` を確認し、自動調整があれば `warnings` の内容を表示する
 3. 繰越損失が適用されている場合はその額を明示する
 4. 所得税の速算表の適用が正しいか確認する
-5. 復興特別所得税が正しく加算されているか確認する
+5. 年分に対応した復興・防衛特別所得税と合算端数を確認する
 6. 源泉徴収税額（給与分 + 事業分）が正しく控除されているか確認する
 7. 予定納税額が正しく控除されているか確認する
 8. 最終的な納付額（または還付額）を明示する

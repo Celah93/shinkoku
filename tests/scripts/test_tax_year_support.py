@@ -25,7 +25,8 @@ from .conftest import run_cli, write_json
     ],
 )
 def test_unsupported_year_returns_error_json(tmp_path: Path, command: str, params: dict) -> None:
-    input_path = write_json(tmp_path, {**params, "fiscal_year": 2027})
+    year = 2028 if command in ("calc-income", "calc-deductions") else 2027
+    input_path = write_json(tmp_path, {**params, "fiscal_year": year})
     result = run_cli("tax", command, "--input", input_path)
 
     assert result.returncode == 1
@@ -33,8 +34,9 @@ def test_unsupported_year_returns_error_json(tmp_path: Path, command: str, param
     output = json.loads(result.stdout)
     assert set(output) == {"status", "message"}
     assert output["status"] == "error"
-    assert "fiscal_year=2027 は未対応" in output["message"]
-    assert "対応年分: [2025, 2026]" in output["message"]
+    assert f"fiscal_year={year} は未対応" in output["message"]
+    supported = [2025, 2026, 2027] if year == 2028 else [2025, 2026]
+    assert f"対応年分: {supported}" in output["message"]
 
 
 def test_unsupported_year_stops_before_opening_profile_db(tmp_path: Path) -> None:
@@ -48,10 +50,10 @@ def test_unsupported_year_stops_before_opening_profile_db(tmp_path: Path) -> Non
     assert not db_path.exists()
 
 
-def test_sanity_check_does_not_validate_saved_2027_result(tmp_path: Path) -> None:
+def test_sanity_check_does_not_validate_saved_2028_result(tmp_path: Path) -> None:
     input_data = IncomeTaxInput(fiscal_year=2026, salary_income=5_000_000, blue_return_deduction=0)
     result_data = calc_income_tax(input_data).model_dump()
-    result_data["fiscal_year"] = 2027
+    result_data["fiscal_year"] = 2028
     input_path = write_json(tmp_path, {"input": input_data.model_dump(), "result": result_data})
 
     result = run_cli("tax", "sanity-check", "--input", input_path)
@@ -59,7 +61,7 @@ def test_sanity_check_does_not_validate_saved_2027_result(tmp_path: Path) -> Non
     assert result.returncode == 1
     output = json.loads(result.stdout)
     assert output["status"] == "error"
-    assert "fiscal_year=2027 は未対応" in output["message"]
+    assert "fiscal_year=2028 は未対応" in output["message"]
 
 
 def test_furusato_explicit_2026_year_keeps_existing_output(tmp_path: Path) -> None:

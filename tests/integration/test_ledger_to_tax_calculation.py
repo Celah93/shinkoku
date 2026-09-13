@@ -50,6 +50,9 @@ def _seed_book(db_path: str, year: int, revenue: int, expense: int) -> dict:
         (2026, 3000000, 1000000, 5000000, 0, 429300),
         (2026, 3000000, 1000000, 5000000, 600000, -170670),
         (2026, 0, 0, 5000000, 200000, -42256),
+        (2027, 3000000, 1000000, 0, 0, 15800),
+        (2027, 3000000, 1000000, 5000000, 600000, -170670),
+        (2027, 0, 0, 5000000, 200000, -42256),
     ],
 )
 def test_book_to_income_filing_and_sanity_check(
@@ -104,8 +107,9 @@ def test_book_to_income_filing_and_sanity_check(
         (2028, "special_30pct", 30000),
     ],
 )
+@pytest.mark.parametrize("interim", [False, True])
 def test_book_to_consumption_filing_with_profile_readback(
-    tmp_path: Path, year: int, method: str, total: int
+    tmp_path: Path, year: int, method: str, total: int, interim: bool
 ) -> None:
     db_path = str(tmp_path / "fictional-consumption.db")
     # 全売上が標準税率10%、税込経理の架空ケース。汎用の税区分集計器ではない。
@@ -123,6 +127,9 @@ def test_book_to_consumption_filing_with_profile_readback(
         "calculation_mode": "filing",
         "invoice_special_eligibility": verified_invoice_facts().model_dump(mode="json"),
     }
+    if interim:
+        params.update(interim_payment=10000, local_interim_payment=2000)
+        total -= 12000
     result = run_cli(
         "tax", "calc-consumption", "--input", write_json(tmp_path, params), "--db-path", db_path
     )
@@ -131,4 +138,5 @@ def test_book_to_consumption_filing_with_profile_readback(
     assert output["total_due"] == total
     assert output["method_verified"] is True
     assert output["eligibility_checks"][0]["status"] == "eligible"
+    assert output["local_interim_payment"] == (2000 if interim else 0)
     assert ledger_pl(db_path=db_path, fiscal_year=year) == pl

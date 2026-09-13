@@ -14,7 +14,7 @@ from shinkoku.tools.tax_calc import (
 )
 
 
-@pytest.mark.parametrize("fiscal_year", [2024, 2027, 2028, 2035])
+@pytest.mark.parametrize("fiscal_year", [2024, 2028, 2035])
 @pytest.mark.parametrize("salary_income", [0, 5_000_000])
 def test_income_rejects_unsupported_year_even_without_taxable_income(
     fiscal_year: int, salary_income: int
@@ -27,10 +27,10 @@ def test_income_rejects_unsupported_year_even_without_taxable_income(
                 blue_return_deduction=0,
             )
         )
-    assert "対応年分: [2025, 2026]" in str(caught.value)
+    assert "対応年分: [2025, 2026, 2027]" in str(caught.value)
 
 
-@pytest.mark.parametrize("fiscal_year", [2024, 2027, 2028, 2035])
+@pytest.mark.parametrize("fiscal_year", [2024, 2028, 2035])
 def test_deductions_reject_unsupported_year(fiscal_year: int) -> None:
     with pytest.raises(ValueError, match=f"fiscal_year={fiscal_year} は未対応"):
         calc_deductions(
@@ -56,7 +56,7 @@ def test_furusato_limit_rejects_unsupported_donation_year(fiscal_year: int) -> N
         calc_furusato_deduction_limit(0, 0, fiscal_year=fiscal_year)
 
 
-@pytest.mark.parametrize("input_year,result_year", [(2027, 2027), (2027, 2026), (2026, 2027)])
+@pytest.mark.parametrize("input_year,result_year", [(2028, 2028), (2028, 2026), (2026, 2028)])
 def test_sanity_check_rejects_old_saved_results_for_unsupported_year(
     input_year: int, result_year: int
 ) -> None:
@@ -64,7 +64,7 @@ def test_sanity_check_rejects_old_saved_results_for_unsupported_year(
     saved_result = calc_income_tax(supported_input).model_copy(update={"fiscal_year": result_year})
     input_data = supported_input.model_copy(update={"fiscal_year": input_year})
 
-    with pytest.raises(ValueError, match="fiscal_year=2027 は未対応"):
+    with pytest.raises(ValueError, match="fiscal_year=2028 は未対応"):
         sanity_check_income_tax(input_data, saved_result)
 
 

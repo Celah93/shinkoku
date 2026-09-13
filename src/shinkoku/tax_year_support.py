@@ -23,12 +23,11 @@ class TaxYearSupport:
     supported_years: frozenset[int]
 
 
-# 2027年分の一部定数は実装済みだが、申告用の集計・計算は対応途中。
 # 機能ごとに制度一式と境界テストを確認してから、その機能の年分だけを追加する。
 TAX_YEAR_SUPPORT: Final[Mapping[TaxCalculation, TaxYearSupport]] = MappingProxyType(
     {
-        "income_tax": TaxYearSupport("所得税計算・検算", frozenset({2025, 2026})),
-        "income_deductions": TaxYearSupport("所得税の控除集計", frozenset({2025, 2026})),
+        "income_tax": TaxYearSupport("所得税計算・検算", frozenset({2025, 2026, 2027})),
+        "income_deductions": TaxYearSupport("所得税の控除集計", frozenset({2025, 2026, 2027})),
         "consumption_tax": TaxYearSupport("消費税計算", frozenset({2025, 2026})),
         "consumption_special_30pct": TaxYearSupport("消費税3割特例", frozenset({2027, 2028})),
         "furusato_limit": TaxYearSupport("ふるさと納税の上限推定", frozenset({2025, 2026})),

@@ -66,14 +66,17 @@ def _detail(
         ("renovation", "certified", True, 20_000_000, 10),
     ],
 )
-def test_2026_rule_table(
+@pytest.mark.parametrize("year", [2026, 2027])
+def test_2026_and_2027_rule_tables(
     housing_type: str,
     category: str,
     special: bool,
     limit: int,
     period: int,
+    year: int,
 ) -> None:
     detail = _detail(
+        move_in_date=f"{year}-04-01",
         housing_type=housing_type,
         housing_category=category,
         is_special_target_individual=special,
@@ -135,7 +138,7 @@ def test_general_new_without_building_permit_returns_zero_with_warning() -> None
     assert any("令和6年6月30日までに建築" in warning for warning in result.warnings)
 
 
-@pytest.mark.parametrize("move_in_year", [2027, 2030])
+@pytest.mark.parametrize("move_in_year", [2028, 2030])
 def test_future_move_in_year_fails_closed_even_with_zero_balance(move_in_year: int) -> None:
     detail = _detail(
         move_in_date=f"{move_in_year}-01-01",
@@ -144,6 +147,23 @@ def test_future_move_in_year_fails_closed_even_with_zero_balance(move_in_year: i
 
     with pytest.raises(ValueError, match="実装範囲外"):
         calc_housing_loan_credit(0, detail, claim_fiscal_year=move_in_year)
+
+
+def test_2027_housing_credit_reduces_both_special_tax_bases() -> None:
+    result = calc_income_tax(
+        IncomeTaxInput(
+            fiscal_year=2027,
+            salary_income=5000000,
+            blue_return_deduction=0,
+            housing_loan_detail=_detail(move_in_date="2027-04-01", year_end_balance=20000000),
+        )
+    )
+    assert result.housing_loan_credit == 140000
+    assert result.income_tax_after_credits == 14500
+    assert result.reconstruction_tax == 159
+    assert result.defense_tax == 145
+    assert result.total_tax == 14804
+    assert result.tax_due == 14800
 
 
 @pytest.mark.parametrize("move_in_year", [2019, 2021])

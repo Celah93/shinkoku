@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from types import MappingProxyType
 from typing import Final
@@ -246,6 +246,10 @@ class IncomeTaxYearConstants:
     spouse_special_deduction_table: tuple[SpouseSpecialDeductionRow, ...]
     specific_relative_special_deduction_table: tuple[SpecificRelativeSpecialDeductionRow, ...]
     life_insurance_under23_special: LifeInsuranceUnder23Special | None
+    single_parent_deduction: int = SINGLE_PARENT_DEDUCTION
+    reconstruction_tax_rate_per_mille: int = 21
+    defense_tax_rate_per_mille: int = 0
+    salary_pension_deduction_cap: int | None = None
 
 
 _INCOME_TAX_CONSTANTS_2025 = IncomeTaxYearConstants(
@@ -287,13 +291,21 @@ _INCOME_TAX_CONSTANTS_2026 = IncomeTaxYearConstants(
     life_insurance_under23_special=_LIFE_INSURANCE_UNDER23_SPECIAL,
 )
 
-# この表で扱う個別定数は令和8・9年分で共通。申告計算全体の対応年分ではない。
-# 所得税・控除集計等の実行可否は tax_year_support.py で別途確認する。
+# 財務省「令和8年度税制改正の解説」102・129・149・208頁。
+_INCOME_TAX_CONSTANTS_2027 = replace(
+    _INCOME_TAX_CONSTANTS_2026,
+    single_parent_deduction=380_000,
+    reconstruction_tax_rate_per_mille=11,
+    defense_tax_rate_per_mille=10,
+    salary_pension_deduction_cap=2_800_000,
+)
+
+# 共通の控除表は保持し、改正された定数だけを年分別に切り替える。
 INCOME_TAX_CONSTANTS_BY_YEAR: Final[Mapping[int, IncomeTaxYearConstants]] = MappingProxyType(
     {
         2025: _INCOME_TAX_CONSTANTS_2025,
         2026: _INCOME_TAX_CONSTANTS_2026,
-        2027: _INCOME_TAX_CONSTANTS_2026,
+        2027: _INCOME_TAX_CONSTANTS_2027,
     }
 )
 
@@ -612,6 +624,16 @@ for _category in ("certified", "zeh", "energy_efficient", "general"):
             _housing_loan_rule(20_000_000, 10, "renovation")
         )
 
+# 財務省解説225・226頁: 令和9年入居までは一般・特例対象とも同じ限度額と期間。
+_HOUSING_LOAN_RULES_2027 = MappingProxyType(
+    {
+        key: replace(
+            rule, warning=rule.warning.replace("令和8年", "令和9年") if rule.warning else None
+        )
+        for key, rule in _HOUSING_LOAN_RULES_2026_MUTABLE.items()
+    }
+)
+
 # キーは (取得区分, 性能区分, 特例対象個人, 建築確認経過措置)。
 # 居住年を正確一致で引くため、未実装年へ過去年分の表が流入しない。
 HOUSING_LOAN_RULES_BY_MOVE_IN_YEAR: Final[
@@ -623,6 +645,7 @@ HOUSING_LOAN_RULES_BY_MOVE_IN_YEAR: Final[
         2024: _HOUSING_LOAN_RULES_R6_R7,
         2025: _HOUSING_LOAN_RULES_R6_R7,
         2026: MappingProxyType(_HOUSING_LOAN_RULES_2026_MUTABLE),
+        2027: _HOUSING_LOAN_RULES_2027,
     }
 )
 
@@ -647,6 +670,15 @@ INCOME_TAX_TOP_DEDUCTION = 4_796_000  # 4,000万超の控除額
 # ============================================================
 RECONSTRUCTION_TAX_RATE = 21  # 2.1% = 21/1000
 RECONSTRUCTION_TAX_DENOMINATOR = 1000
+
+# 所得金額調整控除（措法41の3の11）。国税庁No.1411。
+SALARY_ADJUSTMENT_REVENUE_THRESHOLD = 8_500_000
+SALARY_ADJUSTMENT_REVENUE_CAP = 10_000_000
+SALARY_PENSION_ADJUSTMENT_CAP = 100_000
+
+# 令和9年分の極めて高い水準の所得への課税特例（措法41の19）。
+# 分離課税等も含む専用の基準所得計算は別対応のため、超過する入力を通常計算に流さない。
+MINIMUM_TAX_REVIEW_THRESHOLD_2027 = 165_000_000
 
 # ============================================================
 # 消費税（消費税法）
@@ -773,21 +805,21 @@ PUBLIC_INTEREST_DONATION_CREDIT_CAP_RATIO = 25  # NPOと共有する所得税額
 PENSION_DEDUCTION_UNDER_65: list[tuple[int, int, int]] = [
     (600_000, 100, 0),  # ≤60万: 全額控除
     (1_300_000, 0, 600_000),  # 60万超〜130万: 60万
-    (4_100_000, 25, 375_000),  # 130万超〜410万: 年金×25%+37.5万
-    (7_700_000, 15, 785_000),  # 410万超〜770万: 年金×15%+78.5万
-    (10_000_000, 5, 1_555_000),  # 770万超〜1000万: 年金×5%+155.5万
+    (4_100_000, 25, 275_000),  # 130万超〜410万: 年金×25%+27.5万
+    (7_700_000, 15, 685_000),  # 410万超〜770万: 年金×15%+68.5万
+    (10_000_000, 5, 1_455_000),  # 770万超〜1000万: 年金×5%+145.5万
 ]
-PENSION_DEDUCTION_UNDER_65_MAX = 2_055_000  # 1000万超: 205.5万
+PENSION_DEDUCTION_UNDER_65_MAX = 1_955_000  # 1000万超: 195.5万
 
 # 65歳以上
 PENSION_DEDUCTION_OVER_65: list[tuple[int, int, int]] = [
     (1_100_000, 100, 0),  # ≤110万: 全額控除
     (3_300_000, 0, 1_100_000),  # 110万超〜330万: 110万
-    (4_100_000, 25, 375_000),  # 330万超〜410万: 年金×25%+37.5万
-    (7_700_000, 15, 785_000),  # 410万超〜770万: 年金×15%+78.5万
-    (10_000_000, 5, 1_555_000),  # 770万超〜1000万: 年金×5%+155.5万
+    (4_100_000, 25, 275_000),  # 330万超〜410万: 年金×25%+27.5万
+    (7_700_000, 15, 685_000),  # 410万超〜770万: 年金×15%+68.5万
+    (10_000_000, 5, 1_455_000),  # 770万超〜1000万: 年金×5%+145.5万
 ]
-PENSION_DEDUCTION_OVER_65_MAX = 2_055_000  # 1000万超: 205.5万
+PENSION_DEDUCTION_OVER_65_MAX = 1_955_000  # 1000万超: 195.5万
 
 # 所得金額調整: 公的年金等以外の所得が1,000万超の場合の減額
 PENSION_OTHER_INCOME_BRACKET_1 = 10_000_000

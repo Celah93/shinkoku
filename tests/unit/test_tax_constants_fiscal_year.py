@@ -89,8 +89,17 @@ class TestIncomeTaxYearConstants:
             (120_000, 4, 30_000),
         )
 
-    def test_2027_shares_immutable_2026_values(self) -> None:
-        assert get_income_tax_constants(2027) is get_income_tax_constants(2026)
+    def test_2027_keeps_common_tables_and_changes_year_specific_values(self) -> None:
+        previous = get_income_tax_constants(2026)
+        current = get_income_tax_constants(2027)
+        assert current is not previous
+        assert current.basic_deduction_table == previous.basic_deduction_table
+        assert current.single_parent_deduction == 380_000
+        assert current.reconstruction_tax_rate_per_mille == 11
+        assert current.defense_tax_rate_per_mille == 10
+        assert current.salary_pension_deduction_cap == 2_800_000
+        assert previous.single_parent_deduction == 350_000
+        assert previous.defense_tax_rate_per_mille == 0
 
     def test_tables_and_year_constants_are_immutable(self) -> None:
         constants = get_income_tax_constants(2026)

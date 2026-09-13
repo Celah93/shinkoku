@@ -112,13 +112,15 @@ def test_special_depends_on_supported_year_and_eligible_relative(
     assert item.amount == expected
 
 
-def test_2027_deduction_aggregation_is_blocked_until_year_support_is_complete() -> None:
-    with pytest.raises(ValueError, match="fiscal_year=2027 は未対応"):
+def test_2027_deduction_aggregation_applies_the_extended_special() -> None:
+    assert (
         _life_item(
             fiscal_year=2027,
             general_new=120_000,
             dependents=[_dependent(birth_date="2005-01-02")],
-        )
+        ).amount
+        == 60_000
+    )
 
 
 @pytest.mark.parametrize(

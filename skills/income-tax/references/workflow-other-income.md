@@ -8,32 +8,27 @@
 
 ### 公的年金等の雑所得
 
-公的年金等の収入がある場合、年金控除を計算して雑所得を求める。
+公的年金の収入は `calc-income` の `pension_income` と `pension_is_over_65` に渡す。年金以外の雑所得だけを `misc_income` に入れ、年金所得を二重に加算しない。源泉徴収は `other_income_withheld_tax` に含める。
 
-1. 年金収入の有無を確認する
-2. `uv run shinkoku tax calc-pension --input pension_input.json` で公的年金等控除を計算する:
-   ```bash
-   uv run shinkoku tax calc-pension --input pension_input.json
-   ```
-   入力 JSON:
-   ```json
-   {
-     "pension_income": 2000000,
-     "is_over_65": true,
-     "other_income": 0
-   }
-   ```
-   出力:
-   ```json
-   {
-     "pension_income": 2000000,
-     "deduction_amount": 1100000,
-     "taxable_pension_income": 900000,
-     "other_income_adjustment": 0
-   }
-   ```
-3. `taxable_pension_income` を雑所得として `misc_income` に加算する
-4. 令和7年改正: 65歳未満の最低保障額60万→70万、65歳以上の最低保障額110万→130万
+給与収入も渡せば、年金控除・給与と年金の所得金額調整・2027年の控除合計280万円上限を年間計算の中で処理する。給与850万円超の子ども・特別障害者等の要件は `salary_income_adjustment_eligible` 又は本人・扶養親族情報で確認する。詳しい順序と架空入力例は `docs/income-tax-2027.md` を参照する。
+
+単体で年金控除だけを確かめる場合:
+
+```bash
+uv run shinkoku tax calc-pension --input pension_input.json
+```
+
+```json
+{
+  "fiscal_year": 2027,
+  "pension_income": 2000000,
+  "is_over_65": true,
+  "other_income": 0,
+  "salary_income_deduction": 0
+}
+```
+
+給与がない上の例では `deduction_amount: 1100000`、`taxable_pension_income: 900000`。2027年の正の年金収入には給与所得控除額が必須で、給与なしも0と明示する。最低控除の基本額は65歳未満60万円・65歳以上110万円で、他所得による減額を別に適用する。
 
 ### 退職所得
 
@@ -123,7 +118,8 @@
 ### `calc_income_tax` への反映
 
 上記のその他所得は以下のパラメータで `calc_income_tax` に渡す:
-- `misc_income`: 雑所得合計（仮想通貨含む）
+- `misc_income`: 年金以外の雑所得合計（仮想通貨含む）
+- `pension_income` / `pension_is_over_65`: 公的年金の収入・年齢区分
 - `dividend_income_comprehensive`: 配当所得（総合課税選択分）
 - `one_time_income`: 一時所得の収入金額（1/2 計算は内部で実施）
 - `other_income_withheld_tax`: その他所得の源泉徴収税額合計

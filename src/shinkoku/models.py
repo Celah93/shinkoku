@@ -732,11 +732,26 @@ class TaxEligibilityInput(BaseModel):
         return self
 
 
+class IncomeSpecialTaxResult(BaseModel):
+    """各追加税の参考内訳と、端数を保持して合算した結果。分子の単位は円×税率分子。"""
+
+    reconstruction_tax: int
+    defense_tax: int
+    combined_special_tax: int
+    rounding_adjustment: int
+    reconstruction_numerator: int
+    defense_numerator: int
+    denominator: int
+
+
 class IncomeTaxInput(BaseModel):
     """所得税計算の入力。"""
 
     fiscal_year: int
     salary_income: int = 0
+    salary_income_adjustment_eligible: StrictBool | None = None
+    pension_income: int = Field(default=0, ge=0)
+    pension_is_over_65: StrictBool | None = None
     business_revenue: int = 0
     business_expenses: int = 0
     blue_return_deduction: int = Field(default=650_000, ge=0)
@@ -787,6 +802,12 @@ class IncomeTaxResult(BaseModel):
     eligibility_checks: list[TaxEligibilityCheck] = Field(default_factory=list)
     # 所得
     salary_income_after_deduction: int = 0
+    salary_child_adjustment: int = 0
+    salary_pension_adjustment: int = 0
+    pension_income_after_deduction: int = 0
+    pension_deduction: int = 0
+    pension_salary_cap_adjustment: int = 0
+    aggregate_income_before_loss_carryforward: int = 0
     business_income: int = 0
     total_income: int = 0
     # 青色申告特別控除（実効額）
@@ -805,6 +826,9 @@ class IncomeTaxResult(BaseModel):
     total_tax_credits: int = 0
     income_tax_after_credits: int = 0
     reconstruction_tax: int = 0
+    defense_tax: int = 0
+    special_tax_rounding_adjustment: int = 0
+    income_special_tax_detail: IncomeSpecialTaxResult | None = None
     total_tax: int = 0
     withheld_tax: int = 0
     business_withheld_tax: int = 0  # 事業所得の源泉徴収税額
@@ -883,7 +907,8 @@ class ConsumptionTaxInput(BaseModel):
     simplified_business_type: int | None = Field(
         default=None, ge=1, le=6, description="簡易課税の事業区分(1-6)"
     )
-    interim_payment: int = 0  # 中間納付税額
+    interim_payment: int = Field(default=0, ge=0)  # 国税の中間納付税額
+    local_interim_payment: int | None = Field(default=None, ge=0)  # 地方消費税の中間納付譲渡割額
 
     @model_validator(mode="after")
     def require_simplified_business_type(self) -> ConsumptionTaxInput:
@@ -974,13 +999,16 @@ class ConsumptionTaxResult(BaseModel):
     # 差引き
     net_tax: int = 0  # 差引税額(100円切捨, 正の場合のみ) AAJ00100
     refund_shortfall: int = 0  # 控除不足還付税額(仕入>売上の場合) AAJ00090
-    interim_payment: int = 0  # 中間納付税額 AAJ00110
+    interim_payment: int = 0  # 国税の中間納付税額 AAJ00110
+    local_interim_payment: int = 0
+    local_tax_due_after_interim_payment: int = 0  # 地方税の納付・還付の合計差額
+    local_interim_refund: int = 0  # 中間納付還付譲渡割額（年税額の還付と区別）
     # 後方互換の符号付き集計値 = net_tax - interim_payment
     # 正=納付税額⑪/AAJ00120、負=中間納付還付税額⑫相当の絶対値
     tax_due: int = 0
     # 地方消費税
     local_tax_due: int = 0  # 納付時は100円未満切捨、還付時は1円未満切捨
-    # = tax_due - refund_shortfall + local_tax_due（負=還付、地方中間納付は未考慮）
+    # = tax_due - refund_shortfall + local_tax_due_after_interim_payment（負=還付）
     total_due: int = 0
 
 
@@ -1551,6 +1579,8 @@ class PensionDeductionInput(BaseModel):
     pension_income: int = Field(ge=0, description="公的年金等の収入金額（円）")
     is_over_65: bool = Field(description="65歳以上かどうか（年度末時点）")
     other_income: int = 0  # 公的年金等以外の合計所得金額
+    fiscal_year: int = 2025
+    salary_income_deduction: int | None = Field(default=None, ge=0, le=1_950_000)
 
 
 class PensionDeductionResult(BaseModel):
@@ -1561,6 +1591,10 @@ class PensionDeductionResult(BaseModel):
     taxable_pension_income: int  # 雑所得（年金） = pension_income - deduction_amount
     is_over_65: bool
     other_income_adjustment: int = 0  # 所得調整額（0, 100000, 200000）
+    fiscal_year: int = 2025
+    deduction_before_salary_cap: int = 0
+    taxable_pension_income_before_salary_cap: int = 0
+    salary_cap_adjustment: int = 0
 
 
 # --- 退職所得 (retirement income) ---
