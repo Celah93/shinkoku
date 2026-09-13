@@ -42,7 +42,7 @@ def test_profile_model_accepts_valid_states() -> None:
     "patch",
     [
         {"taxpayer_status": "unknown"},
-        {"consumption_tax_method": "special_30pct"},
+        {"consumption_tax_method": "special_40pct"},
         {"simplified_business_type": 0},
         {"simplified_business_type": 7},
     ],

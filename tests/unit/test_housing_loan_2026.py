@@ -6,6 +6,7 @@ import pytest
 
 from shinkoku.models import DependentInfo, HousingLoanDetail, IncomeTaxInput
 from shinkoku.tools.tax_calc import (
+    _calculate_housing_loan_entry,
     calc_deductions,
     calc_housing_loan_credit,
     calc_income_tax,
@@ -187,16 +188,23 @@ def test_housing_type_and_legacy_boolean_conflict(
 def test_13_year_rule_accepts_valid_claim_years(claim_year: int, expected_year_number: int) -> None:
     detail = _detail()
 
-    result = calc_deductions(
-        total_income=5_000_000,
-        fiscal_year=claim_year,
-        housing_loan_detail=detail,
+    # 2027年の申告用控除集計を経由せず、2026年入居の期間判定を直接検証する。
+    entry, _ = _calculate_housing_loan_entry(
+        detail=detail,
+        balance=detail.year_end_balance,
+        claim_fiscal_year=claim_year,
+        proration_ratio_pct=10_000,
+        allow_expired=False,
+        taxpayer_birth_date=None,
+        spouse_birth_date=None,
+        spouse_income=None,
+        dependents=None,
     )
 
-    entry = result.housing_loan_credit_entries[0]
     assert entry.claim_year_number == expected_year_number
     assert entry.credit_period == 13
     assert entry.status == "active"
+    assert calc_housing_loan_credit(60_000_000, detail, claim_fiscal_year=claim_year) == 315_000
 
 
 def test_13_year_rule_accepts_year_13_in_direct_calculation() -> None:

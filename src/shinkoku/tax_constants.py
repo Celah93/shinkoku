@@ -287,7 +287,8 @@ _INCOME_TAX_CONSTANTS_2026 = IncomeTaxYearConstants(
     life_insurance_under23_special=_LIFE_INSURANCE_UNDER23_SPECIAL,
 )
 
-# 令和8・9年分は同じ内容。不変オブジェクトなので安全に共有できる。
+# この表で扱う個別定数は令和8・9年分で共通。申告計算全体の対応年分ではない。
+# 所得税・控除集計等の実行可否は tax_year_support.py で別途確認する。
 INCOME_TAX_CONSTANTS_BY_YEAR: Final[Mapping[int, IncomeTaxYearConstants]] = MappingProxyType(
     {
         2025: _INCOME_TAX_CONSTANTS_2025,
@@ -676,6 +677,8 @@ SIMPLIFIED_DEEMED_RATIOS: dict[int, int] = {
 
 # 2割特例の納付割合（小規模事業者向け負担軽減措置、令和8年9月30日まで）
 SPECIAL_20PCT_RATE = 20  # 20%
+SPECIAL_30PCT_RATE = 30  # 個人事業者の令和9・10年分の3割特例
+SPECIAL_30PCT_YEARS = (2027, 2028)
 
 
 @dataclass(frozen=True)

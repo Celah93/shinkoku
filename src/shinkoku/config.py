@@ -56,7 +56,10 @@ def determine_blue_return_deduction(
     electronic_bookkeeping: bool,
     simple_bookkeeping: bool = False,
 ) -> int:
-    """青色申告特別控除額を自動判定する。
+    """従来設定から青色申告特別控除の候補額を返す。
+
+    期限内申告や優良帳簿の届出はこの設定だけでは確認できない。
+    申告用計算の適用判定には BlueReturnEligibilityFacts を別途渡す。
 
     判定ロジック（国税庁 No.2072、租税特別措置法第25条の2）:
     - 65万円: 複式簿記 + (e-Tax提出 又は 電子帳簿保存) + 期限内申告

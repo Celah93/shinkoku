@@ -1,10 +1,6 @@
 ---
 name: e-bookkeeping-compliance
-description: >
-  優良な電子帳簿の要件チェック・コンプライアンス診断を実行する。
-  「優良な電子帳簿」「電帳法対応」「電子帳簿の要件確認」
-  「税務調査の準備」「75万円控除の条件」「帳簿の要件を満たしているか」
-  「e-bookkeeping compliance」で起動。
+description: shinkokuの帳簿について電子帳簿の要件を診断し、必要な証拠を出力する。
 ---
 
 # 優良な電子帳簿コンプライアンス診断
@@ -15,14 +11,14 @@ shinkoku の帳簿データが要件を満たしているかを自動チェッ�
 
 ## 前提知識
 
-- 電帳法の要件詳細: /tax-ebookkeeping-context を実行する
-- システム概要書: `docs/system-overview.md`
+- 法的な要件解釈が必要な場合だけ `/tax-ebookkeeping-context` を参照する
+- システムの設計根拠が必要な場合だけ `docs/system-overview.md` を参照する
 
 ---
 
 ## Step 0: 前提確認
 
-ユーザーに以下を確認する:
+既存資料で確認できない項目だけをユーザーに確認する:
 
 1. **DB パス**: `--db-path` に使用するデータベースファイルのパス
 2. **対象年度**: `--fiscal-year` に使用する会計年度

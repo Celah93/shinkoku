@@ -1,11 +1,6 @@
 ---
 name: tax-housing-loan-context
-description: >
-  Background context for housing loan tax credit (住宅ローン控除) in the shinkoku
-  tax filing plugin. Contains eligibility requirements, credit limits, calculation
-  rules, and interaction with furusato-nozei for the current tax year.
-  This skill is not user-invocable — Claude loads it automatically when
-  responding to housing loan tax credit questions or calculations.
+description: 入居年別の住宅ローン控除の適用要件・計算と他控除との関係を調べる参照入口。
 user-invocable: false
 ---
 

@@ -234,20 +234,26 @@ def test_negative_transitional_detail_adjusts_group_without_clipping() -> None:
     [(2026, 1_000_000_001, "1,000,000,000"), (2027, 100_000_001, "100,000,000")],
 )
 def test_supplier_limit_is_warning_only(fiscal_year: int, amount: int, limit_text: str) -> None:
-    result = calc_consumption_tax(
-        ConsumptionTaxInput(
-            fiscal_year=fiscal_year,
-            method="standard",
-            purchase_details=[
-                _detail(
-                    f"{fiscal_year}-01-01",
-                    amount,
-                    "standard_10",
-                    "nonqualified_transitional",
-                )
-            ],
-        )
+    input_data = ConsumptionTaxInput(
+        fiscal_year=fiscal_year,
+        method="standard",
+        purchase_details=[
+            _detail(
+                f"{fiscal_year}-01-01",
+                amount,
+                "standard_10",
+                "nonqualified_transitional",
+            )
+        ],
     )
+
+    # 年分別の限度額定数は別テストで維持。未完成の申告計算は実行しない。
+    if fiscal_year == 2027:
+        with pytest.raises(ValueError, match="fiscal_year=2027 は未対応"):
+            calc_consumption_tax(input_data)
+        return
+
+    result = calc_consumption_tax(input_data)
 
     assert result.tax_on_purchases != 0
     assert any(limit_text in warning and "未反映" in warning for warning in result.warnings)

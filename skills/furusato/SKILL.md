@@ -1,35 +1,14 @@
 ---
 name: furusato
-description: >
-  This skill manages furusato nozei (hometown tax) donations. Use when the user
-  wants to register donation data, read donation receipts, check deduction limits,
-  or manage their furusato nozei records. Trigger phrases: "ふるさと納税",
-  "furusato", "寄附金", "寄付金", "ふるさと納税の控除", "寄附金受領証明書",
-  "ワンストップ特例".
+description: ふるさと納税の寄附記録を確認・登録し、集計と控除上限を確認する。
 ---
 
 # ふるさと納税管理（Furusato Nozei Management）
 
 ふるさと納税の寄附金受領証明書を読み取り、寄附データを管理し、控除額を計算するスキル。
 
-## 設定の読み込み（最初に実行）
 
-1. `shinkoku.config.yaml` を Read ツールで読み込む
-2. ファイルが存在しない場合は `/setup` スキルの実行を案内して終了する
-3. 設定値を把握する:
-   - `db_path`: CLI スクリプトの `--db-path` 引数に使用（CWD基準で絶対パスに変換）
-   - `tax_year`: 対象年度
-   - `furusato_receipts_dir`: 受領証明書の格納ディレクトリ（任意）
-
-## 進捗情報の読み込み
-
-設定の読み込み後、引継書ファイルを読み込んで前ステップの結果を把握する。
-
-1. `.shinkoku/progress/progress-summary.md` を Read ツールで読み込む（存在する場合）
-2. 以下の引継書を Read ツールで読み込む（存在する場合）:
-   - `.shinkoku/progress/01-setup.md`
-3. 読み込んだ情報を以降のステップで活用する（ユーザーへの再質問を避ける）
-4. ファイルが存在しない場合はスキップし、ユーザーに必要情報を直接確認する
+個別データを扱う場合だけ [共通の設定・確認境界](../_shared/context.md) を参照します。
 
 ## ステップ1: 受領証明書の画像読み取り
 
@@ -39,20 +18,12 @@ description: >
 
 ### 1-2. 画像の読み取り
 
-**重要: 画像の読み取りは対応する reading-* スキルに委任する。**
+**画像の読み取りは対応する reading-* Skill の形式を使い、通常はメインエージェントが行います。**
 
 #### 単一の受領証明書の場合
 
 画像ファイルの読み取りには `/reading-receipt` スキルを使用する。
-スキルの指示に従い、デュアル検証（2つの独立した読み取り結果の照合）を行って結果を取得する。
-
-**結果照合:** 両方の読み取り結果から `amount`, `date`, `municipality_name` を比較する
-
-**一致の場合:** そのまま採用。「2つの独立した読み取りで結果が一致しました」と報告
-
-**不一致の場合:** ユーザーに元画像パスと両方の結果を提示し、正しい方を選択してもらう:
-- 差異のあるフィールドを明示する
-- A を採用 / B を採用 / 手動入力 の3択を AskUserQuestion で提示する
+   読み取り方・照合・不明箇所の扱いは該当する reading-* Skill に従います。実データへの登録前に確認する内容をまとめます。
 
 読み取り結果の `---FURUSATO_RECEIPT_DATA---` ブロックから以下の情報を取得する:
 
@@ -67,21 +38,14 @@ description: >
 1. Glob ツールで受領証明書画像の一覧を取得する（例: `furusato_receipts/*.jpg`, `furusato_receipts/*.png`）
 2. `shinkoku import furusato-receipt --file-path PATH` で各ファイルの存在を確認する
 3. 画像ファイルの読み取りには `/reading-receipt` スキルを使用する。
-   スキルの指示に従い、デュアル検証（2つの独立した読み取り結果の照合）を行って結果を取得する。
-
-   **結果照合:** ファイル単位で両方の読み取り結果の `amount`, `date`, `municipality_name` を比較する
-
-   **一致の場合:** そのまま採用。「2つの独立した読み取りで結果が一致しました」と報告
-
-   **不一致の場合:** 不一致のファイルについてユーザーに元画像パスと両方の結果を提示し、正しい方を選択してもらう:
-   - 差異のあるフィールドを明示する
-   - A を採用 / B を採用 / 手動入力 の3択を AskUserQuestion で提示する
+   読み取り方・照合・不明箇所の扱いは該当する reading-* Skill に従います。実データへの登録前に確認する内容をまとめます。
 
 4. 各証明書の結果をまとめてユーザーに提示する
 
 ### 1-3. ユーザーに確認
 
 抽出した情報を一覧表示し、正しいか確認する。修正があればユーザーの入力を反映する。
+
 
 ## ステップ2: 寄附データの登録
 
@@ -111,9 +75,11 @@ shinkoku furusato add --db-path DB --input FILE
 **重要な注意**: 副業で確定申告する場合、ワンストップ特例は**無効化**される。
 確定申告時に全額を寄附金控除として申告する必要がある。
 
+
 ## ステップ3: 複数の証明書を繰り返し処理
 
 「他に受領証明書はありますか？」と確認し、あればステップ1~2を繰り返す。
+
 
 ## ステップ4: 集計と控除上限チェック
 
@@ -133,12 +99,15 @@ shinkoku furusato summary --db-path DB --fiscal-year YEAR [--estimated-limit N]
 
 所得情報が把握できている場合は `shinkoku tax calc-furusato-limit --input FILE` で上限を推定する。
 
+入力JSONの `fiscal_year` に寄附した年を明示する。上限推定の対応年分は2025・2026年で、2027年分は制度対応の途中のためエラーになる。年分を変更・削除して回避しない。年分省略時の2025年という扱いは旧入力との互換性のためであり、新しい入力では使わない。寄附記録の保存・集計と、上限推定の対応年分は区別する。
+
 ```bash
 shinkoku tax calc-furusato-limit --input FILE
 ```
 
 上限超過の場合は警告を表示:
 「寄附合計額が推定上限を超えています。超過分は自己負担となります。」
+
 
 ## ステップ5: 確定申告との関係
 
@@ -148,6 +117,7 @@ shinkoku tax calc-furusato-limit --input FILE
 - 所得税からの控除 = (寄附合計 - 2,000) x 所得税率
 - 住民税からの控除は別途計算される（特例分含む）
 
+
 ## リファレンスファイル参照ガイド
 
 | 質問カテゴリ | 参照ファイル |
@@ -155,14 +125,16 @@ shinkoku tax calc-furusato-limit --input FILE
 | ふるさと納税の税制ルール・計算式 | `references/furusato-tax-rules.md` |
 | 上限額・返礼品・タイミング・相談全般 | `references/furusato-consultation-guide.md` |
 
+
 ## 次のステップの案内
 
 - `income-tax` スキルで所得税の計算に進む（寄附金控除が自動反映される）
 - 他の控除（医療費控除等）がある場合は先にそちらを処理する
 
+
 ## 引継書の出力
 
-サマリー提示後、以下のファイルを Write ツールで出力する。
+サマリー提示後、以下のファイルを ファイル書込ツールで出力する。
 これにより、セッションの中断や Compact が発生しても次のステップで結果を引き継げる。
 
 ### ステップ別ファイルの出力

@@ -96,7 +96,6 @@ def test_2026_special_new_general_schedule_boundaries(premium: int, expected: in
     [
         (2025, [_dependent(birth_date="2004-01-02")], 40_000),
         (2026, [], 40_000),
-        (2027, [_dependent(birth_date="2005-01-02")], 60_000),
     ],
 )
 def test_special_depends_on_supported_year_and_eligible_relative(
@@ -111,6 +110,15 @@ def test_special_depends_on_supported_year_and_eligible_relative(
     )
 
     assert item.amount == expected
+
+
+def test_2027_deduction_aggregation_is_blocked_until_year_support_is_complete() -> None:
+    with pytest.raises(ValueError, match="fiscal_year=2027 は未対応"):
+        _life_item(
+            fiscal_year=2027,
+            general_new=120_000,
+            dependents=[_dependent(birth_date="2005-01-02")],
+        )
 
 
 @pytest.mark.parametrize(

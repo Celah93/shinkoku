@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator, model_validator
 
 
 DonationType = Literal["political", "npo", "public_interest", "specified", "other"]
@@ -18,7 +18,9 @@ class FiscalYearTaxProfile(BaseModel):
     """年度別に確定した納税者の消費税プロファイル。"""
 
     taxpayer_status: Literal["taxable", "exempt"] | None = None
-    consumption_tax_method: Literal["standard", "simplified", "special_20pct"] | None = None
+    consumption_tax_method: (
+        Literal["standard", "simplified", "special_20pct", "special_30pct"] | None
+    ) = None
     simplified_business_type: int | None = Field(default=None, ge=1, le=6)
 
     @model_validator(mode="after")
@@ -52,7 +54,9 @@ class FiscalYearTaxProfileUpdate(BaseModel):
     """年度別消費税プロファイルの部分更新入力。相関検証はマージ後に行う。"""
 
     taxpayer_status: Literal["taxable", "exempt"] | None = None
-    consumption_tax_method: Literal["standard", "simplified", "special_20pct"] | None = None
+    consumption_tax_method: (
+        Literal["standard", "simplified", "special_20pct", "special_30pct"] | None
+    ) = None
     simplified_business_type: int | None = Field(default=None, ge=1, le=6)
 
 
@@ -658,6 +662,76 @@ class SmallBusinessMutualAidInput(BaseModel):
         return self.small_business_mutual_aid + self.ideco + self.disability_mutual_aid
 
 
+class BlueReturnEligibilityFacts(BaseModel):
+    """青色控除の確認済み事実。未確認はNoneとし、単なる電子保存と優良帳簿を区別する。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    blue_return_approved: StrictBool | None = None
+    eligible_business_income: StrictBool | None = None
+    bookkeeping: Literal["double_entry", "simple"] | None = None
+    cash_basis_special: StrictBool | None = None
+    filing_within_deadline: StrictBool | None = None
+    required_statements_included: StrictBool | None = None
+    deduction_claim_recorded: StrictBool | None = None
+    etax_filing: StrictBool | None = None
+    qualified_electronic_books: StrictBool | None = None
+    electronic_books_notice_requirement_met: StrictBool | None = None
+    digital_seamless_recordkeeping: StrictBool | None = None
+    digital_notice_requirement_met: StrictBool | None = None
+    prior_prior_year_business_revenue: int | None = Field(default=None, ge=0, strict=True)
+
+
+class InvoiceSpecialEligibilityFacts(BaseModel):
+    """国内の個人事業者の2割・3割特例。除外条件の不明をFalseにしない。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    domestic_individual: StrictBool | None = None
+    invoice_registration_effective: StrictBool | None = None
+    base_period_taxable_sales: int | None = Field(default=None, ge=0, strict=True)
+    specific_period_taxation_applies: StrictBool | None = None
+    inheritance_taxation_applies: StrictBool | None = None
+    asset_tax_exemption_restriction: StrictBool | None = None
+    other_tax_exemption_restriction: StrictBool | None = None
+    shortened_tax_period: StrictBool | None = None
+    inheritance_date: date | None = None
+    invoice_registration_date: date | None = None
+
+
+class TaxEligibilityCheck(BaseModel):
+    """個別制度の適用判定。申告全体の適格性や提出済みを意味しない。"""
+
+    scheme: Literal["blue_return", "special_20pct", "special_30pct"]
+    fiscal_year: int
+    status: Literal["eligible", "ineligible", "indeterminate", "not_applicable", "unsupported"]
+    missing_fields: list[str] = Field(default_factory=list)
+    reasons: list[str] = Field(default_factory=list)
+
+
+class TaxEligibilityInput(BaseModel):
+    """計算の実行可否とは独立した、個別制度の要件確認CLI入力。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    scheme: Literal["blue_return", "special_20pct", "special_30pct"]
+    fiscal_year: int = Field(strict=True)
+    requested_deduction: int | None = Field(default=None, ge=0, strict=True)
+    blue_return: BlueReturnEligibilityFacts | None = None
+    invoice_special: InvoiceSpecialEligibilityFacts | None = None
+
+    @model_validator(mode="after")
+    def require_matching_facts(self) -> TaxEligibilityInput:
+        if self.scheme == "blue_return":
+            if self.requested_deduction is None:
+                raise ValueError("blue_return では requested_deduction が必要です")
+            if self.invoice_special is not None:
+                raise ValueError("blue_return に invoice_special は指定できません")
+        elif self.blue_return is not None or self.requested_deduction is not None:
+            raise ValueError("インボイス特例に青色控除の入力は指定できません")
+        return self
+
+
 class IncomeTaxInput(BaseModel):
     """所得税計算の入力。"""
 
@@ -665,7 +739,9 @@ class IncomeTaxInput(BaseModel):
     salary_income: int = 0
     business_revenue: int = 0
     business_expenses: int = 0
-    blue_return_deduction: int = 650_000
+    blue_return_deduction: int = Field(default=650_000, ge=0)
+    calculation_mode: Literal["estimate", "filing"] = "estimate"
+    blue_return_eligibility: BlueReturnEligibilityFacts | None = None
     social_insurance: int = 0
     life_insurance_premium: int = 0
     life_insurance_detail: LifeInsurancePremiumInput | None = None  # 3区分詳細（Phase 3）
@@ -707,6 +783,8 @@ class IncomeTaxResult(BaseModel):
     """所得税計算結果。"""
 
     fiscal_year: int
+    calculation_mode: Literal["estimate", "filing"] = "estimate"
+    eligibility_checks: list[TaxEligibilityCheck] = Field(default_factory=list)
     # 所得
     salary_income_after_deduction: int = 0
     business_income: int = 0
@@ -793,7 +871,9 @@ class ConsumptionTaxInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     fiscal_year: int
-    method: Literal["standard", "simplified", "special_20pct"]
+    method: Literal["standard", "simplified", "special_20pct", "special_30pct"]
+    calculation_mode: Literal["estimate", "filing"] = "estimate"
+    invoice_special_eligibility: InvoiceSpecialEligibilityFacts | None = None
     taxable_sales_10: int = 0  # 課税売上高(税込, 標準税率10%)
     taxable_sales_8: int = 0  # 課税売上高(税込, 軽減税率8%)
     taxable_purchases_10: int = 0  # 課税仕入高(税込, 標準税率10%)
@@ -868,6 +948,8 @@ class ConsumptionTaxResult(BaseModel):
     """
 
     fiscal_year: int
+    calculation_mode: Literal["estimate", "filing"] = "estimate"
+    eligibility_checks: list[TaxEligibilityCheck] = Field(default_factory=list)
     method: str
     # 課税売上
     taxable_sales_total: int = 0  # 課税売上高合計（税込）— 表示用

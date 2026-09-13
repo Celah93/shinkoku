@@ -22,6 +22,7 @@ from shinkoku.models import (
     RetirementIncomeInput,
     SmallAssetTreatmentInput,
     SmallBusinessMutualAidInput,
+    TaxEligibilityInput,
 )
 from shinkoku.tools.ledger import ledger_get_fiscal_year_tax_profile
 from shinkoku.tools.tax_calc import (
@@ -35,6 +36,10 @@ from shinkoku.tools.tax_calc import (
     calc_retirement_income,
     sanity_check_income_tax,
     select_small_asset_treatment,
+)
+from shinkoku.tools.tax_eligibility import (
+    check_blue_return_eligibility,
+    check_invoice_special_eligibility,
 )
 
 _DEPRECIATION_METHODS = (
@@ -205,6 +210,8 @@ def _handle_calc_consumption(args: argparse.Namespace) -> None:
     """calc-consumption: 消費税計算。"""
     params = _load_json(args.input)
     input_data = ConsumptionTaxInput(**params)
+    # 副作用のない計算で年分・要件・入力を検証してからDB照合へ進む。
+    result = calc_consumption_tax(input_data)
     db_path = getattr(args, "db_path", None)
     method_verified: bool | None = None
 
@@ -214,6 +221,11 @@ def _handle_calc_consumption(args: argparse.Namespace) -> None:
             fiscal_year=input_data.fiscal_year,
         )
         db_method = profile["consumption_tax_method"]
+        if input_data.calculation_mode == "filing":
+            if profile["taxpayer_status"] != "taxable":
+                raise ValueError("申告用計算ではDBの課税事業者区分を確定・照合してください")
+            if db_method is None:
+                raise ValueError("申告用計算ではDBの消費税申告方法を確定してください")
         if db_method is None:
             method_verified = False
         else:
@@ -230,7 +242,6 @@ def _handle_calc_consumption(args: argparse.Namespace) -> None:
                     )
             method_verified = True
 
-    result = calc_consumption_tax(input_data)
     output = result.model_dump()
     if method_verified is not None:
         output["method_verified"] = method_verified
@@ -308,7 +319,23 @@ def _handle_sanity_check(args: argparse.Namespace) -> None:
     _output_json(check_result.model_dump())
 
 
+def _handle_check_eligibility(args: argparse.Namespace) -> None:
+    """制度の適格性を確認する。判定結果は申告計算や帳簿更新を行わず返す。"""
+    request = TaxEligibilityInput(**_load_json(args.input))
+    if request.scheme == "blue_return":
+        assert request.requested_deduction is not None
+        result = check_blue_return_eligibility(
+            request.fiscal_year, request.requested_deduction, request.blue_return
+        )
+    else:
+        result = check_invoice_special_eligibility(
+            request.fiscal_year, request.scheme, request.invoice_special
+        )
+    _output_json(result.model_dump())
+
+
 _HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
+    "check-eligibility": _handle_check_eligibility,
     "calc-deductions": _handle_calc_deductions,
     "calc-income": _handle_calc_income,
     "calc-depreciation": _handle_calc_depreciation,
@@ -341,6 +368,7 @@ def register(parent_subparsers: argparse._SubParsersAction) -> None:
     sub = parser.add_subparsers(dest="subcommand")
 
     for name in [
+        "check-eligibility",
         "calc-deductions",
         "calc-income",
         "calc-depreciation",

@@ -35,6 +35,7 @@ from shinkoku.models import (
     StockTradingAccountInput,
     WithholdingSlipInput,
 )
+from shinkoku.tax_year_support import require_supported_consumption_tax_year
 
 
 def ledger_init(*, fiscal_year: int, db_path: str) -> dict:
@@ -113,6 +114,8 @@ def ledger_update_fiscal_year_tax_profile(
     patch = update.model_dump(exclude_unset=True)
     if not patch:
         raise ValueError("更新する項目がありません")
+    if patch.get("consumption_tax_method") == "special_30pct":
+        require_supported_consumption_tax_year(fiscal_year, patch["consumption_tax_method"])
 
     allowed_columns = (
         "taxpayer_status",
@@ -128,6 +131,8 @@ def ledger_update_fiscal_year_tax_profile(
         merged = before.model_dump()
         merged.update(patch)
         after = FiscalYearTaxProfile(**merged)
+        if after.consumption_tax_method == "special_30pct":
+            require_supported_consumption_tax_year(fiscal_year, after.consumption_tax_method)
 
         assignments = ", ".join(f"{column} = ?" for column in update_columns)
         values = [getattr(after, column) for column in update_columns]

@@ -121,6 +121,7 @@ from shinkoku.tax_constants import (
     SIMPLIFIED_DEEMED_RATIOS,
     SINGLE_PARENT_DEDUCTION,
     SPECIAL_20PCT_RATE,
+    SPECIAL_30PCT_RATE,
     SMALL_ASSET_INCOME_TAX_ORDER_138_EXCLUSIVE_MAX,
     SMALL_ASSET_POOLED_DEPRECIATION_EXCLUSIVE_MAX,
     SMALL_ASSET_SPECIAL_ANNUAL_CAP,
@@ -141,6 +142,15 @@ from shinkoku.tax_constants import (
     get_per_supplier_limit,
     get_small_asset_special_period,
     get_transitional_credit_rate,
+)
+from shinkoku.tax_year_support import (
+    require_supported_consumption_tax_year,
+    require_supported_tax_year,
+)
+from shinkoku.tools.tax_eligibility import (
+    check_blue_return_eligibility,
+    check_invoice_special_eligibility,
+    enforce_tax_eligibility,
 )
 
 DonationMethod = Literal["income", "credit"]
@@ -1239,6 +1249,7 @@ def calc_deductions(
     寄附金については方式選択前の所得控除候補と税額控除候補を併記する。
     申告に使う確定値は calc_income_tax が最大8候補を比較して決める。
     """
+    require_supported_tax_year(fiscal_year, "income_deductions")
     income_deductions: list[DeductionItem] = []
     tax_credits: list[DeductionItem] = []
     constants = get_income_tax_constants(fiscal_year)
@@ -2080,7 +2091,7 @@ def _calc_income_tax_from_table(taxable_income: int) -> int:
 
 
 def calc_income_tax(input_data: IncomeTaxInput) -> IncomeTaxResult:
-    """Full income tax calculation flow (Reiwa 7).
+    """Full income tax calculation flow for supported filing years.
 
     Steps:
     1. Salary income after deduction
@@ -2095,7 +2106,7 @@ def calc_income_tax(input_data: IncomeTaxInput) -> IncomeTaxResult:
     10. Difference = filing amount - withheld tax
     """
     # 入力内容に関係なく、未対応年分は計算開始時に止める。
-    get_income_tax_constants(input_data.fiscal_year)
+    require_supported_tax_year(input_data.fiscal_year, "income_tax")
 
     # Step 1: Salary income after deduction
     salary_deduction = calc_salary_deduction(input_data.salary_income, input_data.fiscal_year)
@@ -2105,6 +2116,12 @@ def calc_income_tax(input_data: IncomeTaxInput) -> IncomeTaxResult:
     # 青色申告特別控除は事業所得（収入−経費）を上限とする（租特法25条の2）
     warnings: list[str] = []
     business_profit_before_deduction = input_data.business_revenue - input_data.business_expenses
+    blue_eligibility = check_blue_return_eligibility(
+        input_data.fiscal_year,
+        input_data.blue_return_deduction if business_profit_before_deduction > 0 else 0,
+        input_data.blue_return_eligibility,
+    )
+    enforce_tax_eligibility(blue_eligibility, input_data.calculation_mode)
     effective_blue_deduction = min(
         input_data.blue_return_deduction,
         max(0, business_profit_before_deduction),
@@ -2395,6 +2412,8 @@ def calc_income_tax(input_data: IncomeTaxInput) -> IncomeTaxResult:
 
     return IncomeTaxResult(
         fiscal_year=input_data.fiscal_year,
+        calculation_mode=input_data.calculation_mode,
+        eligibility_checks=[blue_eligibility],
         salary_income_after_deduction=salary_income_after,
         business_income=business_income,
         total_income=total_income,
@@ -2463,9 +2482,20 @@ def calc_consumption_tax(input_data: ConsumptionTaxInput) -> ConsumptionTaxResul
 
     Methods:
     - special_20pct: 2割特例 = 消費税額(国税) × 20%
+    - special_30pct: 個人の3割特例 = 消費税額(国税) × 30%（2027・2028年分）
     - simplified: 簡易課税 = 消費税額(国税) × (1 - みなし仕入率)
     - standard: 本則課税 = 消費税額(国税) - 実際の仕入税額(国税部分)
     """
+    require_supported_consumption_tax_year(input_data.fiscal_year, input_data.method)
+    if input_data.method == "special_30pct" and input_data.interim_payment != 0:
+        raise ValueError("3割特例の中間納付がある計算は、地方消費税の中間納付対応まで未対応です")
+    eligibility_checks = []
+    if input_data.method == "special_20pct" or input_data.method == "special_30pct":
+        special_eligibility = check_invoice_special_eligibility(
+            input_data.fiscal_year, input_data.method, input_data.invoice_special_eligibility
+        )
+        enforce_tax_eligibility(special_eligibility, input_data.calculation_mode)
+        eligibility_checks.append(special_eligibility)
     taxable_sales_total = input_data.taxable_sales_10 + input_data.taxable_sales_8
 
     # Step 1: 課税標準額 = 税込金額から税抜を逆算し、1,000円未満切捨（国税通則法118条）
@@ -2516,9 +2546,12 @@ def calc_consumption_tax(input_data: ConsumptionTaxInput) -> ConsumptionTaxResul
     form_2_3: ConsumptionTaxForm2_3Result | None = None
 
     # Step 3: 控除対象仕入税額（方式による）
-    if input_data.method == "special_20pct":
-        # 2割特例: 仕入控除税額 = 消費税額(国税) × 80%
-        tax_on_purchases = national_tax_on_sales * (100 - SPECIAL_20PCT_RATE) // 100
+    if input_data.method in ("special_20pct", "special_30pct"):
+        # 特別控除税額は売上税額の80%又は70%。国税・地方税の端数処理は共通。
+        special_rate = (
+            SPECIAL_20PCT_RATE if input_data.method == "special_20pct" else SPECIAL_30PCT_RATE
+        )
+        tax_on_purchases = national_tax_on_sales * (100 - special_rate) // 100
         tax_due_raw = national_tax_on_sales - tax_on_purchases
 
     elif input_data.method == "simplified":
@@ -2694,6 +2727,8 @@ def calc_consumption_tax(input_data: ConsumptionTaxInput) -> ConsumptionTaxResul
 
     return ConsumptionTaxResult(
         fiscal_year=input_data.fiscal_year,
+        calculation_mode=input_data.calculation_mode,
+        eligibility_checks=eligibility_checks,
         method=input_data.method,
         taxable_sales_total=taxable_sales_total,
         taxable_base_10=taxable_base_10,
@@ -2750,6 +2785,8 @@ def calc_furusato_deduction_limit(
     total_income: int,
     total_income_deductions: int,
     income_tax_rate_percent: int | None = None,
+    *,
+    fiscal_year: int = 2025,
 ) -> int:
     """Estimate furusato nozei deduction limit.
 
@@ -2758,8 +2795,10 @@ def calc_furusato_deduction_limit(
 
     住民税所得割額 = (総所得 - 所得控除) × 10%
 
+    fiscal_year は寄附した年。省略時は既存入力との互換性のため2025年として扱う。
     Note: この計算は推定値。調整控除等は考慮していない。
     """
+    require_supported_tax_year(fiscal_year, "furusato_limit")
     taxable_income_raw = max(0, total_income - total_income_deductions)
     # 課税所得を1,000円未満切捨て
     taxable_income = (taxable_income_raw // TAXABLE_INCOME_ROUNDING) * TAXABLE_INCOME_ROUNDING
@@ -2913,9 +2952,28 @@ def sanity_check_income_tax(
 
     入力と出力の整合性を検証し、明らかな異常を検出する。
     """
+    require_supported_tax_year(input_data.fiscal_year, "income_tax")
+    require_supported_tax_year(result.fiscal_year, "income_tax")
+    if input_data.fiscal_year != result.fiscal_year:
+        raise ValueError(
+            "入力と計算結果の年分が一致しません: "
+            f"input={input_data.fiscal_year}, result={result.fiscal_year}"
+        )
     items: list[TaxSanityCheckItem] = []
 
     business_profit = input_data.business_revenue - input_data.business_expenses
+
+    if input_data.calculation_mode == "filing":
+        blue_eligibility = check_blue_return_eligibility(
+            input_data.fiscal_year,
+            input_data.blue_return_deduction if business_profit > 0 else 0,
+            input_data.blue_return_eligibility,
+        )
+        enforce_tax_eligibility(blue_eligibility, "filing")
+        if result.calculation_mode != "filing":
+            raise ValueError(
+                "試算結果を申告用の検算に使えません。filing モードで再計算してください"
+            )
 
     # 1. BLUE_DEDUCTION_ON_LOSS — 赤字なのに控除適用（Part A 修正後は防御的チェック）
     if business_profit < 0 and result.effective_blue_return_deduction > 0:
