@@ -25,7 +25,7 @@ from .conftest import run_cli, write_json
     ],
 )
 def test_unsupported_year_returns_error_json(tmp_path: Path, command: str, params: dict) -> None:
-    year = 2028 if command in ("calc-income", "calc-deductions") else 2027
+    year = 2028 if command in ("calc-income", "calc-deductions", "calc-furusato-limit") else 2027
     input_path = write_json(tmp_path, {**params, "fiscal_year": year})
     result = run_cli("tax", command, "--input", input_path)
 

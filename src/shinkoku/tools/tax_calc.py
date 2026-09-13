@@ -28,7 +28,9 @@ from shinkoku.models import (
     HousingLoanDetail,
     IncomeTaxInput,
     IncomeTaxResult,
-    IncomeSpecialTaxResult,
+    FurusatoLimitInput,
+    MinimumIncomeTaxInput,
+    MinimumTaxIncomeBreakdown,
     LifeInsurancePremiumInput,
     ConsumptionTaxInput,
     ConsumptionTaxResult,
@@ -107,7 +109,6 @@ from shinkoku.tax_constants import (
     OLD_LONG_TERM_MAX,
     ONE_TIME_INCOME_SPECIAL_DEDUCTION,
     PERSONAL_DEDUCTION_INCOME_LIMIT,
-    RECONSTRUCTION_TAX_DENOMINATOR,
     RETIREMENT_DEDUCTION_BASE_20,
     RETIREMENT_DEDUCTION_DISABILITY_ADD,
     RETIREMENT_DEDUCTION_MIN,
@@ -119,7 +120,7 @@ from shinkoku.tax_constants import (
     SALARY_ADJUSTMENT_REVENUE_THRESHOLD,
     SALARY_ADJUSTMENT_REVENUE_CAP,
     SALARY_PENSION_ADJUSTMENT_CAP,
-    MINIMUM_TAX_REVIEW_THRESHOLD_2027,
+    MINIMUM_INCOME_TAX_RULES,
     SELF_MEDICATION_MAX,
     SELF_MEDICATION_THRESHOLD,
     SIMPLIFIED_DEEMED_RATIOS,
@@ -154,6 +155,11 @@ from shinkoku.tools.tax_eligibility import (
     check_blue_return_eligibility,
     check_invoice_special_eligibility,
     enforce_tax_eligibility,
+)
+from shinkoku.tools.tax_reform import (
+    calc_furusato_limit_detailed,
+    calc_income_special_taxes,
+    calc_minimum_income_tax,
 )
 
 DonationMethod = Literal["income", "credit"]
@@ -2097,32 +2103,6 @@ def _calc_income_tax_from_table(taxable_income: int) -> int:
     return taxable_income * INCOME_TAX_TOP_RATE // 100 - INCOME_TAX_TOP_DEDUCTION
 
 
-def calc_income_special_taxes(base_income_tax: int, fiscal_year: int) -> IncomeSpecialTaxResult:
-    """防衛財確法5の22: 個別税の端数を失わず、整数の分子を合算して計算する。
-
-    各税目の円単位値は参考内訳。合算で生じる1円はrounding_adjustmentへ明示する。
-    納付額の100円未満切捨ては、源泉徴収・予定納税の控除後に行う。
-    """
-    if type(base_income_tax) is not int or base_income_tax < 0:
-        raise ValueError("base_income_tax は0以上の円単位整数で指定してください")
-    constants = get_income_tax_constants(fiscal_year)
-    denominator = RECONSTRUCTION_TAX_DENOMINATOR
-    reconstruction_numerator = base_income_tax * constants.reconstruction_tax_rate_per_mille
-    defense_numerator = base_income_tax * constants.defense_tax_rate_per_mille
-    reconstruction_tax = reconstruction_numerator // denominator
-    defense_tax = defense_numerator // denominator
-    combined = (reconstruction_numerator + defense_numerator) // denominator
-    return IncomeSpecialTaxResult(
-        reconstruction_tax=reconstruction_tax,
-        defense_tax=defense_tax,
-        combined_special_tax=combined,
-        rounding_adjustment=combined - reconstruction_tax - defense_tax,
-        reconstruction_numerator=reconstruction_numerator,
-        defense_numerator=defense_numerator,
-        denominator=denominator,
-    )
-
-
 def _calc_salary_child_adjustment(input_data: IncomeTaxInput, warnings: list[str]) -> int:
     """No.1411の子ども・特別障害者等の所得金額調整。旧入力の試算契約は維持する。"""
     if input_data.salary_income <= SALARY_ADJUSTMENT_REVENUE_THRESHOLD:
@@ -2257,10 +2237,6 @@ def calc_income_tax(input_data: IncomeTaxInput) -> IncomeTaxResult:
 
     total_income_raw += misc_income + dividend_comprehensive + one_time_income
     aggregate_income = max(0, total_income_raw)
-    if input_data.fiscal_year == 2027 and aggregate_income > MINIMUM_TAX_REVIEW_THRESHOLD_2027:
-        raise ValueError(
-            "基準所得金額1億6,500万円超の課税特例は専用計算が必要です。この所得域は未対応です"
-        )
 
     # Step 3.5: 繰越損失の適用（青色申告の場合、3年繰越）
     loss_applied = 0
@@ -2270,6 +2246,22 @@ def calc_income_tax(input_data: IncomeTaxInput) -> IncomeTaxResult:
 
     # total_income = 総所得金額等（損益通算後・繰越控除後）
     total_income = max(0, total_income_raw)
+
+    minimum_threshold, _ = MINIMUM_INCOME_TAX_RULES[input_data.fiscal_year]
+    if input_data.minimum_tax_income_complete is False:
+        raise ValueError(
+            "計算対象外の所得を含む高所得特例は calc-minimum-income で確認してください。年間計算から所得を省けません"
+        )
+    if total_income > minimum_threshold and input_data.minimum_tax_income_complete is not True:
+        if input_data.calculation_mode == "filing":
+            raise ValueError(
+                "minimum_tax_income_complete で申告不要所得を含む全所得の入力を確認してください"
+            )
+        warnings.append(
+            "高所得特例は入力済みの所得だけで試算しています。申告不要所得等の漏れを確認してください"
+        )
+
+    minimum_incomes = MinimumTaxIncomeBreakdown(comprehensive_income=total_income)
 
     # 小規模企業共済等掛金控除（Phase 7）
     mutual_aid_total = input_data.ideco_contribution
@@ -2453,6 +2445,19 @@ def calc_income_tax(input_data: IncomeTaxInput) -> IncomeTaxResult:
                     candidate_income_tax_after_credits
                     + candidate_special_taxes.combined_special_tax
                 )
+                if total_income > minimum_threshold:
+                    # 寄附方式の比較にも高所得特例を含め、追加税を無視して有利判定しない。
+                    minimum_candidate = calc_minimum_income_tax(
+                        MinimumIncomeTaxInput(
+                            fiscal_year=input_data.fiscal_year,
+                            incomes=minimum_incomes,
+                            ordinary_income_tax=candidate_income_tax_after_credits,
+                            income_scope_confirmed=input_data.minimum_tax_income_complete,
+                            calculation_mode=input_data.calculation_mode,
+                        )
+                    )
+                    assert minimum_candidate.total_tax is not None
+                    candidate_total_tax = minimum_candidate.total_tax
 
                 if (
                     best_candidate_total_tax is None
@@ -2483,13 +2488,27 @@ def calc_income_tax(input_data: IncomeTaxInput) -> IncomeTaxResult:
     total_tax_credits = deductions.total_tax_credits
     income_tax_after_credits = max(0, income_tax_base - total_tax_credits)
 
+    # 高所得特例は繰越控除後の所得で判定。加算額も復興・防衛税の課税標準に含める。
+    minimum_result = calc_minimum_income_tax(
+        MinimumIncomeTaxInput(
+            fiscal_year=input_data.fiscal_year,
+            incomes=minimum_incomes,
+            ordinary_income_tax=income_tax_after_credits,
+            income_scope_confirmed=input_data.minimum_tax_income_complete,
+            calculation_mode=input_data.calculation_mode
+            if total_income > minimum_threshold
+            else "estimate",
+        )
+    )
+    assert minimum_result.adjusted_income_tax is not None
+    income_tax_after_minimum = minimum_result.adjusted_income_tax
     # Step 8: 各税目の円未満を保持して合算する。
-    special_taxes = calc_income_special_taxes(income_tax_after_credits, input_data.fiscal_year)
+    special_taxes = calc_income_special_taxes(income_tax_after_minimum, input_data.fiscal_year)
     reconstruction_tax = special_taxes.reconstruction_tax
 
     # Step 9: 通則法基本通達119関係6の算出過程の円未満切捨てを合算値に適用。
     # 防衛財確法5の22の合算を保ち、税目別内訳の丸め差も含める。
-    total_tax = income_tax_after_credits + special_taxes.combined_special_tax
+    total_tax = income_tax_after_minimum + special_taxes.combined_special_tax
 
     # Step 10: Difference（給与源泉+事業源泉+その他源泉+予定納税を差し引く）
     total_withheld = (
@@ -2552,6 +2571,9 @@ def calc_income_tax(input_data: IncomeTaxInput) -> IncomeTaxResult:
         political_donation_credit=_political_donation_credit,
         total_tax_credits=total_tax_credits,
         income_tax_after_credits=income_tax_after_credits,
+        minimum_tax_additional_income_tax=minimum_result.additional_income_tax or 0,
+        income_tax_after_minimum_tax=income_tax_after_minimum,
+        minimum_tax_detail=minimum_result if total_income > minimum_threshold else None,
         reconstruction_tax=reconstruction_tax,
         defense_tax=special_taxes.defense_tax,
         special_tax_rounding_adjustment=special_taxes.rounding_adjustment,
@@ -2920,11 +2942,15 @@ def _get_marginal_tax_rate(taxable_income: int) -> int:
 
 
 def calc_furusato_deduction_limit(
-    total_income: int,
-    total_income_deductions: int,
+    total_income: int | None = None,
+    total_income_deductions: int | None = None,
     income_tax_rate_percent: int | None = None,
     *,
     fiscal_year: int = 2025,
+    resident_tax_income_levy: int | None = None,
+    resident_taxable_income: int | None = None,
+    personal_deduction_difference: int | None = None,
+    income_tax_basic_deduction: int | None = None,
 ) -> int:
     """Estimate furusato nozei deduction limit.
 
@@ -2937,6 +2963,26 @@ def calc_furusato_deduction_limit(
     Note: この計算は推定値。調整控除等は考慮していない。
     """
     require_supported_tax_year(fiscal_year, "furusato_limit")
+    resident_fields = {
+        "resident_tax_income_levy": resident_tax_income_levy,
+        "resident_taxable_income": resident_taxable_income,
+        "personal_deduction_difference": personal_deduction_difference,
+        "income_tax_basic_deduction": income_tax_basic_deduction,
+    }
+    if fiscal_year == 2027 or any(value is not None for value in resident_fields.values()):
+        missing = [name for name, value in resident_fields.items() if value is None]
+        if missing:
+            raise ValueError("住民税に基づく上限推定には次の項目が必要です: " + ", ".join(missing))
+        data = FurusatoLimitInput.model_validate(
+            {
+                "fiscal_year": fiscal_year,
+                "income_tax_rate_percent": income_tax_rate_percent,
+                **resident_fields,
+            }
+        )
+        return calc_furusato_limit_detailed(data).estimated_limit
+    if total_income is None or total_income_deductions is None:
+        raise ValueError("旧形式の上限推定には total_income と total_income_deductions が必要です")
     taxable_income_raw = max(0, total_income - total_income_deductions)
     # 課税所得を1,000円未満切捨て
     taxable_income = (taxable_income_raw // TAXABLE_INCOME_ROUNDING) * TAXABLE_INCOME_ROUNDING
@@ -3150,6 +3196,7 @@ def sanity_check_income_tax(
             "income_tax_base",
             "total_tax_credits",
             "income_tax_after_credits",
+            "minimum_tax_additional_income_tax",
             "total_tax",
             "tax_due",
         )
@@ -3162,6 +3209,14 @@ def sanity_check_income_tax(
                     severity="error",
                     code="FILING_CALCULATION_MISMATCH",
                     message="申告用の再計算結果と保存値が一致しません: " + ", ".join(mismatches),
+                )
+            )
+        if result.minimum_tax_detail != recalculated.minimum_tax_detail:
+            items.append(
+                TaxSanityCheckItem(
+                    severity="error",
+                    code="MINIMUM_TAX_DETAIL_MISMATCH",
+                    message="高所得特例の判定・計算内訳が再計算結果と一致しません",
                 )
             )
 
@@ -3231,7 +3286,8 @@ def sanity_check_income_tax(
 
     # 7. RECONSTRUCTION_TAX_MISMATCH — 復興特別所得税の計算不一致
     expected_special = calc_income_special_taxes(
-        result.income_tax_after_credits, input_data.fiscal_year
+        result.income_tax_after_credits + result.minimum_tax_additional_income_tax,
+        input_data.fiscal_year,
     )
     expected_reconstruction = expected_special.reconstruction_tax
     if result.reconstruction_tax != expected_reconstruction:
@@ -3262,7 +3318,9 @@ def sanity_check_income_tax(
             "TOTAL_TAX_MISMATCH",
             "所得税と特別所得税の合計",
             result.total_tax,
-            result.income_tax_after_credits + expected_special.combined_special_tax,
+            result.income_tax_after_credits
+            + result.minimum_tax_additional_income_tax
+            + expected_special.combined_special_tax,
         ),
     ):
         if actual != expected:

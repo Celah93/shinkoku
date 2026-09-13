@@ -50,7 +50,7 @@ def test_all_consumption_methods_reject_unsupported_year(fiscal_year: int, metho
         calc_consumption_tax(data)
 
 
-@pytest.mark.parametrize("fiscal_year", [2024, 2027, 2028, 2035])
+@pytest.mark.parametrize("fiscal_year", [2024, 2028, 2035])
 def test_furusato_limit_rejects_unsupported_donation_year(fiscal_year: int) -> None:
     with pytest.raises(ValueError, match=f"fiscal_year={fiscal_year} は未対応"):
         calc_furusato_deduction_limit(0, 0, fiscal_year=fiscal_year)

@@ -99,10 +99,16 @@ shinkoku furusato summary --db-path DB --fiscal-year YEAR [--estimated-limit N]
 
 所得情報が把握できている場合は `shinkoku tax calc-furusato-limit --input FILE` で上限を推定する。
 
-入力JSONの `fiscal_year` に寄附した年を明示する。上限推定の対応年分は2025・2026年で、2027年分は制度対応の途中のためエラーになる。年分を変更・削除して回避しない。年分省略時の2025年という扱いは旧入力との互換性のためであり、新しい入力では使わない。寄附記録の保存・集計と、上限推定の対応年分は区別する。
+入力JSONの `fiscal_year` に寄附した年を明示する。対応年分は2025〜2027年。2027年は住民税の所得割額・課税所得・人的控除差・所得税基礎控除を入力し、所得税側の控除で代用しない。193万円は寄附額ではなく特例控除額の上限で、2027年寄附は2028年度住民税へ適用する。詳しい入力と概算の制限は `docs/furusato-and-minimum-tax-2027.md` を参照する。年分を変更・削除して未対応エラーを回避しない。年分省略時2025年は旧入力との互換性のためで、新しい入力では明示する。
 
 ```bash
 shinkoku tax calc-furusato-limit --input FILE
+```
+
+内訳も確認する場合は次を使う。`estimated_limit` と `special_credit_limit` を取り違えず、`warnings` を確認する。
+
+```bash
+shinkoku tax calc-furusato-limit-detailed --input FILE
 ```
 
 上限超過の場合は警告を表示:

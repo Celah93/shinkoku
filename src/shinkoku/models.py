@@ -744,6 +744,117 @@ class IncomeSpecialTaxResult(BaseModel):
     denominator: int
 
 
+class MinimumTaxIncomeBreakdown(BaseModel):
+    """NTA適用判定表①〜⑫。繰越控除・土地等特別控除後、申告不要制度を使わない所得額。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    comprehensive_income: int = Field(ge=0, strict=True)
+    short_term_capital_general: int = Field(default=0, ge=0, strict=True)
+    short_term_capital_reduced: int = Field(default=0, ge=0, strict=True)
+    long_term_capital_general: int = Field(default=0, ge=0, strict=True)
+    long_term_capital_specific: int = Field(default=0, ge=0, strict=True)
+    long_term_capital_reduced: int = Field(default=0, ge=0, strict=True)
+    general_stock_gains: int = Field(default=0, ge=0, strict=True)
+    listed_stock_gains: int = Field(default=0, ge=0, strict=True)
+    listed_stock_dividends: int = Field(default=0, ge=0, strict=True)
+    futures_income: int = Field(default=0, ge=0, strict=True)
+    forestry_income: int = Field(default=0, ge=0, strict=True)
+    retirement_income: int = Field(default=0, ge=0, strict=True)
+
+
+class MinimumIncomeTaxInput(BaseModel):
+    """高所得特例の二段階判定。税額は源泉・予定納税控除前、外国税額控除前の国税。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    fiscal_year: int = Field(strict=True)
+    incomes: MinimumTaxIncomeBreakdown
+    ordinary_income_tax: int = Field(ge=0, strict=True)  # 特例・追加税を加算する前
+    uses_nonfiling_system: StrictBool = False
+    nonfiling_income_withheld_tax: int = Field(default=0, ge=0, strict=True)  # 追加税を含む国税
+    recalculated_income_tax: int | None = Field(default=None, ge=0, strict=True)
+    calculation_mode: Literal["estimate", "filing"] = "estimate"
+    income_scope_confirmed: StrictBool | None = None
+
+    @model_validator(mode="after")
+    def check_recalculation_context(self) -> MinimumIncomeTaxInput:
+        if not self.uses_nonfiling_system:
+            if self.nonfiling_income_withheld_tax:
+                raise ValueError(
+                    "申告不要制度を使わない入力に、その対象所得の源泉税は指定できません"
+                )
+            if self.recalculated_income_tax not in (None, self.ordinary_income_tax):
+                raise ValueError(
+                    "申告不要制度を使わない場合、再計算税額は通常の所得税額と一致させてください"
+                )
+        return self
+
+
+class MinimumIncomeTaxResult(BaseModel):
+    """基準所得・初回判定・再計算・加算税額。申告書全体の作成とは区別する。"""
+
+    fiscal_year: int
+    calculation_mode: Literal["estimate", "filing"]
+    status: Literal["not_applicable", "requires_recalculation", "applicable"]
+    income_scope_confirmed: bool
+    base_income_amount: int
+    threshold: int
+    rate_numerator: int
+    rate_denominator: int
+    rounded_excess_income: int
+    benchmark_tax: int
+    ordinary_tax_with_special: int
+    initial_base_tax: int
+    initial_additional_tax: int
+    recalculated_income_tax: int | None = None
+    recalculated_base_tax: int | None = None
+    additional_income_tax: int | None = None
+    adjusted_income_tax: int | None = None
+    final_special_taxes: IncomeSpecialTaxResult | None = None
+    total_tax: int | None = None
+    warnings: list[str] = Field(default_factory=list)
+
+
+class FurusatoLimitInput(BaseModel):
+    """住民税の資料から求める上限推定。標準税率の所得割・調整控除後の額を使う。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    fiscal_year: int = Field(strict=True)  # 寄附年。住民税年度は+1
+    resident_tax_income_levy: int = Field(ge=0, strict=True)
+    resident_taxable_income: int = Field(ge=0, strict=True)
+    personal_deduction_difference: int = Field(ge=0, strict=True)
+    income_tax_basic_deduction: int = Field(ge=0, strict=True)
+    income_tax_rate_percent: Literal[0, 5, 10, 20, 23, 33, 40, 45] | None = None
+
+    @field_validator("income_tax_rate_percent", mode="before")
+    @classmethod
+    def require_integer_rate(cls, value: object) -> object:
+        if value is not None and type(value) is not int:
+            raise ValueError("income_tax_rate_percent は整数で指定してください")
+        return value
+
+
+class FurusatoLimitResult(BaseModel):
+    """全額控除を保証しない概算。寄附額と住民税特例控除額の上限を区別する。"""
+
+    fiscal_year: int
+    resident_tax_assessment_year: int
+    estimated_limit: int
+    resident_tax_income_levy: int
+    rate_adjustment: int
+    rate_taxable_income: int
+    income_tax_rate_percent: int
+    special_credit_rate_numerator: int
+    special_credit_rate_denominator: int
+    income_levy_twenty_percent: int
+    fixed_special_credit_cap: int | None
+    special_credit_limit: int
+    fixed_cap_applied: bool
+    warnings: list[str] = Field(default_factory=list)
+
+
 class IncomeTaxInput(BaseModel):
     """所得税計算の入力。"""
 
@@ -752,6 +863,7 @@ class IncomeTaxInput(BaseModel):
     salary_income_adjustment_eligible: StrictBool | None = None
     pension_income: int = Field(default=0, ge=0)
     pension_is_over_65: StrictBool | None = None
+    minimum_tax_income_complete: StrictBool | None = None
     business_revenue: int = 0
     business_expenses: int = 0
     blue_return_deduction: int = Field(default=650_000, ge=0)
@@ -825,6 +937,9 @@ class IncomeTaxResult(BaseModel):
     political_donation_credit: int = 0  # 政党等寄附金特別控除
     total_tax_credits: int = 0
     income_tax_after_credits: int = 0
+    minimum_tax_additional_income_tax: int = 0
+    income_tax_after_minimum_tax: int = 0
+    minimum_tax_detail: MinimumIncomeTaxResult | None = None
     reconstruction_tax: int = 0
     defense_tax: int = 0
     special_tax_rounding_adjustment: int = 0

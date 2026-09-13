@@ -676,9 +676,15 @@ SALARY_ADJUSTMENT_REVENUE_THRESHOLD = 8_500_000
 SALARY_ADJUSTMENT_REVENUE_CAP = 10_000_000
 SALARY_PENSION_ADJUSTMENT_CAP = 100_000
 
-# 令和9年分の極めて高い水準の所得への課税特例（措法41の19）。
-# 分離課税等も含む専用の基準所得計算は別対応のため、超過する入力を通常計算に流さない。
-MINIMUM_TAX_REVIEW_THRESHOLD_2027 = 165_000_000
+# 高所得特例（措法41の19）。閾値・税率（分母1000）は年分で正確一致させる。
+MINIMUM_INCOME_TAX_RULES: Final[Mapping[int, tuple[int, int]]] = MappingProxyType(
+    {2025: (330_000_000, 225), 2026: (330_000_000, 225), 2027: (165_000_000, 300)}
+)
+
+# 財務省・地方税改正解説931頁。193万円は住民税特例控除の合計上限。
+FURUSATO_FIXED_SPECIAL_CREDIT_CAPS: Final[Mapping[int, int | None]] = MappingProxyType(
+    {2025: None, 2026: None, 2027: 1_930_000}
+)
 
 # ============================================================
 # 消費税（消費税法）

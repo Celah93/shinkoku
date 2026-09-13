@@ -23,6 +23,8 @@ from shinkoku.models import (
     SmallAssetTreatmentInput,
     SmallBusinessMutualAidInput,
     TaxEligibilityInput,
+    FurusatoLimitInput,
+    MinimumIncomeTaxInput,
 )
 from shinkoku.tools.ledger import ledger_get_fiscal_year_tax_profile
 from shinkoku.tools.tax_calc import (
@@ -41,6 +43,7 @@ from shinkoku.tools.tax_eligibility import (
     check_blue_return_eligibility,
     check_invoice_special_eligibility,
 )
+from shinkoku.tools.tax_reform import calc_furusato_limit_detailed, calc_minimum_income_tax
 
 _DEPRECIATION_METHODS = (
     "straight_line",
@@ -255,6 +258,16 @@ def _handle_calc_furusato_limit(args: argparse.Namespace) -> None:
     _output_json({"estimated_limit": limit})
 
 
+def _handle_calc_furusato_limit_detailed(args: argparse.Namespace) -> None:
+    result = calc_furusato_limit_detailed(FurusatoLimitInput.model_validate(_load_json(args.input)))
+    _output_json(result.model_dump())
+
+
+def _handle_calc_minimum_income(args: argparse.Namespace) -> None:
+    result = calc_minimum_income_tax(MinimumIncomeTaxInput.model_validate(_load_json(args.input)))
+    _output_json(result.model_dump())
+
+
 def _handle_calc_pension(args: argparse.Namespace) -> None:
     """calc-pension: 公的年金等控除計算。"""
     params = _load_json(args.input)
@@ -341,6 +354,8 @@ _HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "calc-depreciation": _handle_calc_depreciation,
     "calc-consumption": _handle_calc_consumption,
     "calc-furusato-limit": _handle_calc_furusato_limit,
+    "calc-furusato-limit-detailed": _handle_calc_furusato_limit_detailed,
+    "calc-minimum-income": _handle_calc_minimum_income,
     "calc-pension": _handle_calc_pension,
     "calc-retirement": _handle_calc_retirement,
     "sanity-check": _handle_sanity_check,
@@ -374,6 +389,8 @@ def register(parent_subparsers: argparse._SubParsersAction) -> None:
         "calc-depreciation",
         "calc-consumption",
         "calc-furusato-limit",
+        "calc-furusato-limit-detailed",
+        "calc-minimum-income",
         "calc-pension",
         "calc-retirement",
         "sanity-check",

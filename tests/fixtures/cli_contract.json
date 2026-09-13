@@ -3271,7 +3271,41 @@
         }
       ]
     },
+    "tax calc-furusato-limit-detailed": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
     "tax calc-income": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "tax calc-minimum-income": {
       "arguments": [
         {
           "action": "_StoreAction",

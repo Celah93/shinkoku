@@ -306,10 +306,15 @@ def test_deductions_use_income_before_loss_carryforward_for_personal_limits() ->
     assert deductions["medical"] == 50000
 
 
-def test_high_income_special_scheme_is_not_silently_ignored() -> None:
-    with pytest.raises(ValueError, match="1億6,500万円"):
+def test_high_income_special_scheme_requires_complete_income_for_filing() -> None:
+    with pytest.raises(ValueError, match="minimum_tax_income_complete"):
         calc_income_tax(
-            IncomeTaxInput(fiscal_year=2027, business_revenue=165000001, blue_return_deduction=0)
+            IncomeTaxInput(
+                fiscal_year=2027,
+                business_revenue=165000001,
+                blue_return_deduction=0,
+                calculation_mode="filing",
+            )
         )
 
 

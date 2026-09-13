@@ -12,6 +12,7 @@ TaxCalculation = Literal[
     "consumption_tax",
     "consumption_special_30pct",
     "furusato_limit",
+    "minimum_income_tax",
 ]
 
 
@@ -30,7 +31,10 @@ TAX_YEAR_SUPPORT: Final[Mapping[TaxCalculation, TaxYearSupport]] = MappingProxyT
         "income_deductions": TaxYearSupport("所得税の控除集計", frozenset({2025, 2026, 2027})),
         "consumption_tax": TaxYearSupport("消費税計算", frozenset({2025, 2026})),
         "consumption_special_30pct": TaxYearSupport("消費税3割特例", frozenset({2027, 2028})),
-        "furusato_limit": TaxYearSupport("ふるさと納税の上限推定", frozenset({2025, 2026})),
+        "furusato_limit": TaxYearSupport("ふるさと納税の上限推定", frozenset({2025, 2026, 2027})),
+        "minimum_income_tax": TaxYearSupport(
+            "特定の基準所得金額の課税特例", frozenset({2025, 2026, 2027})
+        ),
     }
 )
 

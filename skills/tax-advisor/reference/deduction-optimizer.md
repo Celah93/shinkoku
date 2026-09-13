@@ -149,7 +149,7 @@ iDeCoの掛金は年末調整で処理されることが多いが、
 
 推奨:
   - ふるさと納税の上限額計算は住宅ローン控除後の税額を前提に行う
-  - shinkoku の calc-furusato-limit コマンドで正確に計算可能
+  - shinkoku の calc-furusato-limit-detailed で住民税資料から推定する。自己負担2,000円を保証する確定計算ではない
 ```
 
 → 詳細は reference/housing-loan.md を参照

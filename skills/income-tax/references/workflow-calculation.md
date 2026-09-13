@@ -47,7 +47,9 @@ shinkoku tax calc-income --input income_input.json
 - `income_tax_base`: 算出税額
 - `total_tax_credits`: 税額控除合計
 - `housing_loan_credit_entries`: 住宅ローン控除の年数・期間・状態を含む個別明細
-- `income_tax_after_credits`: 税額控除後
+- `income_tax_after_credits`: 税額控除後・高所得特例の加算前
+- `minimum_tax_additional_income_tax` / `income_tax_after_minimum_tax`: 高所得特例の加算額と加算後の所得税。復興・防衛税は加算後を基準にする
+- `minimum_tax_detail`: 高所得特例の比較・計算内訳。申告用は `minimum_tax_income_complete` で所得範囲の確認が必要。金融所得等を含む専用計算・再計算待ちの扱いは `docs/furusato-and-minimum-tax-2027.md` を参照
 - `reconstruction_tax`: 復興特別所得税の円単位参考内訳（2025・2026年2.1%、2027年1.1%）
 - `defense_tax`: 防衛特別所得税の円単位参考内訳（2027年1%）
 - `special_tax_rounding_adjustment` / `income_special_tax_detail`: 合算端数・整数の分子と分母。内訳だけを足して税額を作り直さない

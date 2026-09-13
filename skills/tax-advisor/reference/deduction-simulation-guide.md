@@ -159,6 +159,8 @@ shinkoku tax calc-deductions --input my_deductions.json
 shinkoku tax calc-furusato-limit --input furusato_params.json
 ```
 
+次の `calc-furusato-limit` の旧入力は2025・2026年の概算用。2027年の住民税入力・193万円上限は `docs/furusato-and-minimum-tax-2027.md` を参照する。
+
 `calc-furusato-limit` の入力:
 
 ```json
