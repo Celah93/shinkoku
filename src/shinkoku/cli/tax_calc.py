@@ -15,6 +15,8 @@ from shinkoku.models import (
     DependentInfo,
     DonationRecordRecord,
     HousingLoanDetail,
+    HousingLoanCalculationInput,
+    ResidentTaxEstimateInput,
     IncomeTaxInput,
     IncomeTaxResult,
     LifeInsurancePremiumInput,
@@ -44,6 +46,8 @@ from shinkoku.tools.tax_eligibility import (
     check_invoice_special_eligibility,
 )
 from shinkoku.tools.tax_reform import calc_furusato_limit_detailed, calc_minimum_income_tax
+from shinkoku.tools.resident_tax import calc_resident_tax_estimate
+from shinkoku.tools.housing_loan import calc_housing_loan
 
 _DEPRECIATION_METHODS = (
     "straight_line",
@@ -268,6 +272,20 @@ def _handle_calc_minimum_income(args: argparse.Namespace) -> None:
     _output_json(result.model_dump())
 
 
+def _handle_calc_resident_tax_estimate(args: argparse.Namespace) -> None:
+    result = calc_resident_tax_estimate(
+        ResidentTaxEstimateInput.model_validate(_load_json(args.input), strict=True)
+    )
+    _output_json(result.model_dump())
+
+
+def _handle_calc_housing_loan(args: argparse.Namespace) -> None:
+    result = calc_housing_loan(
+        HousingLoanCalculationInput.model_validate(_load_json(args.input), strict=True)
+    )
+    _output_json(result.model_dump())
+
+
 def _handle_calc_pension(args: argparse.Namespace) -> None:
     """calc-pension: 公的年金等控除計算。"""
     params = _load_json(args.input)
@@ -356,6 +374,8 @@ _HANDLERS: dict[str, Callable[[argparse.Namespace], None]] = {
     "calc-furusato-limit": _handle_calc_furusato_limit,
     "calc-furusato-limit-detailed": _handle_calc_furusato_limit_detailed,
     "calc-minimum-income": _handle_calc_minimum_income,
+    "calc-resident-tax-estimate": _handle_calc_resident_tax_estimate,
+    "calc-housing-loan": _handle_calc_housing_loan,
     "calc-pension": _handle_calc_pension,
     "calc-retirement": _handle_calc_retirement,
     "sanity-check": _handle_sanity_check,
@@ -391,6 +411,8 @@ def register(parent_subparsers: argparse._SubParsersAction) -> None:
         "calc-furusato-limit",
         "calc-furusato-limit-detailed",
         "calc-minimum-income",
+        "calc-resident-tax-estimate",
+        "calc-housing-loan",
         "calc-pension",
         "calc-retirement",
         "sanity-check",

@@ -454,6 +454,78 @@ FURUSATO_INCOME_RATIO = 40  # 総所得金額等の40%上限
 FURUSATO_RESIDENTIAL_TAX_RATIO = 20  # 住民税所得割額の20%
 
 # ============================================================
+# 住民税の控除（所得年2025〜2027、翌年度課税）
+# 横浜市「所得控除（令和8年度課税以降）」・財務省令和8年度改正解説930〜932頁。
+# 控除額と税源移譲時の人的控除差は別の表として保持する。
+# ============================================================
+RESIDENT_BASIC_DEDUCTIONS: Final = (
+    (24_000_000, 430_000),
+    (24_500_000, 290_000),
+    (25_000_000, 150_000),
+)
+RESIDENT_SPOUSE_DEDUCTIONS: Final = (330_000, 220_000, 110_000)
+RESIDENT_SPOUSE_DIFFERENCES: Final = (50_000, 40_000, 20_000)
+RESIDENT_ELDERLY_SPOUSE_DEDUCTIONS: Final = (380_000, 260_000, 130_000)
+RESIDENT_ELDERLY_SPOUSE_DIFFERENCES: Final = (100_000, 60_000, 30_000)
+RESIDENT_SPOUSE_SPECIAL_DEDUCTIONS: Final = (
+    (1_000_000, (330_000, 220_000, 110_000)),
+    (1_050_000, (310_000, 210_000, 110_000)),
+    (1_100_000, (260_000, 180_000, 90_000)),
+    (1_150_000, (210_000, 140_000, 70_000)),
+    (1_200_000, (160_000, 110_000, 60_000)),
+    (1_250_000, (110_000, 80_000, 40_000)),
+    (1_300_000, (60_000, 40_000, 20_000)),
+    (1_330_000, (30_000, 20_000, 10_000)),
+)
+RESIDENT_SPECIFIC_RELATIVE_DEDUCTIONS: Final = (
+    (950_000, 450_000),
+    (1_000_000, 410_000),
+    (1_050_000, 310_000),
+    (1_100_000, 210_000),
+    (1_150_000, 110_000),
+    (1_200_000, 60_000),
+    (1_230_000, 30_000),
+)
+RESIDENT_DEPENDENT_DEDUCTIONS: Final = MappingProxyType(
+    {
+        "general": (330_000, 50_000),
+        "specific": (450_000, 180_000),
+        "elderly": (380_000, 100_000),
+        "elderly_cohabiting": (450_000, 130_000),
+    }
+)
+RESIDENT_DISABILITY_DEDUCTIONS: Final = MappingProxyType(
+    {
+        "general": (260_000, 10_000),
+        "special": (300_000, 100_000),
+        "special_cohabiting": (530_000, 220_000),
+    }
+)
+RESIDENT_NEW_LIFE_SCHEDULE: Final = LifeInsuranceDeductionSchedule(
+    rows=((12_000, 1, 0), (32_000, 2, 6_000), (56_000, 4, 14_000)), maximum=28_000
+)
+RESIDENT_OLD_LIFE_SCHEDULE: Final = LifeInsuranceDeductionSchedule(
+    rows=((15_000, 1, 0), (40_000, 2, 7_500), (70_000, 4, 17_500)), maximum=35_000
+)
+RESIDENT_SINGLE_PARENT_DEDUCTIONS: Final = MappingProxyType(
+    {
+        2025: 300_000,
+        2026: 300_000,
+        2027: 330_000,
+    }
+)
+RESIDENT_LIFE_COMBINED_CAP = 28_000
+RESIDENT_LIFE_TOTAL_CAP = 70_000
+RESIDENT_EARTHQUAKE_CAP = 25_000
+RESIDENT_OLD_LONG_TERM_CAP = 10_000
+RESIDENT_BASIC_PERSONAL_DIFFERENCE = 50_000
+RESIDENT_ADJUSTMENT_INCOME_LIMIT = 25_000_000
+RESIDENT_ADJUSTMENT_TAXABLE_THRESHOLD = 2_000_000
+RESIDENT_ADJUSTMENT_MIN_BASE = 50_000
+RESIDENT_ADJUSTMENT_RATE = 5
+RESIDENT_INCOME_LEVY_RATE = 10
+
+# ============================================================
 # 住宅ローン控除（租税特別措置法第41条）
 # 令和4年以降入居
 # ============================================================
@@ -634,7 +706,48 @@ _HOUSING_LOAN_RULES_2027 = MappingProxyType(
     }
 )
 
-# キーは (取得区分, 性能区分, 特例対象個人, 建築確認経過措置)。
+# 財務省令和8年度改正解説225〜226頁。省エネ新築の経過措置は10年、買取再販は13年。
+_HOUSING_LOAN_RULES_2028: dict[HousingLoanRuleKey, HousingLoanRule] = {
+    key: rule
+    for key, rule in _HOUSING_LOAN_RULES_2026_MUTABLE.items()
+    if key[0] not in ("new_custom", "new_subdivision")
+}
+for _housing_type in ("new_custom", "new_subdivision"):
+    for _special in (False, True):
+        for _category in ("certified", "zeh"):
+            _key = (_housing_type, _category, _special, False)
+            _HOUSING_LOAN_RULES_2028[_key] = _HOUSING_LOAN_RULES_2026_MUTABLE[_key]
+        _HOUSING_LOAN_RULES_2028[(_housing_type, "energy_efficient", _special, True)] = (
+            _housing_loan_rule(20_000_000, 10, "new_energy_transition")
+        )
+        for _category in ("energy_efficient", "general"):
+            _HOUSING_LOAN_RULES_2028[(_housing_type, _category, _special, False)] = (
+                _housing_loan_rule(
+                    0,
+                    10,
+                    "new_ineligible",
+                    eligible=False,
+                    warning="2028年以後の対象外新築住宅です。省エネ基準適合住宅は経過措置の確認が必要です。",
+                )
+            )
+
+HOUSING_DEPENDENT_INCOME_LIMITS: Final = MappingProxyType(
+    {
+        2022: 480_000,
+        2023: 480_000,
+        2024: 480_000,
+        2025: 580_000,
+        2026: 620_000,
+        2027: 620_000,
+        2028: 620_000,
+        2029: 620_000,
+        2030: 620_000,
+    }
+)
+HOUSING_TRANSITION_CONFIRMATION_DEADLINE: Final = date(2027, 12, 31)
+HOUSING_TRANSITION_COMPLETION_DEADLINE: Final = date(2028, 6, 30)
+
+# キーは (取得区分, 性能区分, 特例対象個人, 建築確認等の経過措置)。
 # 居住年を正確一致で引くため、未実装年へ過去年分の表が流入しない。
 HOUSING_LOAN_RULES_BY_MOVE_IN_YEAR: Final[
     Mapping[int, Mapping[HousingLoanRuleKey, HousingLoanRule]]
@@ -646,6 +759,9 @@ HOUSING_LOAN_RULES_BY_MOVE_IN_YEAR: Final[
         2025: _HOUSING_LOAN_RULES_R6_R7,
         2026: MappingProxyType(_HOUSING_LOAN_RULES_2026_MUTABLE),
         2027: _HOUSING_LOAN_RULES_2027,
+        2028: MappingProxyType(_HOUSING_LOAN_RULES_2028),
+        2029: MappingProxyType(_HOUSING_LOAN_RULES_2028),
+        2030: MappingProxyType(_HOUSING_LOAN_RULES_2028),
     }
 )
 

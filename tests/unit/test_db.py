@@ -170,6 +170,11 @@ def test_migrate_housing_loan_table_preserves_rows_and_allows_broker_resale(tmp_
         "SELECT housing_type, is_special_target_individual FROM housing_loan_details WHERE id = 1"
     ).fetchone()
     assert tuple(migrated) == ("resale", 1)
+    evidence = conn.execute(
+        "SELECT building_confirmation_date, building_completion_date, is_disaster_red_zone, "
+        "is_rebuilding, loan_term_years FROM housing_loan_details WHERE id = 1"
+    ).fetchone()
+    assert tuple(evidence) == (None, None, None, None, None)
 
     conn.execute(
         "INSERT INTO housing_loan_details ("

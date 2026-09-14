@@ -201,6 +201,11 @@ CREATE TABLE IF NOT EXISTS housing_loan_details (
     application_submitted INTEGER NOT NULL DEFAULT 0,
     dual_application_group TEXT,
     cost_for_proration INTEGER NOT NULL DEFAULT 0,
+    building_confirmation_date TEXT,
+    building_completion_date TEXT,
+    is_disaster_red_zone INTEGER CHECK (is_disaster_red_zone IN (0, 1)),
+    is_rebuilding INTEGER CHECK (is_rebuilding IN (0, 1)),
+    loan_term_years INTEGER CHECK (loan_term_years > 0),
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

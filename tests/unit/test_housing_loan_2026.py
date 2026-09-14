@@ -138,7 +138,7 @@ def test_general_new_without_building_permit_returns_zero_with_warning() -> None
     assert any("令和6年6月30日までに建築" in warning for warning in result.warnings)
 
 
-@pytest.mark.parametrize("move_in_year", [2028, 2030])
+@pytest.mark.parametrize("move_in_year", [2031, 2035])
 def test_future_move_in_year_fails_closed_even_with_zero_balance(move_in_year: int) -> None:
     detail = _detail(
         move_in_date=f"{move_in_year}-01-01",

@@ -1660,7 +1660,7 @@ def ledger_add_housing_loan_detail(
         if detail.is_new_construction is not None
         else detail.housing_type in ("new_custom", "new_subdivision")
     )
-    conn = get_connection(db_path)
+    conn = init_db(db_path)
     try:
         cursor = conn.execute(
             "INSERT INTO housing_loan_details "
@@ -1669,8 +1669,10 @@ def ledger_add_housing_loan_detail(
             "is_special_target_individual, has_pre_r6_building_permit, "
             "purchase_date, purchase_price, "
             "total_floor_area, residential_floor_area, property_number, "
-            "application_submitted, dual_application_group, cost_for_proration) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "application_submitted, dual_application_group, cost_for_proration, "
+            "building_confirmation_date, building_completion_date, is_disaster_red_zone, "
+            "is_rebuilding, loan_term_years) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 fiscal_year,
                 detail.housing_type,
@@ -1689,6 +1691,11 @@ def ledger_add_housing_loan_detail(
                 1 if detail.application_submitted else 0,
                 detail.dual_application_group,
                 detail.cost_for_proration,
+                detail.building_confirmation_date,
+                detail.building_completion_date,
+                detail.is_disaster_red_zone,
+                detail.is_rebuilding,
+                detail.loan_term_years,
             ),
         )
         conn.commit()
@@ -1703,7 +1710,7 @@ def ledger_add_housing_loan_detail(
 
 def ledger_list_housing_loan_details(*, db_path: str, fiscal_year: int) -> dict:
     """List all housing loan details for a fiscal year."""
-    conn = get_connection(db_path)
+    conn = init_db(db_path)
     try:
         rows = conn.execute(
             "SELECT id, fiscal_year, housing_type, housing_category, "
@@ -1712,7 +1719,9 @@ def ledger_list_housing_loan_details(*, db_path: str, fiscal_year: int) -> dict:
             "has_pre_r6_building_permit, "
             "purchase_date, purchase_price, total_floor_area, "
             "residential_floor_area, property_number, application_submitted, "
-            "dual_application_group, cost_for_proration "
+            "dual_application_group, cost_for_proration, "
+            "building_confirmation_date, building_completion_date, is_disaster_red_zone, "
+            "is_rebuilding, loan_term_years "
             "FROM housing_loan_details WHERE fiscal_year = ? ORDER BY id",
             (fiscal_year,),
         ).fetchall()
@@ -1736,6 +1745,11 @@ def ledger_list_housing_loan_details(*, db_path: str, fiscal_year: int) -> dict:
                 "application_submitted": bool(r[15]),
                 "dual_application_group": r[16],
                 "cost_for_proration": r[17],
+                "building_confirmation_date": r[18],
+                "building_completion_date": r[19],
+                "is_disaster_red_zone": None if r[20] is None else bool(r[20]),
+                "is_rebuilding": None if r[21] is None else bool(r[21]),
+                "loan_term_years": r[22],
             }
             for r in rows
         ]

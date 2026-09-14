@@ -552,7 +552,24 @@ class DependentInfo(BaseModel):
     other_taxpayer_dependent: bool = False  # 他の納税者の扶養親族に該当する
 
 
-class HousingLoanDetail(BaseModel):
+class HousingLoanEvidenceInput(BaseModel):
+    """住宅の経過措置・立地・借入期間に関する確認情報。未確認はNoneで保持する。"""
+
+    building_confirmation_date: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    building_completion_date: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
+    is_disaster_red_zone: StrictBool | None = None
+    is_rebuilding: StrictBool | None = None
+    loan_term_years: int | None = Field(default=None, gt=0, strict=True)
+
+    @field_validator("building_confirmation_date", "building_completion_date")
+    @classmethod
+    def valid_building_date(cls, value: str | None) -> str | None:
+        if value is not None:
+            date.fromisoformat(value)
+        return value
+
+
+class HousingLoanDetail(HousingLoanEvidenceInput):
     """住宅ローン控除の詳細情報。"""
 
     housing_type: str = Field(
@@ -574,9 +591,11 @@ class HousingLoanDetail(BaseModel):
     has_pre_r6_building_permit: bool = False  # R5以前の建築確認済み（一般住宅のみ関連）
     dual_application_group: str | None = None  # 重複適用グループID
     cost_for_proration: int = 0  # 按分用コスト（円）: 購入価格 or リフォーム費用
+    total_floor_area: int = Field(default=0, ge=0, strict=True)  # 平方メートル×100
+    residential_floor_area: int = Field(default=0, ge=0, strict=True)
 
 
-class HousingLoanDetailInput(BaseModel):
+class HousingLoanDetailInput(HousingLoanEvidenceInput):
     """住宅ローン控除詳細の登録入力。"""
 
     housing_type: str = Field(
@@ -601,7 +620,7 @@ class HousingLoanDetailInput(BaseModel):
     cost_for_proration: int = 0  # 按分用コスト（円）
 
 
-class HousingLoanDetailRecord(BaseModel):
+class HousingLoanDetailRecord(HousingLoanEvidenceInput):
     """住宅ローン控除詳細のDBレコード。"""
 
     id: int
@@ -638,6 +657,42 @@ class HousingLoanCreditEntry(BaseModel):
     credit: int  # 控除額（100円未満切捨）
     proration_ratio_pct: int  # 按分比率（万分率: 6667 = 66.67%）
     status: str = Field(pattern=r"^(active|expired|ineligible)$")
+
+
+class HousingLoanCalculationDetailInput(HousingLoanDetail):
+    """単体CLI用の厳密な住宅明細。旧年間計算の型強制契約を変更しない。"""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+
+class HousingLoanDependentInput(DependentInfo):
+    """住宅単体計算の世帯判定に使う、型強制を行わない親族入力。"""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+
+class HousingLoanCalculationInput(BaseModel):
+    """住宅ローン単体計算。年間所得税の対応年分を拡張せず控除可能額を求める。"""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    claim_fiscal_year: int = Field(ge=2022, le=2042, strict=True)
+    aggregate_income: int = Field(ge=0, strict=True)
+    other_requirements_confirmed: StrictBool
+    housing_loan_details: list[HousingLoanCalculationDetailInput] = Field(min_length=1)
+    taxpayer_birth_date: str | None = None
+    spouse_birth_date: str | None = None
+    spouse_income: int | None = Field(default=None, ge=0, strict=True)
+    dependents: list[HousingLoanDependentInput] = Field(default_factory=list)
+
+
+class HousingLoanCalculationResult(BaseModel):
+    """所得税額上限を適用する前の控除可能額と、明細別の適用期間。"""
+
+    claim_fiscal_year: int
+    housing_loan_credit: int
+    entries: list[HousingLoanCreditEntry]
+    warnings: list[str]
 
 
 class LifeInsurancePremiumInput(BaseModel):
@@ -853,6 +908,130 @@ class FurusatoLimitResult(BaseModel):
     special_credit_limit: int
     fixed_cap_applied: bool
     warnings: list[str] = Field(default_factory=list)
+
+
+class ResidentTaxRelativeInput(BaseModel):
+    """住民税控除用の親族情報。適格性には生計・専従者・国外居住等の確認を含む。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    birth_date: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
+    income: int = Field(ge=0, strict=True)
+    eligible: StrictBool
+    cohabiting: StrictBool = False
+    is_lineal_ascendant: StrictBool = False
+    other_taxpayer_dependent: StrictBool = False
+    disability: Literal["general", "special", "special_cohabiting"] | None = None
+
+    @field_validator("birth_date")
+    @classmethod
+    def valid_date(cls, value: str) -> str:
+        date.fromisoformat(value)
+        return value
+
+    @model_validator(mode="after")
+    def validate_cohabiting_disability(self) -> ResidentTaxRelativeInput:
+        if self.disability == "special_cohabiting" and not self.cohabiting:
+            raise ValueError("同居特別障害者には cohabiting=true が必要です")
+        return self
+
+
+class ResidentLifeInsuranceInput(BaseModel):
+    """住民税用の新旧契約別保険料。所得税の計算済み控除額は受け取らない。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    general_new: int = Field(default=0, ge=0, strict=True)
+    general_old: int = Field(default=0, ge=0, strict=True)
+    medical_care: int = Field(default=0, ge=0, strict=True)
+    annuity_new: int = Field(default=0, ge=0, strict=True)
+    annuity_old: int = Field(default=0, ge=0, strict=True)
+
+
+class ResidentTaxEstimateInput(BaseModel):
+    """総合課税の所得と控除元データから住民税の標準所得割を推定する。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    fiscal_year: int = Field(strict=True)  # 所得年。住民税課税年度は翌年
+    income_scope: Literal["comprehensive_only"]
+    income_levy_taxable: StrictBool  # 自治体の非課税要件を確認した結果
+    aggregate_income: int = Field(ge=0, strict=True)  # 繰越控除前の合計所得金額
+    total_income: int = Field(ge=0, strict=True)  # 繰越控除後の総所得金額等
+    social_insurance: int = Field(default=0, ge=0, strict=True)
+    small_business_mutual_aid: int = Field(default=0, ge=0, strict=True)  # iDeCo等を含む合計
+    life_insurance: ResidentLifeInsuranceInput = Field(default_factory=ResidentLifeInsuranceInput)
+    earthquake_premium: int = Field(default=0, ge=0, strict=True)
+    old_long_term_premium: int = Field(default=0, ge=0, strict=True)
+    same_earthquake_contract: StrictBool | None = None
+    medical_method: Literal["none", "medical", "self_medication"] = "none"
+    medical_expenses_net: int = Field(default=0, ge=0, strict=True)  # 補填後
+    self_medication_expenses_net: int = Field(default=0, ge=0, strict=True)
+    self_medication_eligible: StrictBool | None = None
+    spouse: ResidentTaxRelativeInput | None = None
+    dependents: list[ResidentTaxRelativeInput] = Field(default_factory=list)
+    widow_status: Literal["none", "widow", "single_parent_mother", "single_parent_father"] = "none"
+    disability: Literal["general", "special"] | None = None
+    working_student: StrictBool = False
+    working_student_nonwork_income: int | None = Field(default=None, ge=0, strict=True)
+
+    @model_validator(mode="after")
+    def validate_estimate_inputs(self) -> ResidentTaxEstimateInput:
+        if self.total_income > self.aggregate_income:
+            raise ValueError("total_income は繰越控除前の aggregate_income を超えられません")
+        if self.earthquake_premium and self.old_long_term_premium:
+            if self.same_earthquake_contract is None:
+                raise ValueError(
+                    "地震保険と旧長期契約の同一性を same_earthquake_contract で確認してください"
+                )
+        if self.medical_method == "none" and (
+            self.medical_expenses_net or self.self_medication_expenses_net
+        ):
+            raise ValueError("医療費を入力する場合は medical_method を選択してください")
+        if self.medical_method == "medical" and self.self_medication_expenses_net:
+            raise ValueError("通常の医療費控除とセルフメディケーションは併用できません")
+        if self.medical_method == "self_medication":
+            if self.medical_expenses_net or self.self_medication_eligible is not True:
+                raise ValueError("セルフメディケーションには要件確認と通常医療費との選択が必要です")
+        if self.working_student and self.working_student_nonwork_income is None:
+            raise ValueError(
+                "勤労学生には給与所得等以外の所得 working_student_nonwork_income が必要です"
+            )
+        if self.widow_status != "none" and self.spouse is not None:
+            raise ValueError("寡婦・ひとり親の指定と現在の配偶者情報は併用できません")
+        if (
+            self.working_student_nonwork_income is not None
+            and self.working_student_nonwork_income > self.aggregate_income
+        ):
+            raise ValueError("勤労学生の給与所得等以外の所得は aggregate_income を超えられません")
+        return self
+
+
+class ResidentTaxDeductionItem(BaseModel):
+    """住民税控除額と、税源移譲時の制度による人的控除差。"""
+
+    type: str
+    name: str
+    amount: int
+    personal_difference: int = 0
+
+
+class ResidentTaxEstimateResult(BaseModel):
+    """標準税率の推定内訳と、既存ふるさと納税CLIへ渡せる入力。"""
+
+    fiscal_year: int
+    resident_tax_assessment_year: int
+    income_levy_taxable: bool
+    deductions: list[ResidentTaxDeductionItem]
+    resident_tax_deductions_total: int
+    resident_taxable_income: int
+    personal_deduction_difference: int
+    adjustment_credit: int
+    resident_tax_income_levy: int
+    furusato_input: FurusatoLimitInput
+    furusato_limit: FurusatoLimitResult
+    warnings: list[str]
 
 
 class IncomeTaxInput(BaseModel):

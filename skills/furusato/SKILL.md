@@ -97,6 +97,12 @@ shinkoku furusato summary --db-path DB --fiscal-year YEAR [--estimated-limit N]
 
 ### 控除上限の推定
 
+住民税の計算済み資料がない場合は、総合課税所得・課税区分と各控除の確認済み元データを使い、次のCLIで標準所得割を組み立てる。入力は `docs/resident-tax-estimate.md` を参照する。結果の `furusato_input` を既存の上限CLIに渡せる。課税区分や親族の適格性が不明なときは推測しない。
+
+```bash
+shinkoku tax calc-resident-tax-estimate --input FILE
+```
+
 所得情報が把握できている場合は `shinkoku tax calc-furusato-limit --input FILE` で上限を推定する。
 
 入力JSONの `fiscal_year` に寄附した年を明示する。対応年分は2025〜2027年。2027年は住民税の所得割額・課税所得・人的控除差・所得税基礎控除を入力し、所得税側の控除で代用しない。193万円は寄附額ではなく特例控除額の上限で、2027年寄附は2028年度住民税へ適用する。詳しい入力と概算の制限は `docs/furusato-and-minimum-tax-2027.md` を参照する。年分を変更・削除して未対応エラーを回避しない。年分省略時2025年は旧入力との互換性のためで、新しい入力では明示する。

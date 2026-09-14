@@ -3,12 +3,6 @@ name: Claude Code Review
 on:
   pull_request:
     types: [opened, synchronize, ready_for_review, reopened]
-    # Optional: Only run on specific file changes
-    # paths:
-    #   - "src/**/*.ts"
-    #   - "src/**/*.tsx"
-    #   - "src/**/*.js"
-    #   - "src/**/*.jsx"
 
 jobs:
   claude-review:
@@ -32,9 +26,29 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
-          plugins: 'code-review@claude-code-plugins'
-          prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
+          # 公式pr-review-comprehensive.ymlと同じ直接プロンプト方式で結果をPRに残す。
+          track_progress: true
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            このPRをレビューしてください。
+            1. gh pr view と gh pr diff にPR番号と --repo を指定して説明と差分を取得する。
+               差分が長い場合はRead/Glob/Grepでチェックアウトされた該当ファイルを確認する。
+            2. AGENTS.mdとdocs/development-contracts.mdを読み、金額の整数演算、端数処理、
+               対象年分、DB保存境界、CLI入出力、バージョン同期の契約を確認する。
+               CLIの正本はコードとtests/fixtures/cli_contract.jsonである。
+            3. 変更によって生じる具体的なバグ、論理誤り、税制の年分や数値の不整合、
+               テスト・文書との不整合を確認する。税制の指摘には根拠を示す。
+            4. 確度の高い指摘だけを、該当行へ
+               mcp__github_inline_comment__create_inline_commentで投稿する。
+               ソースを変更したり、別のエージェントを起動したりしない。
+
+            最後に、レビューの結果と未検証の範囲をトラッキングコメントに書く。
+            要約の末尾にはVerdict: LGTM又はVerdict: Changes requestedを記載する。
+            レビューを完了できなかった場合はVerdict: Incompleteと理由を記載する。
+            これらはレビューの要約であり、GitHubの承認やマージ操作は行わない。
+          claude_args: |
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Read,Glob,Grep"
+          show_full_output: false
 

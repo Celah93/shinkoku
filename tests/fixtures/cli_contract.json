@@ -3288,6 +3288,23 @@
         }
       ]
     },
+    "tax calc-housing-loan": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
     "tax calc-income": {
       "arguments": [
         {
@@ -3323,6 +3340,23 @@
       ]
     },
     "tax calc-pension": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
+    "tax calc-resident-tax-estimate": {
       "arguments": [
         {
           "action": "_StoreAction",

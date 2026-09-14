@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.18.0] - 2026-09-14
+
+### Added
+- 2025〜2027年の住民税控除を元データから組み立てる `tax calc-resident-tax-estimate` を追加。標準所得割の推定と既存ふるさと納税CLIへの入力を返す
+- 2028〜2030年入居の年別住宅ローンルールと `tax calc-housing-loan` を追加。建築確認日・建築日、災害レッドゾーンと建替え、床面積・所得・借入期間、重複適用の期間混在を検証する
+- 住宅の新しい確認情報をDBへ保存し、旧DBの追加列は未確認のNULLとして移行する
+
+### Fixed
+- 住民税の自動組立てでは特定親族特別控除・配偶者特別控除の人的控除差を0とし、1月1日生まれの年齢、ひとり親の課税年度・人的控除差を区別する
+- レビュー用CIを直接プロンプトと進捗コメントの方式へ変更し、forkのAGENTS.mdと開発規約を参照して結果をPRに残す
+
+### Changed
+- CLI契約を104コマンドへ更新。既存のふるさと納税入力・出力と年間所得税の2025〜2027年対応は維持する
+
 ## [0.17.0] - 2026-09-13
 
 ### Added

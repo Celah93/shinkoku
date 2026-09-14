@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 
-EXPECTED_LEAF_COMMAND_COUNT = 102
+EXPECTED_LEAF_COMMAND_COUNT = 104
 
 
 @dataclass(frozen=True)

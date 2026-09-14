@@ -67,6 +67,18 @@ def _migrate(conn: sqlite3.Connection) -> None:
     if table_row is not None and "broker_renovated_resale" not in table_row[0]:
         _rebuild_housing_loan_details(conn)
 
+    # 2028年以後の経過措置・立地の確認情報。旧レコードは未確認のNULLを維持する。
+    hl_cols = {row[1] for row in conn.execute("PRAGMA table_info(housing_loan_details)").fetchall()}
+    for column, sql_type in (
+        ("building_confirmation_date", "TEXT"),
+        ("building_completion_date", "TEXT"),
+        ("is_disaster_red_zone", "INTEGER"),
+        ("is_rebuilding", "INTEGER"),
+        ("loan_term_years", "INTEGER"),
+    ):
+        if column not in hl_cols:
+            conn.execute(f"ALTER TABLE housing_loan_details ADD COLUMN {column} {sql_type}")
+
 
 def _rebuild_housing_loan_details(conn: sqlite3.Connection) -> None:
     """旧CHECK制約を更新し、買取再販区分を保存できるようにする。"""

@@ -11,6 +11,7 @@ Rounding rules:
 from __future__ import annotations
 
 import warnings as python_warnings
+from dataclasses import replace
 from datetime import date
 from typing import Any, Literal
 
@@ -85,6 +86,9 @@ from shinkoku.tax_constants import (
     FURUSATO_RESIDENTIAL_TAX_RATIO,
     FURUSATO_SELF_BURDEN,
     HOUSING_LOAN_RULES_BY_MOVE_IN_YEAR,
+    HOUSING_DEPENDENT_INCOME_LIMITS,
+    HOUSING_TRANSITION_CONFIRMATION_DEADLINE,
+    HOUSING_TRANSITION_COMPLETION_DEADLINE,
     HOUSING_LOAN_RATE,
     HOUSING_LOAN_RATE_DENOMINATOR,
     HousingLoanRule,
@@ -740,10 +744,9 @@ def _derive_special_target_individual(
     """入居年末の世帯情報から特例対象個人を導出する。"""
     dependent_income_limit = None
     if dependents:
-        if move_in_year in (2022, 2023, 2024):
-            dependent_income_limit = 480_000
-        else:
-            dependent_income_limit = get_income_tax_constants(move_in_year).dependent_income_limit
+        dependent_income_limit = HOUSING_DEPENDENT_INCOME_LIMITS.get(move_in_year)
+        if dependent_income_limit is None:
+            raise ValueError(f"{move_in_year}年の住宅ローン用扶養要件は実装範囲外です")
     for dependent in dependents or []:
         if dependent.relationship == "配偶者":
             continue
@@ -838,6 +841,7 @@ def resolve_housing_loan_rule(
     spouse_birth_date: str | None = None,
     spouse_income: int | None = None,
     dependents: list[DependentInfo] | None = None,
+    allow_childcare_increase: bool = True,
 ) -> HousingLoanRule:
     """入居年・取得区分・性能区分から住宅ローン控除ルールを解決する。"""
     move_in_year = _parse_move_in_year(detail)
@@ -866,12 +870,36 @@ def resolve_housing_loan_rule(
         spouse_income=spouse_income,
         dependents=dependents,
     )
+    special = special and allow_childcare_increase
     transition = bool(
         detail.has_pre_r6_building_permit
         and expected_new
         and detail.housing_category == "general"
         and move_in_year in (2024, 2025, 2026)
     )
+    if move_in_year >= 2028 and expected_new:
+        if detail.is_disaster_red_zone is None:
+            raise ValueError("2028年以後の新築は is_disaster_red_zone の確認が必要です")
+        if detail.is_disaster_red_zone and detail.is_rebuilding is None:
+            raise ValueError("災害レッドゾーンでは is_rebuilding の確認が必要です")
+        if detail.housing_category == "energy_efficient":
+            confirmed = (
+                date.fromisoformat(detail.building_confirmation_date)
+                if detail.building_confirmation_date
+                else None
+            )
+            completed = (
+                date.fromisoformat(detail.building_completion_date)
+                if detail.building_completion_date
+                else None
+            )
+            # 日付の片方だけでも対象と確認できればよい。非該当には両経路の確認が必要。
+            transition = bool(
+                (confirmed and confirmed <= HOUSING_TRANSITION_CONFIRMATION_DEADLINE)
+                or (completed and completed <= HOUSING_TRANSITION_COMPLETION_DEADLINE)
+            )
+            if not transition and (confirmed is None or completed is None):
+                raise ValueError("省エネ新築の建築確認日・建築日の経過措置が未確認です")
     key = (detail.housing_type, detail.housing_category, special, transition)
     rule = year_rules.get(key)
     if rule is None:
@@ -880,6 +908,16 @@ def resolve_housing_loan_rule(
             f"入居年={move_in_year}, housing_type={detail.housing_type}, "
             f"housing_category={detail.housing_category}, "
             f"is_special_target_individual={special}, transition={transition}"
+        )
+
+    if (
+        move_in_year >= 2028
+        and expected_new
+        and detail.is_disaster_red_zone
+        and not detail.is_rebuilding
+    ):
+        return replace(
+            rule, eligible=False, warning="2028年以後の災害レッドゾーンの新築は対象外です"
         )
 
     # 床面積、合計所得、償還期間、気候風土適応住宅の証明状態は本層では検証しない。
@@ -897,8 +935,9 @@ def _calculate_housing_loan_entry(
     spouse_birth_date: str | None,
     spouse_income: int | None,
     dependents: list[DependentInfo] | None,
+    resolved_rule: HousingLoanRule | None = None,
 ) -> tuple[HousingLoanCreditEntry, HousingLoanRule]:
-    rule = resolve_housing_loan_rule(
+    rule = resolved_rule or resolve_housing_loan_rule(
         detail,
         taxpayer_birth_date=taxpayer_birth_date,
         spouse_birth_date=spouse_birth_date,
@@ -1004,6 +1043,7 @@ def _calc_housing_loan_credit_dual_details(
     spouse_birth_date: str | None,
     spouse_income: int | None,
     dependents: list[DependentInfo] | None,
+    resolved_rules: list[HousingLoanRule] | None = None,
 ) -> tuple[int, list[HousingLoanCreditEntry], list[str]]:
     """重複適用（中古住宅購入＋リフォーム同時）の按分計算。
 
@@ -1021,6 +1061,8 @@ def _calc_housing_loan_credit_dual_details(
     """
     if len(details) < 2:
         raise ValueError("重複適用には2件以上の明細が必要です")
+    if resolved_rules is not None and len(resolved_rules) != len(details):
+        raise ValueError("住宅ローンの明細数とルール数が一致しません")
 
     # cost_for_proration の検証
     for d in details:
@@ -1066,6 +1108,7 @@ def _calc_housing_loan_credit_dual_details(
             spouse_birth_date=spouse_birth_date,
             spouse_income=spouse_income,
             dependents=dependents,
+            resolved_rule=resolved_rules[i] if resolved_rules is not None else None,
         )
         entries.append(entry)
         rules.append(rule)
