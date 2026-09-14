@@ -136,19 +136,17 @@ shinkoku ledger rd-add --db-path DB_PATH --fiscal-year YEAR --input rent.json
 入力 JSON:
 ```json
 {
-  "fiscal_year": 2025,
-  "detail": {
-    "property_type": "自宅兼事務所",
-    "usage": "自宅兼事務所",
-    "landlord_name": "賃貸先の名称",
-    "landlord_address": "賃貸先の住所",
-    "monthly_rent": 100000,
-    "annual_rent": 1200000,
-    "deposit": 0,
-    "business_ratio": 50
-  }
+  "property_type": "自宅兼事務所",
+  "usage": "自宅兼事務所",
+  "landlord_name": "賃貸先の名称",
+  "landlord_address": "賃貸先の住所",
+  "monthly_rent": 100000,
+  "annual_rent": 1200000,
+  "deposit": 0,
+  "business_ratio": 50
 }
 ```
+年分は `--fiscal-year` で指定する。JSONには `fiscal_year` や `detail` のラッパーを付けない。
 
 **確認項目:**
 

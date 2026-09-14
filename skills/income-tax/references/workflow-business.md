@@ -18,14 +18,12 @@
 2. `shinkoku ledger bw-add --db-path DB_PATH --fiscal-year YEAR --input withholding.json` で取引先別の源泉徴収情報を登録する:
    ```json
    {
-     "fiscal_year": 2025,
-     "detail": {
-       "client_name": "取引先名",
-       "gross_amount": 1000000,
-       "withholding_tax": 102100
-     }
+     "client_name": "取引先名",
+     "gross_amount": 1000000,
+     "withholding_tax": 102100
    }
    ```
+   年分は `--fiscal-year` で指定する。JSONには `fiscal_year` や `detail` のラッパーを付けない。
 3. `shinkoku ledger bw-list --db-path DB_PATH --fiscal-year YEAR` で登録済み情報を確認する
 4. 源泉徴収税額の合計を `business_withheld_tax` として所得税計算に使用する
 

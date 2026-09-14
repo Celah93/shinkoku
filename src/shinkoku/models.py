@@ -66,7 +66,13 @@ class JournalLine(BaseModel):
     side: str = Field(pattern=r"^(debit|credit)$")
     account_code: str
     amount: int = Field(gt=0, description="円単位の整数")
-    tax_category: str | None = None
+    # 勘定科目の分類ではなく、journal_linesのCHECK制約と同じ税率別区分を使う。
+    tax_category: (
+        Literal[
+            "taxable_10", "taxable_8", "taxable_8_reduced", "non_taxable", "exempt", "out_of_scope"
+        ]
+        | None
+    ) = None
     tax_amount: int = 0
 
 
@@ -77,7 +83,9 @@ class JournalEntry(BaseModel):
     description: str | None = None
     counterparty: str | None = None
     lines: list[JournalLine] = Field(min_length=2)
-    source: str | None = None
+    source: Literal["csv_import", "receipt_ocr", "invoice_ocr", "manual", "adjustment"] | None = (
+        None
+    )
     source_file: str | None = None
     is_adjustment: bool = False
 

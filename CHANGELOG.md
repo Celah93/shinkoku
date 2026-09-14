@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.18.1] - 2026-09-14
+
+### Fixed
+- 内訳登録の5コマンド（`rd-add`、`si-add`、`ip-add`、`me-add`、`bw-add`）について、SkillのJSON例をCLIが受け取る平坦な形式に修正した
+- SkillのJSON例を直前のCLIへ対応付け、入力モデルによる厳密な検証をCLI契約テストに追加した
+- 仕訳行の税区分と仕訳の取込元をDBのCHECK制約と同じ列挙値で検証し、無効な値をDB接続前に許容値付きのエラーとして返すようにした
+- journal Skillに勘定科目分類と仕訳行の税区分の対応表、および原簿で別取引と確認した場合だけ `--force` で登録する手順を追加した
+
 ## [0.18.0] - 2026-09-14
 
 ### Added

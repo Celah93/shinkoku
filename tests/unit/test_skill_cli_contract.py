@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -10,15 +11,18 @@ from shinkoku.cli import build_parser
 from tests.helpers.cli_contract import (
     DEPRECATED_COMMAND_NAMES,
     NON_COMMAND_EXCEPTIONS,
+    SKILL_JSON_INPUT_MODELS,
     CommandExclusion,
     SkillCommand,
     extract_markdown_commands,
+    extract_markdown_json_examples,
     find_deprecated_command_names,
     find_legacy_wrappers,
     format_exclusions,
     format_violations,
     lint_skill_command,
     scan_skill_cli_contract,
+    scan_skill_json_contract,
 )
 
 
@@ -122,6 +126,90 @@ def test_skill_cli_commands_match_parser() -> None:
     scan = scan_skill_cli_contract(REPOSITORY_ROOT, build_parser())
 
     assert not scan.violations, format_violations(scan.violations)
+
+
+def test_skill_json_examples_match_cli_input_models() -> None:
+    scan = scan_skill_json_contract(REPOSITORY_ROOT)
+
+    assert {example.command_path for example in scan.examples} == set(SKILL_JSON_INPUT_MODELS)
+    assert not scan.violations, format_violations(scan.violations)
+
+
+@pytest.mark.parametrize("fence", ["```", "~~~"])
+@pytest.mark.parametrize("inline", [True, False])
+def test_json_examples_bind_to_inline_and_fenced_commands(fence: str, inline: bool) -> None:
+    command = "shinkoku ledger si-add --db-path DB --fiscal-year 2026 --input si.json"
+    invocation = f"2. `{command}` で登録する。" if inline else f"{fence}bash\n{command}\n{fence}"
+    markdown = f"### 社会保険料\n{invocation}\n   {fence}json\n   {{}}\n   {fence}\n"
+
+    examples = extract_markdown_json_examples(markdown, "skills/sample/references/input.md")
+
+    assert len(examples) == 1
+    assert examples[0].command_path == ("ledger", "si-add")
+    assert examples[0].command.text == command
+    assert examples[0].line == (4 if inline else 6)
+    assert json.loads(examples[0].text) == {}
+
+
+@pytest.mark.parametrize(
+    "boundary",
+    [
+        "### 別の節",
+        "`shinkoku ledger si-list --db-path DB --fiscal-year 2026`",
+        "`shinkoku tax calc-deductions --input deductions.json`",
+    ],
+)
+def test_json_examples_do_not_cross_sections_or_other_commands(boundary: str) -> None:
+    markdown = (
+        "`shinkoku ledger si-add --db-path DB --fiscal-year 2026 --input si.json`\n"
+        f"{boundary}\n```json\n{{}}\n```\n"
+    )
+
+    assert extract_markdown_json_examples(markdown, "sample.md") == ()
+
+
+@pytest.mark.parametrize(
+    ("payload", "kind"),
+    [
+        ('{"insurance_type": "national_health", "name": "架空", "amount": 300000}', None),
+        (
+            '{"fiscal_year": 2026, "detail": {"insurance_type": "national_health", '
+            '"name": "架空", "amount": 300000}}',
+            "invalid_json_input",
+        ),
+        (
+            '{"insurance_type": "national_health", "name": "架空", "amount": "300000"}',
+            "invalid_json_input",
+        ),
+        (
+            '{"insurance_type": "national_health", "name": "架空", "amount": true}',
+            "invalid_json_input",
+        ),
+        (
+            '{"insurance_type": "national_health", "name": "架空", "amount": -1}',
+            "invalid_json_input",
+        ),
+        ('{"insurance_type": "national_health",}', "invalid_json"),
+    ],
+)
+def test_json_scanner_checks_nested_references_and_strict_inputs(
+    tmp_path: Path, payload: str, kind: str | None
+) -> None:
+    skill = tmp_path / "skills" / "another-skill" / "references" / "example.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_text(
+        "`shinkoku ledger si-add --db-path DB --fiscal-year 2026 --input si.json`\n"
+        f"```json\n{payload}\n```\n",
+        encoding="utf-8",
+    )
+
+    scan = scan_skill_json_contract(tmp_path)
+
+    assert len(scan.examples) == 1
+    assert [v.kind for v in scan.violations] == ([] if kind is None else [kind])
+    if scan.violations:
+        assert scan.violations[0].path == "skills/another-skill/references/example.md"
+        assert scan.violations[0].line == 3
 
 
 def test_non_command_exceptions_are_explicit_and_current() -> None:

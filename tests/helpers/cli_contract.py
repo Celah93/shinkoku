@@ -11,6 +11,16 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+from pydantic import BaseModel, ValidationError
+
+from shinkoku.models import (
+    BusinessWithholdingInput,
+    InsurancePolicyInput,
+    MedicalExpenseInput,
+    RentDetailInput,
+    SocialInsuranceItemInput,
+)
+
 
 EXPECTED_LEAF_COMMAND_COUNT = 104
 
@@ -72,6 +82,36 @@ class SkillContractScan:
     violations: tuple[ContractViolation, ...]
     exclusions: tuple[CommandExclusion, ...]
     exceptions: tuple[NonCommandException, ...]
+
+
+# コマンドのパスをキーにし、CLIの各ハンドラーが構築する入力モデルへ対応付ける。
+# 対象外のコマンドのJSONを、直前の対象コマンドへ誤って結び付けない。
+SKILL_JSON_INPUT_MODELS: dict[tuple[str, ...], type[BaseModel]] = {
+    ("ledger", "rd-add"): RentDetailInput,
+    ("ledger", "si-add"): SocialInsuranceItemInput,
+    ("ledger", "ip-add"): InsurancePolicyInput,
+    ("ledger", "me-add"): MedicalExpenseInput,
+    ("ledger", "bw-add"): BusinessWithholdingInput,
+}
+
+
+@dataclass(frozen=True)
+class SkillJsonExample:
+    """直前の入力コマンドと対応する、同じ節内のJSON例。"""
+
+    path: str
+    line: int
+    command: SkillCommand
+    command_path: tuple[str, ...]
+    text: str
+
+
+@dataclass(frozen=True)
+class SkillJsonContractScan:
+    """対象コマンドのJSON例と、構文・入力モデルの違反。"""
+
+    examples: tuple[SkillJsonExample, ...]
+    violations: tuple[ContractViolation, ...]
 
 
 # fenced block内の案内文2件と、コマンド名だけを示す説明1件。
@@ -294,6 +334,88 @@ def extract_markdown_commands(markdown: str, path: str) -> tuple[SkillCommand, .
                 commands.append(SkillCommand(path=path, line=line_number, text=invocation))
 
     return tuple(commands)
+
+
+def extract_markdown_json_examples(markdown: str, path: str) -> tuple[SkillJsonExample, ...]:
+    """既存の抽出結果から直前のCLIを選び、見出しをまたがずJSON例を対応付ける。
+
+    本文のインラインコマンドとfenced shellの両方を扱う。コマンド名とJSONの
+    フィールド名からの推測はせず、対象外コマンドや新しい節で関連付けを切る。
+    """
+    commands = extract_markdown_commands(markdown, path)
+    examples: list[SkillJsonExample] = []
+    section_line = 0
+    fence: str | None = None
+    language = ""
+    start_line = 0
+    body: list[str] = []
+    for line_number, line in enumerate(markdown.splitlines(), 1):
+        marker = _FENCE_PATTERN.match(line)
+        if marker:
+            if fence is None:
+                fence = marker.group(1)
+                language = line[marker.end() :].strip().lower()
+                start_line = line_number
+                body = []
+            elif marker.group(1) == fence:
+                if language == "json":
+                    preceding = [c for c in commands if section_line <= c.line < start_line]
+                    if preceding:
+                        command = preceding[-1]
+                        tokens = shlex.split(command.text)
+                        command_path = tuple(tokens[1:3])
+                        options = {token.split("=", 1)[0] for token in tokens[3:]}
+                        if command_path in SKILL_JSON_INPUT_MODELS and "--input" in options:
+                            examples.append(
+                                SkillJsonExample(
+                                    path=path,
+                                    line=start_line + 1,
+                                    command=command,
+                                    command_path=command_path,
+                                    text="\n".join(body),
+                                )
+                            )
+                fence = None
+            continue
+        if fence is not None:
+            body.append(line)
+        elif re.match(r"^\s{0,3}#{1,6}\s", line):
+            section_line = line_number
+    return tuple(examples)
+
+
+def scan_skill_json_contract(repository_root: Path) -> SkillJsonContractScan:
+    """skills配下を再帰走査し、JSON本文をCLIと同じ入力モデルで厳密に検証する。"""
+    examples: list[SkillJsonExample] = []
+    violations: list[ContractViolation] = []
+    for markdown_path in sorted((repository_root / "skills").rglob("*.md")):
+        relative_path = markdown_path.relative_to(repository_root).as_posix()
+        examples.extend(
+            extract_markdown_json_examples(markdown_path.read_text(encoding="utf-8"), relative_path)
+        )
+    for example in examples:
+        model = SKILL_JSON_INPUT_MODELS[example.command_path]
+        try:
+            data = json.loads(example.text)
+        except json.JSONDecodeError as exc:
+            kind, detail = "invalid_json", str(exc)
+        else:
+            try:
+                model.model_validate(data, strict=True)
+            except ValidationError as exc:
+                kind, detail = "invalid_json_input", f"{model.__name__}: {exc}"
+            else:
+                continue
+        violations.append(
+            ContractViolation(
+                path=example.path,
+                line=example.line,
+                command=example.command.text,
+                kind=kind,
+                detail=detail,
+            )
+        )
+    return SkillJsonContractScan(tuple(examples), tuple(violations))
 
 
 def _command_contracts(

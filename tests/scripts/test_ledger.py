@@ -6,6 +6,8 @@ import json
 import sqlite3
 from pathlib import Path
 
+import pytest
+
 from .conftest import run_cli, write_json
 
 # ============================================================
@@ -48,6 +50,63 @@ def add_journal(db: str, tmp: Path, name: str = "j.json") -> dict:
         "--input",
         f,
     )
+
+
+@pytest.mark.parametrize("command", ["journal-add", "journal-batch-add", "journal-update"])
+@pytest.mark.parametrize(
+    ("field", "invalid_value", "allowed_values"),
+    [
+        (
+            "tax_category",
+            "taxable",
+            [
+                "taxable_10",
+                "taxable_8",
+                "taxable_8_reduced",
+                "non_taxable",
+                "exempt",
+                "out_of_scope",
+            ],
+        ),
+        (
+            "source",
+            "scenario_csv",
+            ["csv_import", "receipt_ocr", "invoice_ocr", "manual", "adjustment"],
+        ),
+    ],
+)
+def test_invalid_journal_enum_fails_before_opening_db(
+    tmp_path: Path, command: str, field: str, invalid_value: str, allowed_values: list[str]
+) -> None:
+    db = tmp_path / "must-not-be-created.db"
+    entry = {
+        "date": "2026-01-15",
+        "lines": [
+            {"side": "debit", "account_code": "5190", "amount": 1100},
+            {"side": "credit", "account_code": "1002", "amount": 1100},
+        ],
+    }
+    if field == "tax_category":
+        entry["lines"][0][field] = invalid_value
+    else:
+        entry[field] = invalid_value
+    payload = [entry] if command == "journal-batch-add" else entry
+    input_path = write_json(tmp_path, payload)
+    args = [command, "--db-path", str(db), "--fiscal-year", "2026", "--input", input_path]
+    if command == "journal-update":
+        args += ["--journal-id", "1"]
+
+    result = run_ledger_raw(*args)
+
+    assert result.returncode == 1
+    error = json.loads(result.stdout)
+    assert set(error) == {"status", "message"}
+    assert error["status"] == "error"
+    assert field in error["message"]
+    assert all(value in error["message"] for value in allowed_values)
+    assert result.stderr == ""
+    assert not db.exists()
+    assert not list(tmp_path.glob("*.db-*"))
 
 
 # ============================================================
