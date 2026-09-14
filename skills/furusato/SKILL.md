@@ -97,6 +97,9 @@ shinkoku furusato summary --db-path DB --fiscal-year YEAR [--estimated-limit N]
 
 ### 控除上限の推定
 
+設定・`profile` の `family` と `housing_loan` を使う場合は [確認状態の意味](../../docs/tax-eligibility.md#設定から引き継ぐ確認状態) に従う。
+上限や実負担の判断に必要な項目が `null` なら、不適用や0と仮定せずに確認する。`estimated_tax` は予定納税の確認状態であり、住民税の所得控除として差し引かない。
+
 住民税の計算済み資料がない場合は、総合課税所得・課税区分と各控除の確認済み元データを使い、次のCLIで標準所得割を組み立てる。入力は `docs/resident-tax-estimate.md` を参照する。結果の `furusato_input` を既存の上限CLIに渡せる。課税区分や親族の適格性が不明なときは推測しない。
 
 ```bash

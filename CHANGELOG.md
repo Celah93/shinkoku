@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.18.2] - 2026-09-14
+
+### Fixed
+- setupが保存する家族構成・住宅ローン控除・予定納税の7項目を設定モデルで保持し、`profile`の出力へ引き継ぐようにした
+- 省略・空欄の未確認を`null`で保持し、確認済みの`false`・`0`や部分的な確認状態と区別する往復テストを追加した
+- 設定テンプレートと後続Skillに確認状態の意味を明記し、`profile`の追加出力をCLI契約スナップショットへ記録した
+
 ## [0.18.1] - 2026-09-14
 
 ### Fixed

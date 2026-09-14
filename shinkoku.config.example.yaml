@@ -70,6 +70,23 @@ filing:
   electronic_bookkeeping: false
   tax_office_name: ""
 
+# 空欄（null）は未確認。確認済みのfalse・0と区別する。
+# --- 家族構成 ---
+family:
+  has_spouse:          # true / false。配偶者の有無
+  has_dependents:      # true / false。扶養親族の有無
+  dependent_count:     # 0以上の整数。16歳未満を含む扶養親族の人数
+
+# --- 住宅ローン控除 ---
+housing_loan:
+  applicable:          # true / false。控除の適用有無
+  first_year:          # true / false。適用が初年度であるか
+
+# --- 予定納税 ---
+estimated_tax:
+  applicable:          # true / false。予定納税の有無
+  amount:              # 0以上の整数。第1期と第2期の合計額（円）
+
 # --- 還付金口座（還付がある場合） ---
 refund_account:
   bank_name: ""             # 銀行名

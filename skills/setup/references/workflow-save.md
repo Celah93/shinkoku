@@ -105,6 +105,10 @@ credit_card_statements_dir: {credit_card_statements_dir}
 
 未設定の項目は値を空にする（`key:` のみ）。
 
+`family`、`housing_loan`、`estimated_tax` は、保存後に以下の `profile` コマンドで全7項目を読戻す。
+省略・空欄は `null`、確認済みの該当なしは `false`、確認済みの人数・金額のゼロは `0` として維持されることを照合する。
+項目の存在だけで確認済みと扱わず、必要な値が `null` の工程を完了扱いにしない。
+
 **`my_number` の取扱い**: マイナンバーは config YAML に保存するが、`profile.py` の出力では `has_my_number: true/false` のみ返す。ログ・会話には出力しない。確定申告書等作成コーナーへの入力時のみ config から直接読み取る。
 
 ```bash

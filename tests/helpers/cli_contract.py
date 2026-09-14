@@ -13,6 +13,7 @@ from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
+from shinkoku.config import ShinkokuConfig
 from shinkoku.models import (
     BusinessWithholdingInput,
     InsurancePolicyInput,
@@ -256,10 +257,16 @@ def _normalized_arguments(parser: argparse.ArgumentParser) -> list[dict[str, obj
 
 
 def snapshot_parser_contract(parser: argparse.ArgumentParser) -> dict[str, object]:
-    """parserからJSONへ保存できるCLI契約を生成する。"""
+    """parserの契約と、profileで公開する確認状態の出力スキーマを生成する。"""
     commands = {
         " ".join(path): {"arguments": _normalized_arguments(leaf)}
         for path, leaf in iter_leaf_parsers(parser)
+    }
+    # profileの追加出力は任意のサンプル値ではなく、設定モデルの型から固定する。
+    config = ShinkokuConfig()
+    commands["profile"]["output_sections"] = {
+        section: type(getattr(config, section)).model_json_schema()["properties"]
+        for section in ("family", "housing_loan", "estimated_tax")
     }
     return {
         "commands": commands,
