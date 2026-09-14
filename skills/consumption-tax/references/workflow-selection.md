@@ -36,6 +36,12 @@
 本則課税または2割特例を確定する場合は、以前の簡易課税事業区分が残らないよう
 `simplified_business_type` を明示NULLにする。
 
+以下の該当するパッチを `profile_patch.json` に保存し、このコマンドで年度DBを更新する。
+
+```bash
+shinkoku ledger fiscal-year-update --db-path DB --fiscal-year YEAR --input profile_patch.json
+```
+
 ```json
 {
   "consumption_tax_method": "standard",
@@ -54,7 +60,6 @@
 ```
 
 ```bash
-shinkoku ledger fiscal-year-update --db-path DB --fiscal-year YEAR --input profile_patch.json
 shinkoku tax calc-consumption --db-path DB --input consumption_input.json
 ```
 

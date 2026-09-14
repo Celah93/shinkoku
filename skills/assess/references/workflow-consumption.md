@@ -52,6 +52,12 @@ Q2. 基準期間の課税売上高が5,000万円以下で、簡易課税の届�
 2. 判定結果が課税事業者か免税事業者かをユーザーへ示し、保存してよいか確認する
 3. 課税事業者の場合は、次のパッチを `fiscal-year-update` で保存する
 
+以下の該当するパッチを `profile_patch.json` に保存してから、このコマンドを実行する。
+
+```bash
+shinkoku ledger fiscal-year-update --db-path DB --fiscal-year YEAR --input profile_patch.json
+```
+
 ```json
 {"taxpayer_status": "taxable"}
 ```
@@ -75,10 +81,4 @@ NULLなら、次のパッチで区分だけを保存する。
   "consumption_tax_method": null,
   "simplified_business_type": null
 }
-```
-
-パッチJSONを保存した後、次のコマンドを実行する。
-
-```bash
-shinkoku ledger fiscal-year-update --db-path DB --fiscal-year YEAR --input profile_patch.json
 ```

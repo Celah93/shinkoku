@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.18.3] - 2026-09-14
+
+### Fixed
+- `pf-add`、`lc-add`、`don-add`、`oi-add`、`ci-add`、`inv-set`に残るSkillのJSONラッパーを除去し、平坦な入力例へ統一した
+- JSON契約テストをledgerの全`--input`コマンドへ拡張し、ハンドラーのコードから入力モデルと配列形式を導出するようにした。導出不能なコマンドや未知のJSONキーを見逃さない
+- 年度設定のパッチ例を対応コマンドの後ろへ揃え、既存の値を変えずにJSON契約の検査対象へ含めた
+
 ## [0.18.2] - 2026-09-14
 
 ### Fixed

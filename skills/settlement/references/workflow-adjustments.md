@@ -63,15 +63,13 @@ shinkoku tax calc-depreciation --input depreciation_input.json
 
 ```json
 {
-  "fiscal_year": 2025,
-  "detail": {
-    "period": "ending",
-    "amount": 200000,
-    "method": "cost",
-    "details": "品目の明細等"
-  }
+  "period": "ending",
+  "amount": 200000,
+  "method": "cost",
+  "details": "品目の明細等"
 }
 ```
+年分は `--fiscal-year` で指定する。JSONには `fiscal_year` や `detail` のラッパーを付けない。
 
 #### 棚卸仕訳の登録
 

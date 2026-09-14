@@ -36,16 +36,14 @@
 2. 未登録の場合は `shinkoku ledger pf-add --db-path DB_PATH --fiscal-year YEAR --input fee.json` で登録する:
    ```json
    {
-     "fiscal_year": 2025,
-     "detail": {
-       "payer_address": "支払者住所",
-       "payer_name": "税理士名",
-       "fee_amount": 300000,
-       "expense_deduction": 0,
-       "withheld_tax": 30630
-     }
+     "payer_address": "支払者住所",
+     "payer_name": "税理士名",
+     "fee_amount": 300000,
+     "expense_deduction": 0,
+     "withheld_tax": 30630
    }
    ```
+   年分は `--fiscal-year` で指定する。JSONには `fiscal_year` や `detail` のラッパーを付けない。
 3. 源泉徴収税額は `business_withheld_tax` に合算する
 
 
@@ -57,11 +55,9 @@
 2. 未登録の場合は `shinkoku ledger lc-add --db-path DB_PATH --fiscal-year YEAR --input loss.json` で登録する:
    ```json
    {
-     "fiscal_year": 2025,
-     "detail": {
-       "loss_year": 2023,
-       "amount": 500000
-     }
+     "loss_year": 2023,
+     "amount": 500000
    }
    ```
+   申告対象の年分は `--fiscal-year` で指定し、損失が発生した年はJSONの `loss_year` に記載する。`fiscal_year` や `detail` のラッパーは付けない。
 3. 繰越損失の合計を `loss_carryforward_amount` として所得税計算に使用する
