@@ -346,7 +346,9 @@ def _handle_sanity_check(args: argparse.Namespace) -> None:
 
     input_data = IncomeTaxInput(**input_raw)
     tax_result = IncomeTaxResult(**result_raw)
-    check_result = sanity_check_income_tax(input_data, tax_result)
+    check_result = sanity_check_income_tax(
+        input_data, tax_result, db_path=getattr(args, "db_path", None)
+    )
     _output_json(check_result.model_dump())
 
 
@@ -421,6 +423,8 @@ def register(parent_subparsers: argparse._SubParsersAction) -> None:
         p.add_argument("--input", required=True, help="入力 JSON ファイルパス")
         if name == "calc-consumption":
             p.add_argument("--db-path", help="年度別消費税プロファイルを照合するDBパス")
+        elif name == "sanity-check":
+            p.add_argument("--db-path", help="本人の事業源泉と税理士等への支払源泉を照合するDBパス")
         p.set_defaults(func=_dispatch)
 
     parser.set_defaults(func=lambda args: parser.print_help() or sys.exit(1))

@@ -2,7 +2,21 @@
 
 from __future__ import annotations
 
-from shinkoku.models import IncomeTaxInput, IncomeTaxResult
+from pathlib import Path
+
+import pytest
+
+from shinkoku.models import (
+    BusinessWithholdingInput,
+    IncomeTaxInput,
+    IncomeTaxResult,
+    ProfessionalFeeInput,
+)
+from shinkoku.tools.ledger import (
+    ledger_add_business_withholding,
+    ledger_add_professional_fee,
+    ledger_init,
+)
 from shinkoku.tools.tax_calc import sanity_check_income_tax
 
 
@@ -273,3 +287,129 @@ def test_all_pass() -> None:
     check = sanity_check_income_tax(inp, res)
     assert check.passed
     assert check.error_count == 0
+
+
+def _withholding_db(tmp_path: Path, business_tax: int, fee_tax: int) -> str:
+    path = str(tmp_path / "withholding.db")
+    ledger_init(db_path=path, fiscal_year=2026)
+    if business_tax:
+        ledger_add_business_withholding(
+            db_path=path,
+            fiscal_year=2026,
+            detail=BusinessWithholdingInput(
+                client_name="架空取引先", gross_amount=1320000, withholding_tax=business_tax
+            ),
+        )
+    ledger_add_professional_fee(
+        db_path=path,
+        fiscal_year=2026,
+        detail=ProfessionalFeeInput(
+            payer_name="架空税理士",
+            payer_address="架空の支払先住所",
+            fee_amount=220000,
+            expense_deduction=220000,
+            withheld_tax=fee_tax,
+        ),
+    )
+    return path
+
+
+@pytest.mark.parametrize("wrong_side", ["input", "result", "both"])
+def test_detects_professional_fee_withholding_mixed_into_personal_tax(
+    tmp_path: Path, wrong_side: str
+) -> None:
+    db = _withholding_db(tmp_path, 134772, 20420)
+    input_tax = 155192 if wrong_side in ("input", "both") else 134772
+    result_tax = 155192 if wrong_side in ("result", "both") else 134772
+    inp = _make_input(fiscal_year=2026, business_withheld_tax=input_tax)
+    res = _make_result(fiscal_year=2026, business_withheld_tax=result_tax)
+
+    check = sanity_check_income_tax(inp, res, db_path=db)
+
+    assert not check.passed
+    assert "PROFESSIONAL_FEE_WITHHOLDING_MIXED" in [item.code for item in check.items]
+    assert inp.business_withheld_tax == input_tax  # 検査だけで自動減算しない。
+
+
+def test_correct_withholding_is_not_flagged_when_fee_withholding_exists(tmp_path: Path) -> None:
+    db = _withholding_db(tmp_path, 134772, 20420)
+
+    check = sanity_check_income_tax(
+        _make_input(fiscal_year=2026, business_withheld_tax=134772),
+        _make_result(fiscal_year=2026, business_withheld_tax=134772),
+        db_path=db,
+    )
+
+    assert check.passed
+    assert check.items == []
+
+
+def test_withholding_mismatch_does_not_claim_fee_mixing_without_equal_difference(
+    tmp_path: Path,
+) -> None:
+    db = _withholding_db(tmp_path, 134772, 20420)
+
+    check = sanity_check_income_tax(
+        _make_input(fiscal_year=2026, business_withheld_tax=150000),
+        _make_result(fiscal_year=2026, business_withheld_tax=150000),
+        db_path=db,
+    )
+
+    assert not check.passed
+    assert [item.code for item in check.items] == ["BUSINESS_WITHHOLDING_LEDGER_MISMATCH"]
+
+
+def test_fee_withholding_without_personal_withholding_is_detected(tmp_path: Path) -> None:
+    db = _withholding_db(tmp_path, 0, 20420)
+
+    check = sanity_check_income_tax(
+        _make_input(fiscal_year=2026, business_withheld_tax=20420),
+        _make_result(fiscal_year=2026, business_withheld_tax=20420),
+        db_path=db,
+    )
+
+    assert [item.code for item in check.items] == ["PROFESSIONAL_FEE_WITHHOLDING_MIXED"]
+
+
+def test_zero_fee_tax_does_not_label_mismatch_as_mixing(tmp_path: Path) -> None:
+    db = _withholding_db(tmp_path, 134772, 0)
+    check = sanity_check_income_tax(
+        _make_input(fiscal_year=2026, business_withheld_tax=140000),
+        _make_result(fiscal_year=2026, business_withheld_tax=140000),
+        db_path=db,
+    )
+    assert [item.code for item in check.items] == ["BUSINESS_WITHHOLDING_LEDGER_MISMATCH"]
+
+
+def test_withholding_check_uses_only_the_selected_year(tmp_path: Path) -> None:
+    db = _withholding_db(tmp_path, 134772, 20420)
+    ledger_init(db_path=db, fiscal_year=2025)
+    ledger_add_professional_fee(
+        db_path=db,
+        fiscal_year=2025,
+        detail=ProfessionalFeeInput(
+            payer_name="別年の架空税理士",
+            payer_address="架空住所",
+            fee_amount=1000000,
+            withheld_tax=100000,
+        ),
+    )
+    check = sanity_check_income_tax(
+        _make_input(fiscal_year=2026, business_withheld_tax=155192),
+        _make_result(fiscal_year=2026, business_withheld_tax=155192),
+        db_path=db,
+    )
+    assert [item.code for item in check.items] == ["PROFESSIONAL_FEE_WITHHOLDING_MIXED"]
+
+
+def test_withholding_check_never_creates_a_missing_db(tmp_path: Path) -> None:
+    db = tmp_path / "missing.db"
+    with pytest.raises(FileNotFoundError):
+        sanity_check_income_tax(_make_input(), _make_result(), db_path=str(db))
+    assert not db.exists()
+
+
+def test_withholding_check_rejects_a_missing_fiscal_year(tmp_path: Path) -> None:
+    db = _withholding_db(tmp_path, 134772, 20420)
+    with pytest.raises(ValueError, match="2025"):
+        sanity_check_income_tax(_make_input(), _make_result(), db_path=db)

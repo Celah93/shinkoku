@@ -3192,13 +3192,72 @@ def calc_retirement_income(input_data: RetirementIncomeInput) -> RetirementIncom
 # ============================================================
 
 
+def _check_business_withholding_against_ledger(
+    input_data: IncomeTaxInput,
+    result: IncomeTaxResult,
+    db_path: str,
+) -> TaxSanityCheckItem | None:
+    """本人の源泉と支払先の源泉を年度DBで照合する。税額の自動修正はしない。"""
+    from pathlib import Path
+
+    from shinkoku.db import get_connection
+
+    if not Path(db_path).is_file():
+        raise FileNotFoundError(f"照合対象のDBがありません: {db_path}")
+    conn = get_connection(db_path)
+    try:
+        # 一つのSELECTで同じ時点・同じ年度の合計を読む。初期化や移行はしない。
+        row = conn.execute(
+            "SELECT "
+            "(SELECT COALESCE(SUM(withholding_tax), 0) FROM business_withholding "
+            " WHERE fiscal_year = ?), "
+            "(SELECT COALESCE(SUM(withheld_tax), 0) FROM professional_fees "
+            " WHERE fiscal_year = ?) "
+            "FROM fiscal_years WHERE year = ?",
+            (input_data.fiscal_year, input_data.fiscal_year, input_data.fiscal_year),
+        ).fetchone()
+        if row is None:
+            raise ValueError(f"照合対象の会計年度がありません: {input_data.fiscal_year}")
+        personal_tax, paid_fee_tax = row
+    finally:
+        conn.close()
+    amounts = (input_data.business_withheld_tax, result.business_withheld_tax)
+    if all(amount == personal_tax for amount in amounts):
+        return None
+    suspected_mixing = paid_fee_tax > 0 and personal_tax + paid_fee_tax in amounts
+    return TaxSanityCheckItem(
+        severity="error",
+        code=(
+            "PROFESSIONAL_FEE_WITHHOLDING_MIXED"
+            if suspected_mixing
+            else "BUSINESS_WITHHOLDING_LEDGER_MISMATCH"
+        ),
+        message=(
+            f"本人の事業源泉がDBの事業源泉合計（{personal_tax:,}円）と一致しません"
+            f"（入力{amounts[0]:,}円、結果{amounts[1]:,}円）。"
+            + (
+                f"差額が税理士等への支払源泉合計（{paid_fee_tax:,}円）と一致し、"
+                "支払先の税額を本人分へ合算した疑いがあります。"
+                if suspected_mixing
+                else ""
+            )
+            + "税理士等への支払源泉は本人の源泉徴収税額・還付に含めません。"
+            "DBの登録漏れも含めて明細の網羅性と帰属を確認し、入力を確定して再計算してください。"
+        ),
+    )
+
+
 def sanity_check_income_tax(
     input_data: IncomeTaxInput,
     result: IncomeTaxResult,
+    *,
+    db_path: str | None = None,
 ) -> TaxSanityCheckResult:
     """所得税計算結果のサニティチェック。
 
     入力と出力の整合性を検証し、明らかな異常を検出する。
+    db_pathがある場合は本人の事業源泉も年度DBと照合する。DBの完全性や
+    税の帰属そのものの証明ではないため、差異を自動修正せず確認を促す。
     """
     require_supported_tax_year(input_data.fiscal_year, "income_tax")
     require_supported_tax_year(result.fiscal_year, "income_tax")
@@ -3424,6 +3483,11 @@ def sanity_check_income_tax(
                 f"源泉徴収+予定納税の合計（{total_prepaid:,}円）を超過しています",
             )
         )
+
+    if db_path is not None:
+        withholding_issue = _check_business_withholding_against_ledger(input_data, result, db_path)
+        if withholding_issue is not None:
+            items.append(withholding_issue)
 
     error_count = sum(1 for item in items if item.severity == "error")
     warning_count = sum(1 for item in items if item.severity == "warning")

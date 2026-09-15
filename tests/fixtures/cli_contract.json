@@ -3506,6 +3506,19 @@
         {
           "action": "_StoreAction",
           "aliases": [
+            "--db-path"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "db_path",
+          "kind": "optional",
+          "nargs": null,
+          "required": false,
+          "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
             "--input"
           ],
           "choices": null,

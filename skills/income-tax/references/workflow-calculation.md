@@ -103,6 +103,17 @@ shinkoku tax calc-income --input income_input.json
 ```bash
 shinkoku tax sanity-check --input sanity_input.json
 ```
+事業源泉又は税理士等への報酬明細をDBで管理している場合は、本人分の事業源泉明細をすべて登録・確認してから、次のDB照合付きで実行する。
+
+```bash
+shinkoku tax sanity-check --db-path DB_PATH --input sanity_input.json
+```
+
+DB指定時は同じ年度の `business_withholding` の合計と入力・結果の `business_withheld_tax` を照合する。
+差額が `professional_fees` の支払源泉合計と一致する場合は、誤合算の疑いとして検出する。
+登録漏れでも不一致になるため、明細を確認して入力を確定する。検査が税額を自動修正することはない。
+DBを指定しない旧形式ではこの照合は行われず、passed=trueだけで源泉の帰属確認済みとは扱わない。
+
 入力 JSON:
 ```json
 {

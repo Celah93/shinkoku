@@ -141,6 +141,12 @@ def test_skill_json_examples_match_cli_input_models() -> None:
     assert not scan.violations, format_violations(scan.violations)
 
 
+def test_family_and_salary_registration_examples_are_present() -> None:
+    scan = scan_skill_json_contract(REPOSITORY_ROOT)
+    commands = {example.command_path for example in scan.examples}
+    assert {("ledger", "dep-add"), ("ledger", "spouse-set"), ("ledger", "ws-save")} <= commands
+
+
 def test_all_ledger_input_commands_have_derived_validators() -> None:
     parser = build_parser()
     expected = {

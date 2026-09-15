@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.18.4] - 2026-09-15
+
+### Fixed
+- **過大還付につながる指示の修正**: 税理士等へ支払った報酬の源泉税を本人の事業源泉へ合算するSkillの指示を削除し、支払先の源泉として決算書の報酬内訳へ分けて転記するようにした
+- `sanity-check --db-path`で本人の事業源泉を年度DBと照合し、税理士等への支払源泉の誤合算の疑いと、その他の合計不一致を検出する。金額は自動修正しない
+- 棚卸明細の保存と決算仕訳の登録を区別し、PLと決算書PDFへの自動反映があるという説明を実装に合わせて修正した
+- 配偶者・扶養親族・源泉徴収票の登録JSON例を追加し、DBの生年月日から税額計算用の項目への対応付けを明記した
+
 ## [0.18.3] - 2026-09-14
 
 ### Fixed

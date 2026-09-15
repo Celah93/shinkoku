@@ -28,6 +28,7 @@
 
 [5] サニティチェック
     - `shinkoku tax sanity-check --input sanity_input.json` を実行する
+    - 事業源泉又は税理士等報酬のDBがある場合は、本人分の明細をすべて確認し、`shinkoku tax sanity-check --db-path DB --input sanity_input.json` で源泉合計も照合する。DBなしのpassed=trueは源泉の帰属を保証しない
     - error > 0 の場合: 問題のある入力を保留し、既存資料で解決できる誤りを修正して再検算する。新しい本人判断が必要な項目だけ確認する
     - warning > 0 の場合: 原因と影響を調べる。資料で解決できる問題は直して再検算し、未解決の税務判断・重要な差異はユーザーに確認する
 ```

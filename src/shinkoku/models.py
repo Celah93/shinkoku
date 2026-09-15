@@ -1682,7 +1682,13 @@ class InventoryRecord(BaseModel):
 
 
 class ProfessionalFeeInput(BaseModel):
-    """税理士等報酬の入力。"""
+    """本人が支払った税理士等の報酬を決算書の内訳用に保存する。
+
+    payer_name・payer_addressは旧来のフィールド名で、報酬の支払先である
+    税理士・弁護士等の氏名・住所を指す。支払者である本人の情報ではない。
+    withheld_taxは本人が預かって納付する支払先の源泉税であり、本人の
+    business_withheld_taxや還付の計算には含めない。
+    """
 
     payer_address: str
     payer_name: str
@@ -1692,7 +1698,10 @@ class ProfessionalFeeInput(BaseModel):
 
 
 class ProfessionalFeeRecord(BaseModel):
-    """税理士等報酬のDBレコード。"""
+    """支払先の氏名・住所と報酬・支払先の源泉税を保持するDBレコード。
+
+    payer_*の意味はProfessionalFeeInputと同じであり、本人の事業源泉ではない。
+    """
 
     id: int
     fiscal_year: int

@@ -19,6 +19,17 @@
    - 令和8・9年分: 所得62万円以下 → 配偶者控除、62万円超133万円以下 → 配偶者特別控除
    - 納税者の所得が1,000万円超 → 配偶者控除なし
    - 確認後 `shinkoku ledger spouse-set --db-path DB_PATH --fiscal-year YEAR --input spouse.json` で DB に登録する
+     ```json
+     {
+       "name": "検証 花",
+       "date_of_birth": "1983-06-15",
+       "income": 480000,
+       "disability": null,
+       "cohabiting": true,
+       "other_taxpayer_dependent": false
+     }
+     ```
+     これは架空の入力例である。年分は `--fiscal-year` で指定し、JSONはラッパーを付けずに保存する。
 
 2. **扶養親族**: 以下の情報を収集する
    - 氏名、続柄、生年月日、年間所得、障害の有無、同居の有無
@@ -31,6 +42,18 @@
    - 他の納税者が扶養控除を取る親族も、23歳未満の特例判定には使う。
      `other_taxpayer_dependent: true` を付けて登録し、親族情報を扶養親族リストに残す
    - 確認後 `shinkoku ledger dep-add --db-path DB_PATH --fiscal-year YEAR --input dependent.json` で各人を DB に登録する
+     ```json
+     {
+       "name": "検証 葵",
+       "relationship": "子",
+       "date_of_birth": "2009-03-10",
+       "income": 0,
+       "disability": null,
+       "cohabiting": true,
+       "other_taxpayer_dependent": false
+     }
+     ```
+     これは架空の入力例である。所得0円も確認した値を使い、不明な所得を0にしない。
    - 住宅ローン控除の特例対象個人は入居年末時点で判定するため、19歳未満の親族も
      `other_taxpayer_dependent: true`を理由に除外しない
 
@@ -56,3 +79,11 @@
 - 申告書B第二表「住民税に関する事項 - 16歳未満の扶養親族」欄への記載
 
 `shinkoku ledger dep-add --db-path DB_PATH --fiscal-year YEAR --input dependent.json` で登録する際、16歳未満でもスキップせずに登録すること。
+
+### 読戻した明細から税額計算の入力を組み立てる
+
+配偶者・扶養親族のDB明細は生年月日を `date_of_birth` で保持するが、計算用の親族明細は `birth_date` を使う。
+`calc-income` では扶養親族の `date_of_birth` を `dependents[].birth_date` に対応付け、氏名・続柄・所得等も確認して渡す。
+配偶者は `income` を `spouse_income`、`date_of_birth` を `spouse_birth_date` に渡す。
+住民税推定では `spouse.birth_date` と `dependents[].birth_date` に対応付け、別途確認した適格性も指定する。
+DBの `id`・`fiscal_year` 等を計算用の親族明細へそのまま渡さず、各CLIの入力契約に従って項目を対応付ける。
