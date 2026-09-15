@@ -1,0 +1,35 @@
+{
+  "source_directory": "playground/scenario2",
+  "source_frozen_at_utc": "2026-09-15T03:25:25.201094+00:00",
+  "source_sha256": {
+    "confirmation-config.json": "32b33a158a7937db3ea8227da13e162d66adcef36f955c469e527e5d1b6ce2d0",
+    "eligibility-facts.json": "e07bf05a75d1aa2486d713ff83656f495ddefeb81fd4de3aa61d3d3976308374",
+    "evidence.json": "f40f10a263c8be3b3cd450f35cbfdfe06d782909d27b947e5b5b792ae0f4e0e5",
+    "expected-values.json": "23dd35ffec1a0936572ddccf9f410670e115b61ff36b19bcfb52e3d647477518",
+    "expected.md": "69e719a49a33d1626d3355855885e6f872c74ac9f5925d645543faaaebb5b9bb",
+    "journal-entries.json": "f64bca9dfa739fdb70c26c390c6e8b55fec7fc4574aee8fceb489426f90a886b",
+    "journal-lines.csv": "3cadb2542c201a4b0ad4b44bd8a6b3b287728089ed3a37d77141cfcc75b52fea",
+    "monthly.csv": "c7f3554f51f46069078bf26c49c1d0d89dbcfac22519155eb056f4f9e4c80eca",
+    "persona.md": "33e47dfedf0ef4f59dd44397f2b1b62172207f0dbf4206a409d2ac4246ff28e0",
+    "settlement-entries.json": "104282fd4e1ba8741bafb25d015b8ba63b02276f053daa9f81ab9fada9ffd44b",
+    "transactions.csv": "7e8176a4b3d79b5d27a0b9fb885d34b8fe8291c425294dbccf9f8b0bda1a6466",
+    "transactions.md": "26086bb53e8e13db02d4bfdbfcb8b584b7bd21f120fbd3649a3a12df825d68f4"
+  },
+  "copied_files": [
+    "persona.md",
+    "expected.md",
+    "evidence.json",
+    "eligibility-facts.json",
+    "journal-entries.json",
+    "settlement-entries.json",
+    "transactions.csv"
+  ],
+  "normalizations": [],
+  "config_source": "persona.md / 固定する設定の確認状態、confirmation-config.json",
+  "daily_journal_count": 100,
+  "settlement_journal_count": 1,
+  "monthly_sales": 220000,
+  "duplicate_pairs": 12,
+  "consumption_method": "simplified",
+  "simplified_business_type": 5
+}

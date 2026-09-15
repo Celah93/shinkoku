@@ -1,0 +1,4094 @@
+[
+  {
+    "date": "2026-01-05",
+    "description": "T001 当月の住宅家賃を支払う（架空）",
+    "counterparty": "架空貸主",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5250",
+        "amount": 30000,
+        "tax_category": "non_taxable",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 70000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-01-10",
+    "description": "T002 当月の通信費を支払う（架空）",
+    "counterparty": "架空通信社",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5140",
+        "amount": 8000,
+        "tax_category": "taxable_10",
+        "tax_amount": 727
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 2000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-01-12",
+    "description": "T003 本人の診療費を支払う（架空）",
+    "counterparty": "架空診療所",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-01-15",
+    "description": "T004 当月の外注工賃を支払う（架空）",
+    "counterparty": "架空制作法人C",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5230",
+        "amount": 50000,
+        "tax_category": "taxable_10",
+        "tax_amount": 4545
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 50000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-01-18",
+    "description": "T005 当月に使用する消耗品を購入する（架空）",
+    "counterparty": "架空文具社",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5190",
+        "amount": 10000,
+        "tax_category": "taxable_10",
+        "tax_amount": 909
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-01-20",
+    "description": "T006 デザインを納品して売上を計上する（架空）",
+    "counterparty": "架空デザイン法人A",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 200000,
+        "tax_category": "taxable_10",
+        "tax_amount": 18181
+      }
+    ]
+  },
+  {
+    "date": "2026-01-20",
+    "description": "T007 デザインを納品して売上を計上する（架空）",
+    "counterparty": "架空個人事業者B",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 200000,
+        "tax_category": "taxable_10",
+        "tax_amount": 18181
+      }
+    ]
+  },
+  {
+    "date": "2026-01-22",
+    "description": "T008 国民健康保険料を納付する（架空）",
+    "counterparty": "架空の杉並区納付記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-01-25",
+    "description": "T009 源泉徴収後の売掛金を回収する（架空）",
+    "counterparty": "架空デザイン法人A",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 179580,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 20420,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-01-25",
+    "description": "T010 売掛金を回収する（架空）",
+    "counterparty": "架空個人事業者B",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-01-26",
+    "description": "T011 iDeCoの掛金を支払う（架空）",
+    "counterparty": "架空iDeCo払込記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-01-27",
+    "description": "T012 生活費を引き出す（架空）",
+    "counterparty": "本人",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-01-28",
+    "description": "T013 前月分の国民年金保険料を納付する（架空）",
+    "counterparty": "架空の年金納付記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 17510,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 17510,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-02-05",
+    "description": "T014 当月の住宅家賃を支払う（架空）",
+    "counterparty": "架空貸主",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5250",
+        "amount": 30000,
+        "tax_category": "non_taxable",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 70000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-02-10",
+    "description": "T015 当月の通信費を支払う（架空）",
+    "counterparty": "架空通信社",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5140",
+        "amount": 8000,
+        "tax_category": "taxable_10",
+        "tax_amount": 727
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 2000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-02-12",
+    "description": "T016 本人の診療費を支払う（架空）",
+    "counterparty": "架空診療所",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-02-15",
+    "description": "T017 当月の外注工賃を支払う（架空）",
+    "counterparty": "架空制作法人C",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5230",
+        "amount": 50000,
+        "tax_category": "taxable_10",
+        "tax_amount": 4545
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 50000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-02-18",
+    "description": "T018 当月に使用する消耗品を購入する（架空）",
+    "counterparty": "架空文具社",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5190",
+        "amount": 10000,
+        "tax_category": "taxable_10",
+        "tax_amount": 909
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-02-20",
+    "description": "T019 デザインを納品して売上を計上する（架空）",
+    "counterparty": "架空デザイン法人A",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 200000,
+        "tax_category": "taxable_10",
+        "tax_amount": 18181
+      }
+    ]
+  },
+  {
+    "date": "2026-02-20",
+    "description": "T020 デザインを納品して売上を計上する（架空）",
+    "counterparty": "架空個人事業者B",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 200000,
+        "tax_category": "taxable_10",
+        "tax_amount": 18181
+      }
+    ]
+  },
+  {
+    "date": "2026-02-22",
+    "description": "T021 国民健康保険料を納付する（架空）",
+    "counterparty": "架空の杉並区納付記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-02-25",
+    "description": "T022 源泉徴収後の売掛金を回収する（架空）",
+    "counterparty": "架空デザイン法人A",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 179580,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 20420,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-02-25",
+    "description": "T023 売掛金を回収する（架空）",
+    "counterparty": "架空個人事業者B",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-02-26",
+    "description": "T024 iDeCoの掛金を支払う（架空）",
+    "counterparty": "架空iDeCo払込記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-02-27",
+    "description": "T025 生活費を引き出す（架空）",
+    "counterparty": "本人",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-02-28",
+    "description": "T026 前月分の国民年金保険料を納付する（架空）",
+    "counterparty": "架空の年金納付記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 17510,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 17510,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-03-05",
+    "description": "T027 当月の住宅家賃を支払う（架空）",
+    "counterparty": "架空貸主",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5250",
+        "amount": 30000,
+        "tax_category": "non_taxable",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 70000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-03-10",
+    "description": "T028 当月の通信費を支払う（架空）",
+    "counterparty": "架空通信社",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5140",
+        "amount": 8000,
+        "tax_category": "taxable_10",
+        "tax_amount": 727
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 2000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-03-12",
+    "description": "T029 本人の診療費を支払う（架空）",
+    "counterparty": "架空診療所",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-03-15",
+    "description": "T030 当月の外注工賃を支払う（架空）",
+    "counterparty": "架空制作法人C",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5230",
+        "amount": 50000,
+        "tax_category": "taxable_10",
+        "tax_amount": 4545
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 50000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-03-18",
+    "description": "T031 当月に使用する消耗品を購入する（架空）",
+    "counterparty": "架空文具社",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5190",
+        "amount": 10000,
+        "tax_category": "taxable_10",
+        "tax_amount": 909
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-03-20",
+    "description": "T032 デザインを納品して売上を計上する（架空）",
+    "counterparty": "架空デザイン法人A",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 200000,
+        "tax_category": "taxable_10",
+        "tax_amount": 18181
+      }
+    ]
+  },
+  {
+    "date": "2026-03-20",
+    "description": "T033 デザインを納品して売上を計上する（架空）",
+    "counterparty": "架空個人事業者B",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 200000,
+        "tax_category": "taxable_10",
+        "tax_amount": 18181
+      }
+    ]
+  },
+  {
+    "date": "2026-03-22",
+    "description": "T034 国民健康保険料を納付する（架空）",
+    "counterparty": "架空の杉並区納付記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-03-25",
+    "description": "T035 源泉徴収後の売掛金を回収する（架空）",
+    "counterparty": "架空デザイン法人A",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 179580,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 20420,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-03-25",
+    "description": "T036 売掛金を回収する（架空）",
+    "counterparty": "架空個人事業者B",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-03-26",
+    "description": "T037 iDeCoの掛金を支払う（架空）",
+    "counterparty": "架空iDeCo払込記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-03-27",
+    "description": "T038 生活費を引き出す（架空）",
+    "counterparty": "本人",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-03-28",
+    "description": "T039 前月分の国民年金保険料を納付する（架空）",
+    "counterparty": "架空の年金納付記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 17510,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 17510,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-04-01",
+    "description": "T040 PCを取得して供用する（架空）",
+    "counterparty": "架空PC販売社",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1130",
+        "amount": 250000,
+        "tax_category": "taxable_10",
+        "tax_amount": 22727
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 250000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-04-05",
+    "description": "T041 当月の住宅家賃を支払う（架空）",
+    "counterparty": "架空貸主",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5250",
+        "amount": 30000,
+        "tax_category": "non_taxable",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 70000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-04-10",
+    "description": "T042 当月の通信費を支払う（架空）",
+    "counterparty": "架空通信社",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5140",
+        "amount": 8000,
+        "tax_category": "taxable_10",
+        "tax_amount": 727
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 2000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-04-12",
+    "description": "T043 本人の診療費を支払う（架空）",
+    "counterparty": "架空診療所",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-04-15",
+    "description": "T044 当月の外注工賃を支払う（架空）",
+    "counterparty": "架空制作法人C",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5230",
+        "amount": 50000,
+        "tax_category": "taxable_10",
+        "tax_amount": 4545
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 50000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-04-18",
+    "description": "T045 当月に使用する消耗品を購入する（架空）",
+    "counterparty": "架空文具社",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5190",
+        "amount": 10000,
+        "tax_category": "taxable_10",
+        "tax_amount": 909
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-04-20",
+    "description": "T046 デザインを納品して売上を計上する（架空）",
+    "counterparty": "架空デザイン法人A",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 200000,
+        "tax_category": "taxable_10",
+        "tax_amount": 18181
+      }
+    ]
+  },
+  {
+    "date": "2026-04-20",
+    "description": "T047 デザインを納品して売上を計上する（架空）",
+    "counterparty": "架空個人事業者B",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 200000,
+        "tax_category": "taxable_10",
+        "tax_amount": 18181
+      }
+    ]
+  },
+  {
+    "date": "2026-04-22",
+    "description": "T048 国民健康保険料を納付する（架空）",
+    "counterparty": "架空の杉並区納付記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-04-25",
+    "description": "T049 源泉徴収後の売掛金を回収する（架空）",
+    "counterparty": "架空デザイン法人A",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 179580,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 20420,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-04-25",
+    "description": "T050 売掛金を回収する（架空）",
+    "counterparty": "架空個人事業者B",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-04-26",
+    "description": "T051 iDeCoの掛金を支払う（架空）",
+    "counterparty": "架空iDeCo払込記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-04-27",
+    "description": "T052 生活費を引き出す（架空）",
+    "counterparty": "本人",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-04-28",
+    "description": "T053 前月分の国民年金保険料を納付する（架空）",
+    "counterparty": "架空の年金納付記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 17510,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 17510,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-05-05",
+    "description": "T054 当月の住宅家賃を支払う（架空）",
+    "counterparty": "架空貸主",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5250",
+        "amount": 30000,
+        "tax_category": "non_taxable",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 70000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-05-10",
+    "description": "T055 当月の通信費を支払う（架空）",
+    "counterparty": "架空通信社",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5140",
+        "amount": 8000,
+        "tax_category": "taxable_10",
+        "tax_amount": 727
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 2000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-05-12",
+    "description": "T056 本人の診療費を支払う（架空）",
+    "counterparty": "架空診療所",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-05-15",
+    "description": "T057 当月の外注工賃を支払う（架空）",
+    "counterparty": "架空制作法人C",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5230",
+        "amount": 50000,
+        "tax_category": "taxable_10",
+        "tax_amount": 4545
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 50000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-05-18",
+    "description": "T058 当月に使用する消耗品を購入する（架空）",
+    "counterparty": "架空文具社",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5190",
+        "amount": 10000,
+        "tax_category": "taxable_10",
+        "tax_amount": 909
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-05-20",
+    "description": "T059 デザインを納品して売上を計上する（架空）",
+    "counterparty": "架空デザイン法人A",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 200000,
+        "tax_category": "taxable_10",
+        "tax_amount": 18181
+      }
+    ]
+  },
+  {
+    "date": "2026-05-20",
+    "description": "T060 デザインを納品して売上を計上する（架空）",
+    "counterparty": "架空個人事業者B",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 200000,
+        "tax_category": "taxable_10",
+        "tax_amount": 18181
+      }
+    ]
+  },
+  {
+    "date": "2026-05-22",
+    "description": "T061 国民健康保険料を納付する（架空）",
+    "counterparty": "架空の杉並区納付記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-05-25",
+    "description": "T062 源泉徴収後の売掛金を回収する（架空）",
+    "counterparty": "架空デザイン法人A",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 179580,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 20420,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-05-25",
+    "description": "T063 売掛金を回収する（架空）",
+    "counterparty": "架空個人事業者B",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-05-26",
+    "description": "T064 iDeCoの掛金を支払う（架空）",
+    "counterparty": "架空iDeCo払込記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-05-27",
+    "description": "T065 生活費を引き出す（架空）",
+    "counterparty": "本人",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-05-28",
+    "description": "T066 前月分の国民年金保険料を納付する（架空）",
+    "counterparty": "架空の年金納付記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 17920,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 17920,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-06-05",
+    "description": "T067 当月の住宅家賃を支払う（架空）",
+    "counterparty": "架空貸主",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5250",
+        "amount": 30000,
+        "tax_category": "non_taxable",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 70000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-06-10",
+    "description": "T068 当月の通信費を支払う（架空）",
+    "counterparty": "架空通信社",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5140",
+        "amount": 8000,
+        "tax_category": "taxable_10",
+        "tax_amount": 727
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 2000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-06-12",
+    "description": "T069 本人の診療費を支払う（架空）",
+    "counterparty": "架空診療所",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-06-15",
+    "description": "T070 当月の外注工賃を支払う（架空）",
+    "counterparty": "架空制作法人C",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5230",
+        "amount": 50000,
+        "tax_category": "taxable_10",
+        "tax_amount": 4545
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 50000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-06-15",
+    "description": "T071 ふるさと納税を支払う（架空）",
+    "counterparty": "架空市A",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-06-18",
+    "description": "T072 当月に使用する消耗品を購入する（架空）",
+    "counterparty": "架空文具社",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5190",
+        "amount": 10000,
+        "tax_category": "taxable_10",
+        "tax_amount": 909
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-06-20",
+    "description": "T073 デザインを納品して売上を計上する（架空）",
+    "counterparty": "架空デザイン法人A",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 200000,
+        "tax_category": "taxable_10",
+        "tax_amount": 18181
+      }
+    ]
+  },
+  {
+    "date": "2026-06-20",
+    "description": "T074 デザインを納品して売上を計上する（架空）",
+    "counterparty": "架空個人事業者B",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 200000,
+        "tax_category": "taxable_10",
+        "tax_amount": 18181
+      }
+    ]
+  },
+  {
+    "date": "2026-06-22",
+    "description": "T075 国民健康保険料を納付する（架空）",
+    "counterparty": "架空の杉並区納付記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-06-25",
+    "description": "T076 源泉徴収後の売掛金を回収する（架空）",
+    "counterparty": "架空デザイン法人A",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 179580,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 20420,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-06-25",
+    "description": "T077 売掛金を回収する（架空）",
+    "counterparty": "架空個人事業者B",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-06-26",
+    "description": "T078 iDeCoの掛金を支払う（架空）",
+    "counterparty": "架空iDeCo払込記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-06-27",
+    "description": "T079 生活費を引き出す（架空）",
+    "counterparty": "本人",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-06-28",
+    "description": "T080 前月分の国民年金保険料を納付する（架空）",
+    "counterparty": "架空の年金納付記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 17920,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 17920,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-07-01",
+    "description": "T081 新制度の一般生命保険料を支払う（架空）",
+    "counterparty": "架空生命保険社",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 80000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 80000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-07-05",
+    "description": "T082 当月の住宅家賃を支払う（架空）",
+    "counterparty": "架空貸主",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5250",
+        "amount": 30000,
+        "tax_category": "non_taxable",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 70000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-07-10",
+    "description": "T083 当月の通信費を支払う（架空）",
+    "counterparty": "架空通信社",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5140",
+        "amount": 8000,
+        "tax_category": "taxable_10",
+        "tax_amount": 727
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 2000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-07-12",
+    "description": "T084 本人の診療費を支払う（架空）",
+    "counterparty": "架空診療所",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-07-15",
+    "description": "T085 当月の外注工賃を支払う（架空）",
+    "counterparty": "架空制作法人C",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5230",
+        "amount": 50000,
+        "tax_category": "taxable_10",
+        "tax_amount": 4545
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 50000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-07-18",
+    "description": "T086 当月に使用する消耗品を購入する（架空）",
+    "counterparty": "架空文具社",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5190",
+        "amount": 10000,
+        "tax_category": "taxable_10",
+        "tax_amount": 909
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-07-20",
+    "description": "T087 デザインを納品して売上を計上する（架空）",
+    "counterparty": "架空デザイン法人A",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 200000,
+        "tax_category": "taxable_10",
+        "tax_amount": 18181
+      }
+    ]
+  },
+  {
+    "date": "2026-07-20",
+    "description": "T088 デザインを納品して売上を計上する（架空）",
+    "counterparty": "架空個人事業者B",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 200000,
+        "tax_category": "taxable_10",
+        "tax_amount": 18181
+      }
+    ]
+  },
+  {
+    "date": "2026-07-22",
+    "description": "T089 国民健康保険料を納付する（架空）",
+    "counterparty": "架空の杉並区納付記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-07-25",
+    "description": "T090 源泉徴収後の売掛金を回収する（架空）",
+    "counterparty": "架空デザイン法人A",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 179580,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 20420,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-07-25",
+    "description": "T091 売掛金を回収する（架空）",
+    "counterparty": "架空個人事業者B",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-07-26",
+    "description": "T092 iDeCoの掛金を支払う（架空）",
+    "counterparty": "架空iDeCo払込記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-07-27",
+    "description": "T093 生活費を引き出す（架空）",
+    "counterparty": "本人",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-07-28",
+    "description": "T094 前月分の国民年金保険料を納付する（架空）",
+    "counterparty": "架空の年金納付記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 17920,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 17920,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-08-05",
+    "description": "T095 当月の住宅家賃を支払う（架空）",
+    "counterparty": "架空貸主",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5250",
+        "amount": 30000,
+        "tax_category": "non_taxable",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 70000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-08-10",
+    "description": "T096 当月の通信費を支払う（架空）",
+    "counterparty": "架空通信社",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5140",
+        "amount": 8000,
+        "tax_category": "taxable_10",
+        "tax_amount": 727
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 2000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-08-12",
+    "description": "T097 本人の診療費を支払う（架空）",
+    "counterparty": "架空診療所",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-08-15",
+    "description": "T098 当月の外注工賃を支払う（架空）",
+    "counterparty": "架空制作法人C",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5230",
+        "amount": 50000,
+        "tax_category": "taxable_10",
+        "tax_amount": 4545
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 50000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-08-18",
+    "description": "T099 当月に使用する消耗品を購入する（架空）",
+    "counterparty": "架空文具社",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5190",
+        "amount": 10000,
+        "tax_category": "taxable_10",
+        "tax_amount": 909
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-08-20",
+    "description": "T100 デザインを納品して売上を計上する（架空）",
+    "counterparty": "架空デザイン法人A",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 200000,
+        "tax_category": "taxable_10",
+        "tax_amount": 18181
+      }
+    ]
+  },
+  {
+    "date": "2026-08-20",
+    "description": "T101 デザインを納品して売上を計上する（架空）",
+    "counterparty": "架空個人事業者B",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 200000,
+        "tax_category": "taxable_10",
+        "tax_amount": 18181
+      }
+    ]
+  },
+  {
+    "date": "2026-08-22",
+    "description": "T102 国民健康保険料を納付する（架空）",
+    "counterparty": "架空の杉並区納付記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-08-25",
+    "description": "T103 源泉徴収後の売掛金を回収する（架空）",
+    "counterparty": "架空デザイン法人A",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 179580,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 20420,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-08-25",
+    "description": "T104 売掛金を回収する（架空）",
+    "counterparty": "架空個人事業者B",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-08-26",
+    "description": "T105 iDeCoの掛金を支払う（架空）",
+    "counterparty": "架空iDeCo払込記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-08-27",
+    "description": "T106 生活費を引き出す（架空）",
+    "counterparty": "本人",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-08-28",
+    "description": "T107 前月分の国民年金保険料を納付する（架空）",
+    "counterparty": "架空の年金納付記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 17920,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 17920,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-09-05",
+    "description": "T108 当月の住宅家賃を支払う（架空）",
+    "counterparty": "架空貸主",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5250",
+        "amount": 30000,
+        "tax_category": "non_taxable",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 70000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-09-10",
+    "description": "T109 当月の通信費を支払う（架空）",
+    "counterparty": "架空通信社",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5140",
+        "amount": 8000,
+        "tax_category": "taxable_10",
+        "tax_amount": 727
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 2000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-09-12",
+    "description": "T110 本人の診療費を支払う（架空）",
+    "counterparty": "架空診療所",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-09-15",
+    "description": "T111 当月の外注工賃を支払う（架空）",
+    "counterparty": "架空制作法人C",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5230",
+        "amount": 50000,
+        "tax_category": "taxable_10",
+        "tax_amount": 4545
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 50000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-09-18",
+    "description": "T112 当月に使用する消耗品を購入する（架空）",
+    "counterparty": "架空文具社",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5190",
+        "amount": 10000,
+        "tax_category": "taxable_10",
+        "tax_amount": 909
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-09-20",
+    "description": "T113 デザインを納品して売上を計上する（架空）",
+    "counterparty": "架空デザイン法人A",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 200000,
+        "tax_category": "taxable_10",
+        "tax_amount": 18181
+      }
+    ]
+  },
+  {
+    "date": "2026-09-20",
+    "description": "T114 デザインを納品して売上を計上する（架空）",
+    "counterparty": "架空個人事業者B",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 200000,
+        "tax_category": "taxable_10",
+        "tax_amount": 18181
+      }
+    ]
+  },
+  {
+    "date": "2026-09-22",
+    "description": "T115 国民健康保険料を納付する（架空）",
+    "counterparty": "架空の杉並区納付記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-09-25",
+    "description": "T116 源泉徴収後の売掛金を回収する（架空）",
+    "counterparty": "架空デザイン法人A",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 179580,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 20420,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-09-25",
+    "description": "T117 売掛金を回収する（架空）",
+    "counterparty": "架空個人事業者B",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-09-26",
+    "description": "T118 iDeCoの掛金を支払う（架空）",
+    "counterparty": "架空iDeCo払込記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-09-27",
+    "description": "T119 生活費を引き出す（架空）",
+    "counterparty": "本人",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-09-28",
+    "description": "T120 前月分の国民年金保険料を納付する（架空）",
+    "counterparty": "架空の年金納付記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 17920,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 17920,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-10-05",
+    "description": "T121 当月の住宅家賃を支払う（架空）",
+    "counterparty": "架空貸主",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5250",
+        "amount": 30000,
+        "tax_category": "non_taxable",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 70000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-10-10",
+    "description": "T122 当月の通信費を支払う（架空）",
+    "counterparty": "架空通信社",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5140",
+        "amount": 8000,
+        "tax_category": "taxable_10",
+        "tax_amount": 727
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 2000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-10-12",
+    "description": "T123 本人の診療費を支払う（架空）",
+    "counterparty": "架空診療所",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-10-15",
+    "description": "T124 当月の外注工賃を支払う（架空）",
+    "counterparty": "架空制作法人C",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5230",
+        "amount": 50000,
+        "tax_category": "taxable_10",
+        "tax_amount": 4545
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 50000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-10-18",
+    "description": "T125 当月に使用する消耗品を購入する（架空）",
+    "counterparty": "架空文具社",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5190",
+        "amount": 10000,
+        "tax_category": "taxable_10",
+        "tax_amount": 909
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-10-20",
+    "description": "T126 デザインを納品して売上を計上する（架空）",
+    "counterparty": "架空デザイン法人A",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 200000,
+        "tax_category": "taxable_10",
+        "tax_amount": 18181
+      }
+    ]
+  },
+  {
+    "date": "2026-10-20",
+    "description": "T127 デザインを納品して売上を計上する（架空）",
+    "counterparty": "架空個人事業者B",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 200000,
+        "tax_category": "taxable_10",
+        "tax_amount": 18181
+      }
+    ]
+  },
+  {
+    "date": "2026-10-22",
+    "description": "T128 国民健康保険料を納付する（架空）",
+    "counterparty": "架空の杉並区納付記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-10-25",
+    "description": "T129 源泉徴収後の売掛金を回収する（架空）",
+    "counterparty": "架空デザイン法人A",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 179580,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 20420,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-10-25",
+    "description": "T130 売掛金を回収する（架空）",
+    "counterparty": "架空個人事業者B",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-10-26",
+    "description": "T131 iDeCoの掛金を支払う（架空）",
+    "counterparty": "架空iDeCo払込記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-10-27",
+    "description": "T132 生活費を引き出す（架空）",
+    "counterparty": "本人",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-10-28",
+    "description": "T133 前月分の国民年金保険料を納付する（架空）",
+    "counterparty": "架空の年金納付記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 17920,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 17920,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-11-05",
+    "description": "T134 当月の住宅家賃を支払う（架空）",
+    "counterparty": "架空貸主",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5250",
+        "amount": 30000,
+        "tax_category": "non_taxable",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 70000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-11-10",
+    "description": "T135 当月の通信費を支払う（架空）",
+    "counterparty": "架空通信社",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5140",
+        "amount": 8000,
+        "tax_category": "taxable_10",
+        "tax_amount": 727
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 2000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-11-12",
+    "description": "T136 本人の診療費を支払う（架空）",
+    "counterparty": "架空診療所",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-11-15",
+    "description": "T137 当月の外注工賃を支払う（架空）",
+    "counterparty": "架空制作法人C",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5230",
+        "amount": 50000,
+        "tax_category": "taxable_10",
+        "tax_amount": 4545
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 50000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-11-15",
+    "description": "T138 ふるさと納税を支払う（架空）",
+    "counterparty": "架空町B",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-11-18",
+    "description": "T139 当月に使用する消耗品を購入する（架空）",
+    "counterparty": "架空文具社",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5190",
+        "amount": 10000,
+        "tax_category": "taxable_10",
+        "tax_amount": 909
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-11-20",
+    "description": "T140 デザインを納品して売上を計上する（架空）",
+    "counterparty": "架空デザイン法人A",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 200000,
+        "tax_category": "taxable_10",
+        "tax_amount": 18181
+      }
+    ]
+  },
+  {
+    "date": "2026-11-20",
+    "description": "T141 デザインを納品して売上を計上する（架空）",
+    "counterparty": "架空個人事業者B",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 200000,
+        "tax_category": "taxable_10",
+        "tax_amount": 18181
+      }
+    ]
+  },
+  {
+    "date": "2026-11-22",
+    "description": "T142 国民健康保険料を納付する（架空）",
+    "counterparty": "架空の杉並区納付記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-11-25",
+    "description": "T143 源泉徴収後の売掛金を回収する（架空）",
+    "counterparty": "架空デザイン法人A",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 179580,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 20420,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-11-25",
+    "description": "T144 売掛金を回収する（架空）",
+    "counterparty": "架空個人事業者B",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-11-26",
+    "description": "T145 iDeCoの掛金を支払う（架空）",
+    "counterparty": "架空iDeCo払込記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-11-27",
+    "description": "T146 生活費を引き出す（架空）",
+    "counterparty": "本人",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-11-28",
+    "description": "T147 前月分の国民年金保険料を納付する（架空）",
+    "counterparty": "架空の年金納付記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 17920,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 17920,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-12-05",
+    "description": "T148 当月の住宅家賃を支払う（架空）",
+    "counterparty": "架空貸主",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5250",
+        "amount": 30000,
+        "tax_category": "non_taxable",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 70000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-12-10",
+    "description": "T149 当月の通信費を支払う（架空）",
+    "counterparty": "架空通信社",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5140",
+        "amount": 8000,
+        "tax_category": "taxable_10",
+        "tax_amount": 727
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 2000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-12-12",
+    "description": "T150 本人の診療費を支払う（架空）",
+    "counterparty": "架空診療所",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-12-15",
+    "description": "T151 当月の外注工賃を支払う（架空）",
+    "counterparty": "架空制作法人C",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5230",
+        "amount": 50000,
+        "tax_category": "taxable_10",
+        "tax_amount": 4545
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 50000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-12-18",
+    "description": "T152 当月に使用する消耗品を購入する（架空）",
+    "counterparty": "架空文具社",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5190",
+        "amount": 10000,
+        "tax_category": "taxable_10",
+        "tax_amount": 909
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 10000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-12-20",
+    "description": "T153 デザインを納品して売上を計上する（架空）",
+    "counterparty": "架空デザイン法人A",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 200000,
+        "tax_category": "taxable_10",
+        "tax_amount": 18181
+      }
+    ]
+  },
+  {
+    "date": "2026-12-20",
+    "description": "T154 デザインを納品して売上を計上する（架空）",
+    "counterparty": "架空個人事業者B",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 200000,
+        "tax_category": "taxable_10",
+        "tax_amount": 18181
+      }
+    ]
+  },
+  {
+    "date": "2026-12-22",
+    "description": "T155 国民健康保険料を納付する（架空）",
+    "counterparty": "架空の杉並区納付記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-12-25",
+    "description": "T156 源泉徴収後の売掛金を回収する（架空）",
+    "counterparty": "架空デザイン法人A",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 179580,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 20420,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-12-25",
+    "description": "T157 売掛金を回収する（架空）",
+    "counterparty": "架空個人事業者B",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 200000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-12-26",
+    "description": "T158 iDeCoの掛金を支払う（架空）",
+    "counterparty": "架空iDeCo払込記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-12-27",
+    "description": "T159 生活費を引き出す（架空）",
+    "counterparty": "本人",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-12-28",
+    "description": "T160 前月分の国民年金保険料を納付する（架空）",
+    "counterparty": "架空の年金納付記録",
+    "source": "csv_import",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 17920,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 17920,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  }
+]

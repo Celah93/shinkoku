@@ -1,0 +1,2393 @@
+[
+  {
+    "date": "2026-01-05",
+    "description": "S2-001 通信費を支払う",
+    "counterparty": "架空通信社2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5140",
+        "amount": 5500,
+        "tax_category": "taxable_10",
+        "tax_amount": 500
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 5500,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-01-10",
+    "description": "S2-002 当月に使用する消耗品を購入する",
+    "counterparty": "架空文具社2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5190",
+        "amount": 11000,
+        "tax_category": "taxable_10",
+        "tax_amount": 1000
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 11000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-01-15",
+    "description": "S2-003 検収済みの制作工程を原価として計上する",
+    "counterparty": "架空制作法人2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5001",
+        "amount": 20000,
+        "tax_category": "taxable_10",
+        "tax_amount": 1818
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-01-20",
+    "description": "S2-004 Web制作を納品して売上を計上する",
+    "counterparty": "架空デザイン法人A2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 110000,
+        "tax_category": "taxable_10",
+        "tax_amount": 10000
+      }
+    ]
+  },
+  {
+    "date": "2026-01-20",
+    "description": "S2-005 Web制作を納品して売上を計上する",
+    "counterparty": "架空個人事業者B2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 110000,
+        "tax_category": "taxable_10",
+        "tax_amount": 10000
+      }
+    ]
+  },
+  {
+    "date": "2026-01-25",
+    "description": "S2-006 源泉を区分して売掛金を回収する",
+    "counterparty": "架空デザイン法人A2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 98769,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 11231,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-01-25",
+    "description": "S2-007 源泉を区分して売掛金を回収する",
+    "counterparty": "架空個人事業者B2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-01-28",
+    "description": "S2-008 補助スタッフの給与を支払う",
+    "counterparty": "架空補助者",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5220",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-02-05",
+    "description": "S2-009 通信費を支払う",
+    "counterparty": "架空通信社2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5140",
+        "amount": 5500,
+        "tax_category": "taxable_10",
+        "tax_amount": 500
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 5500,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-02-10",
+    "description": "S2-010 当月に使用する消耗品を購入する",
+    "counterparty": "架空文具社2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5190",
+        "amount": 11000,
+        "tax_category": "taxable_10",
+        "tax_amount": 1000
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 11000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-02-15",
+    "description": "S2-011 検収済みの制作工程を原価として計上する",
+    "counterparty": "架空制作法人2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5001",
+        "amount": 20000,
+        "tax_category": "taxable_10",
+        "tax_amount": 1818
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-02-20",
+    "description": "S2-012 Web制作を納品して売上を計上する",
+    "counterparty": "架空デザイン法人A2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 110000,
+        "tax_category": "taxable_10",
+        "tax_amount": 10000
+      }
+    ]
+  },
+  {
+    "date": "2026-02-20",
+    "description": "S2-013 Web制作を納品して売上を計上する",
+    "counterparty": "架空個人事業者B2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 110000,
+        "tax_category": "taxable_10",
+        "tax_amount": 10000
+      }
+    ]
+  },
+  {
+    "date": "2026-02-25",
+    "description": "S2-014 源泉を区分して売掛金を回収する",
+    "counterparty": "架空デザイン法人A2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 98769,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 11231,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-02-25",
+    "description": "S2-015 源泉を区分して売掛金を回収する",
+    "counterparty": "架空個人事業者B2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-02-28",
+    "description": "S2-016 補助スタッフの給与を支払う",
+    "counterparty": "架空補助者",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5220",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-03-05",
+    "description": "S2-017 通信費を支払う",
+    "counterparty": "架空通信社2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5140",
+        "amount": 5500,
+        "tax_category": "taxable_10",
+        "tax_amount": 500
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 5500,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-03-10",
+    "description": "S2-018 当月に使用する消耗品を購入する",
+    "counterparty": "架空文具社2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5190",
+        "amount": 11000,
+        "tax_category": "taxable_10",
+        "tax_amount": 1000
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 11000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-03-15",
+    "description": "S2-019 検収済みの制作工程を原価として計上する",
+    "counterparty": "架空制作法人2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5001",
+        "amount": 20000,
+        "tax_category": "taxable_10",
+        "tax_amount": 1818
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-03-20",
+    "description": "S2-020 Web制作を納品して売上を計上する",
+    "counterparty": "架空デザイン法人A2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 110000,
+        "tax_category": "taxable_10",
+        "tax_amount": 10000
+      }
+    ]
+  },
+  {
+    "date": "2026-03-20",
+    "description": "S2-021 Web制作を納品して売上を計上する",
+    "counterparty": "架空個人事業者B2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 110000,
+        "tax_category": "taxable_10",
+        "tax_amount": 10000
+      }
+    ]
+  },
+  {
+    "date": "2026-03-25",
+    "description": "S2-022 源泉を区分して売掛金を回収する",
+    "counterparty": "架空デザイン法人A2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 98769,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 11231,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-03-25",
+    "description": "S2-023 源泉を区分して売掛金を回収する",
+    "counterparty": "架空個人事業者B2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-03-28",
+    "description": "S2-024 補助スタッフの給与を支払う",
+    "counterparty": "架空補助者",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5220",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-04-05",
+    "description": "S2-025 通信費を支払う",
+    "counterparty": "架空通信社2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5140",
+        "amount": 5500,
+        "tax_category": "taxable_10",
+        "tax_amount": 500
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 5500,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-04-10",
+    "description": "S2-026 当月に使用する消耗品を購入する",
+    "counterparty": "架空文具社2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5190",
+        "amount": 11000,
+        "tax_category": "taxable_10",
+        "tax_amount": 1000
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 11000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-04-15",
+    "description": "S2-027 検収済みの制作工程を原価として計上する",
+    "counterparty": "架空制作法人2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5001",
+        "amount": 20000,
+        "tax_category": "taxable_10",
+        "tax_amount": 1818
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-04-20",
+    "description": "S2-028 Web制作を納品して売上を計上する",
+    "counterparty": "架空デザイン法人A2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 110000,
+        "tax_category": "taxable_10",
+        "tax_amount": 10000
+      }
+    ]
+  },
+  {
+    "date": "2026-04-20",
+    "description": "S2-029 Web制作を納品して売上を計上する",
+    "counterparty": "架空個人事業者B2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 110000,
+        "tax_category": "taxable_10",
+        "tax_amount": 10000
+      }
+    ]
+  },
+  {
+    "date": "2026-04-25",
+    "description": "S2-030 源泉を区分して売掛金を回収する",
+    "counterparty": "架空デザイン法人A2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 98769,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 11231,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-04-25",
+    "description": "S2-031 源泉を区分して売掛金を回収する",
+    "counterparty": "架空個人事業者B2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-04-28",
+    "description": "S2-032 補助スタッフの給与を支払う",
+    "counterparty": "架空補助者",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5220",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-05-05",
+    "description": "S2-033 通信費を支払う",
+    "counterparty": "架空通信社2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5140",
+        "amount": 5500,
+        "tax_category": "taxable_10",
+        "tax_amount": 500
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 5500,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-05-10",
+    "description": "S2-034 当月に使用する消耗品を購入する",
+    "counterparty": "架空文具社2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5190",
+        "amount": 11000,
+        "tax_category": "taxable_10",
+        "tax_amount": 1000
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 11000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-05-15",
+    "description": "S2-035 検収済みの制作工程を原価として計上する",
+    "counterparty": "架空制作法人2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5001",
+        "amount": 20000,
+        "tax_category": "taxable_10",
+        "tax_amount": 1818
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-05-20",
+    "description": "S2-036 Web制作を納品して売上を計上する",
+    "counterparty": "架空デザイン法人A2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 110000,
+        "tax_category": "taxable_10",
+        "tax_amount": 10000
+      }
+    ]
+  },
+  {
+    "date": "2026-05-20",
+    "description": "S2-037 Web制作を納品して売上を計上する",
+    "counterparty": "架空個人事業者B2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 110000,
+        "tax_category": "taxable_10",
+        "tax_amount": 10000
+      }
+    ]
+  },
+  {
+    "date": "2026-05-25",
+    "description": "S2-038 源泉を区分して売掛金を回収する",
+    "counterparty": "架空デザイン法人A2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 98769,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 11231,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-05-25",
+    "description": "S2-039 源泉を区分して売掛金を回収する",
+    "counterparty": "架空個人事業者B2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-05-28",
+    "description": "S2-040 補助スタッフの給与を支払う",
+    "counterparty": "架空補助者",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5220",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-06-05",
+    "description": "S2-041 通信費を支払う",
+    "counterparty": "架空通信社2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5140",
+        "amount": 5500,
+        "tax_category": "taxable_10",
+        "tax_amount": 500
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 5500,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-06-10",
+    "description": "S2-042 当月に使用する消耗品を購入する",
+    "counterparty": "架空文具社2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5190",
+        "amount": 11000,
+        "tax_category": "taxable_10",
+        "tax_amount": 1000
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 11000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-06-10",
+    "description": "S2-043 認定NPOへ寄附する",
+    "counterparty": "架空認定NPO法人",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-06-15",
+    "description": "S2-044 検収済みの制作工程を原価として計上する",
+    "counterparty": "架空制作法人2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5001",
+        "amount": 20000,
+        "tax_category": "taxable_10",
+        "tax_amount": 1818
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-06-20",
+    "description": "S2-045 Web制作を納品して売上を計上する",
+    "counterparty": "架空デザイン法人A2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 110000,
+        "tax_category": "taxable_10",
+        "tax_amount": 10000
+      }
+    ]
+  },
+  {
+    "date": "2026-06-20",
+    "description": "S2-046 Web制作を納品して売上を計上する",
+    "counterparty": "架空個人事業者B2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 110000,
+        "tax_category": "taxable_10",
+        "tax_amount": 10000
+      }
+    ]
+  },
+  {
+    "date": "2026-06-25",
+    "description": "S2-047 源泉を区分して売掛金を回収する",
+    "counterparty": "架空デザイン法人A2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 98769,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 11231,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-06-25",
+    "description": "S2-048 源泉を区分して売掛金を回収する",
+    "counterparty": "架空個人事業者B2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-06-28",
+    "description": "S2-049 補助スタッフの給与を支払う",
+    "counterparty": "架空補助者",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5220",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-07-05",
+    "description": "S2-050 通信費を支払う",
+    "counterparty": "架空通信社2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5140",
+        "amount": 5500,
+        "tax_category": "taxable_10",
+        "tax_amount": 500
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 5500,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-07-10",
+    "description": "S2-051 当月に使用する消耗品を購入する",
+    "counterparty": "架空文具社2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5190",
+        "amount": 11000,
+        "tax_category": "taxable_10",
+        "tax_amount": 1000
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 11000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-07-15",
+    "description": "S2-052 検収済みの制作工程を原価として計上する",
+    "counterparty": "架空制作法人2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5001",
+        "amount": 20000,
+        "tax_category": "taxable_10",
+        "tax_amount": 1818
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-07-20",
+    "description": "S2-053 Web制作を納品して売上を計上する",
+    "counterparty": "架空デザイン法人A2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 110000,
+        "tax_category": "taxable_10",
+        "tax_amount": 10000
+      }
+    ]
+  },
+  {
+    "date": "2026-07-20",
+    "description": "S2-054 Web制作を納品して売上を計上する",
+    "counterparty": "架空個人事業者B2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 110000,
+        "tax_category": "taxable_10",
+        "tax_amount": 10000
+      }
+    ]
+  },
+  {
+    "date": "2026-07-25",
+    "description": "S2-055 源泉を区分して売掛金を回収する",
+    "counterparty": "架空デザイン法人A2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 98769,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 11231,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-07-25",
+    "description": "S2-056 源泉を区分して売掛金を回収する",
+    "counterparty": "架空個人事業者B2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-07-28",
+    "description": "S2-057 補助スタッフの給与を支払う",
+    "counterparty": "架空補助者",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5220",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-07-31",
+    "description": "S2-058 所得税の予定納税を納付する",
+    "counterparty": "架空納付記録",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 60000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 60000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-08-05",
+    "description": "S2-059 通信費を支払う",
+    "counterparty": "架空通信社2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5140",
+        "amount": 5500,
+        "tax_category": "taxable_10",
+        "tax_amount": 500
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 5500,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-08-10",
+    "description": "S2-060 当月に使用する消耗品を購入する",
+    "counterparty": "架空文具社2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5190",
+        "amount": 11000,
+        "tax_category": "taxable_10",
+        "tax_amount": 1000
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 11000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-08-15",
+    "description": "S2-061 検収済みの制作工程を原価として計上する",
+    "counterparty": "架空制作法人2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5001",
+        "amount": 20000,
+        "tax_category": "taxable_10",
+        "tax_amount": 1818
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-08-20",
+    "description": "S2-062 Web制作を納品して売上を計上する",
+    "counterparty": "架空デザイン法人A2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 110000,
+        "tax_category": "taxable_10",
+        "tax_amount": 10000
+      }
+    ]
+  },
+  {
+    "date": "2026-08-20",
+    "description": "S2-063 Web制作を納品して売上を計上する",
+    "counterparty": "架空個人事業者B2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 110000,
+        "tax_category": "taxable_10",
+        "tax_amount": 10000
+      }
+    ]
+  },
+  {
+    "date": "2026-08-25",
+    "description": "S2-064 源泉を区分して売掛金を回収する",
+    "counterparty": "架空デザイン法人A2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 98769,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 11231,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-08-25",
+    "description": "S2-065 源泉を区分して売掛金を回収する",
+    "counterparty": "架空個人事業者B2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-08-28",
+    "description": "S2-066 補助スタッフの給与を支払う",
+    "counterparty": "架空補助者",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5220",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-09-05",
+    "description": "S2-067 通信費を支払う",
+    "counterparty": "架空通信社2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5140",
+        "amount": 5500,
+        "tax_category": "taxable_10",
+        "tax_amount": 500
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 5500,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-09-10",
+    "description": "S2-068 当月に使用する消耗品を購入する",
+    "counterparty": "架空文具社2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5190",
+        "amount": 11000,
+        "tax_category": "taxable_10",
+        "tax_amount": 1000
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 11000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-09-15",
+    "description": "S2-069 検収済みの制作工程を原価として計上する",
+    "counterparty": "架空制作法人2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5001",
+        "amount": 20000,
+        "tax_category": "taxable_10",
+        "tax_amount": 1818
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-09-20",
+    "description": "S2-070 Web制作を納品して売上を計上する",
+    "counterparty": "架空デザイン法人A2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 110000,
+        "tax_category": "taxable_10",
+        "tax_amount": 10000
+      }
+    ]
+  },
+  {
+    "date": "2026-09-20",
+    "description": "S2-071 Web制作を納品して売上を計上する",
+    "counterparty": "架空個人事業者B2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 110000,
+        "tax_category": "taxable_10",
+        "tax_amount": 10000
+      }
+    ]
+  },
+  {
+    "date": "2026-09-25",
+    "description": "S2-072 源泉を区分して売掛金を回収する",
+    "counterparty": "架空デザイン法人A2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 98769,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 11231,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-09-25",
+    "description": "S2-073 源泉を区分して売掛金を回収する",
+    "counterparty": "架空個人事業者B2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-09-28",
+    "description": "S2-074 補助スタッフの給与を支払う",
+    "counterparty": "架空補助者",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5220",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-10-05",
+    "description": "S2-075 通信費を支払う",
+    "counterparty": "架空通信社2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5140",
+        "amount": 5500,
+        "tax_category": "taxable_10",
+        "tax_amount": 500
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 5500,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-10-10",
+    "description": "S2-076 当月に使用する消耗品を購入する",
+    "counterparty": "架空文具社2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5190",
+        "amount": 11000,
+        "tax_category": "taxable_10",
+        "tax_amount": 1000
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 11000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-10-15",
+    "description": "S2-077 検収済みの制作工程を原価として計上する",
+    "counterparty": "架空制作法人2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5001",
+        "amount": 20000,
+        "tax_category": "taxable_10",
+        "tax_amount": 1818
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-10-20",
+    "description": "S2-078 Web制作を納品して売上を計上する",
+    "counterparty": "架空デザイン法人A2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 110000,
+        "tax_category": "taxable_10",
+        "tax_amount": 10000
+      }
+    ]
+  },
+  {
+    "date": "2026-10-20",
+    "description": "S2-079 Web制作を納品して売上を計上する",
+    "counterparty": "架空個人事業者B2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 110000,
+        "tax_category": "taxable_10",
+        "tax_amount": 10000
+      }
+    ]
+  },
+  {
+    "date": "2026-10-25",
+    "description": "S2-080 源泉を区分して売掛金を回収する",
+    "counterparty": "架空デザイン法人A2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 98769,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 11231,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-10-25",
+    "description": "S2-081 源泉を区分して売掛金を回収する",
+    "counterparty": "架空個人事業者B2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-10-28",
+    "description": "S2-082 補助スタッフの給与を支払う",
+    "counterparty": "架空補助者",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5220",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-11-05",
+    "description": "S2-083 通信費を支払う",
+    "counterparty": "架空通信社2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5140",
+        "amount": 5500,
+        "tax_category": "taxable_10",
+        "tax_amount": 500
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 5500,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-11-10",
+    "description": "S2-084 当月に使用する消耗品を購入する",
+    "counterparty": "架空文具社2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5190",
+        "amount": 11000,
+        "tax_category": "taxable_10",
+        "tax_amount": 1000
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 11000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-11-15",
+    "description": "S2-085 検収済みの制作工程を原価として計上する",
+    "counterparty": "架空制作法人2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5001",
+        "amount": 20000,
+        "tax_category": "taxable_10",
+        "tax_amount": 1818
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-11-20",
+    "description": "S2-086 Web制作を納品して売上を計上する",
+    "counterparty": "架空デザイン法人A2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 110000,
+        "tax_category": "taxable_10",
+        "tax_amount": 10000
+      }
+    ]
+  },
+  {
+    "date": "2026-11-20",
+    "description": "S2-087 Web制作を納品して売上を計上する",
+    "counterparty": "架空個人事業者B2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 110000,
+        "tax_category": "taxable_10",
+        "tax_amount": 10000
+      }
+    ]
+  },
+  {
+    "date": "2026-11-25",
+    "description": "S2-088 源泉を区分して売掛金を回収する",
+    "counterparty": "架空デザイン法人A2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 98769,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 11231,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-11-25",
+    "description": "S2-089 源泉を区分して売掛金を回収する",
+    "counterparty": "架空個人事業者B2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-11-28",
+    "description": "S2-090 補助スタッフの給与を支払う",
+    "counterparty": "架空補助者",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5220",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-11-30",
+    "description": "S2-091 所得税の予定納税を納付する",
+    "counterparty": "架空納付記録",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 60000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 60000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-12-05",
+    "description": "S2-092 通信費を支払う",
+    "counterparty": "架空通信社2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5140",
+        "amount": 5500,
+        "tax_category": "taxable_10",
+        "tax_amount": 500
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 5500,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-12-10",
+    "description": "S2-093 当月に使用する消耗品を購入する",
+    "counterparty": "架空文具社2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5190",
+        "amount": 11000,
+        "tax_category": "taxable_10",
+        "tax_amount": 1000
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 11000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-12-15",
+    "description": "S2-094 検収済みの制作工程を原価として計上する",
+    "counterparty": "架空制作法人2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5001",
+        "amount": 20000,
+        "tax_category": "taxable_10",
+        "tax_amount": 1818
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 20000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-12-15",
+    "description": "S2-095 税理士報酬を支払い相手の源泉税を預かる",
+    "counterparty": "架空税理士",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5270",
+        "amount": 220000,
+        "tax_category": "taxable_10",
+        "tax_amount": 20000
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 199580,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "2050",
+        "amount": 20420,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-12-20",
+    "description": "S2-096 Web制作を納品して売上を計上する",
+    "counterparty": "架空デザイン法人A2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 110000,
+        "tax_category": "taxable_10",
+        "tax_amount": 10000
+      }
+    ]
+  },
+  {
+    "date": "2026-12-20",
+    "description": "S2-097 Web制作を納品して売上を計上する",
+    "counterparty": "架空個人事業者B2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "4001",
+        "amount": 110000,
+        "tax_category": "taxable_10",
+        "tax_amount": 10000
+      }
+    ]
+  },
+  {
+    "date": "2026-12-25",
+    "description": "S2-098 源泉を区分して売掛金を回収する",
+    "counterparty": "架空デザイン法人A2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 98769,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "debit",
+        "account_code": "1200",
+        "amount": 11231,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-12-25",
+    "description": "S2-099 源泉を区分して売掛金を回収する",
+    "counterparty": "架空個人事業者B2",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1002",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1010",
+        "amount": 110000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  },
+  {
+    "date": "2026-12-28",
+    "description": "S2-100 補助スタッフの給与を支払う",
+    "counterparty": "架空補助者",
+    "source": "manual",
+    "is_adjustment": false,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5220",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1002",
+        "amount": 30000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  }
+]

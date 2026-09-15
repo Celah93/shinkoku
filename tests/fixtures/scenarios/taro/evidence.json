@@ -1,0 +1,180 @@
+{
+  "opening_balances": [
+    {
+      "account_code": "1002",
+      "amount": 500000
+    },
+    {
+      "account_code": "3001",
+      "amount": 500000
+    }
+  ],
+  "payment_statements": [
+    {
+      "client_name": "架空デザイン法人A",
+      "gross_amount": 2400000,
+      "withholding_tax": 245040
+    }
+  ],
+  "social_insurance": [
+    {
+      "insurance_type": "national_health",
+      "name": "架空の杉並区納付記録",
+      "amount": 360000
+    },
+    {
+      "insurance_type": "national_pension",
+      "name": "架空の年金納付記録",
+      "amount": 213400
+    }
+  ],
+  "insurance_policies": [
+    {
+      "policy_type": "life_general_new",
+      "company_name": "架空生命保険社",
+      "premium": 80000
+    }
+  ],
+  "medical": [
+    {
+      "date": "2026-01-12",
+      "patient_name": "検証 太郎",
+      "medical_institution": "架空診療所",
+      "amount": 10000,
+      "insurance_reimbursement": 0,
+      "description": "保険診療の自己負担額（架空）"
+    },
+    {
+      "date": "2026-02-12",
+      "patient_name": "検証 太郎",
+      "medical_institution": "架空診療所",
+      "amount": 10000,
+      "insurance_reimbursement": 0,
+      "description": "保険診療の自己負担額（架空）"
+    },
+    {
+      "date": "2026-03-12",
+      "patient_name": "検証 太郎",
+      "medical_institution": "架空診療所",
+      "amount": 10000,
+      "insurance_reimbursement": 0,
+      "description": "保険診療の自己負担額（架空）"
+    },
+    {
+      "date": "2026-04-12",
+      "patient_name": "検証 太郎",
+      "medical_institution": "架空診療所",
+      "amount": 10000,
+      "insurance_reimbursement": 0,
+      "description": "保険診療の自己負担額（架空）"
+    },
+    {
+      "date": "2026-05-12",
+      "patient_name": "検証 太郎",
+      "medical_institution": "架空診療所",
+      "amount": 10000,
+      "insurance_reimbursement": 0,
+      "description": "保険診療の自己負担額（架空）"
+    },
+    {
+      "date": "2026-06-12",
+      "patient_name": "検証 太郎",
+      "medical_institution": "架空診療所",
+      "amount": 10000,
+      "insurance_reimbursement": 0,
+      "description": "保険診療の自己負担額（架空）"
+    },
+    {
+      "date": "2026-07-12",
+      "patient_name": "検証 太郎",
+      "medical_institution": "架空診療所",
+      "amount": 10000,
+      "insurance_reimbursement": 0,
+      "description": "保険診療の自己負担額（架空）"
+    },
+    {
+      "date": "2026-08-12",
+      "patient_name": "検証 太郎",
+      "medical_institution": "架空診療所",
+      "amount": 10000,
+      "insurance_reimbursement": 0,
+      "description": "保険診療の自己負担額（架空）"
+    },
+    {
+      "date": "2026-09-12",
+      "patient_name": "検証 太郎",
+      "medical_institution": "架空診療所",
+      "amount": 10000,
+      "insurance_reimbursement": 0,
+      "description": "保険診療の自己負担額（架空）"
+    },
+    {
+      "date": "2026-10-12",
+      "patient_name": "検証 太郎",
+      "medical_institution": "架空診療所",
+      "amount": 10000,
+      "insurance_reimbursement": 0,
+      "description": "保険診療の自己負担額（架空）"
+    },
+    {
+      "date": "2026-11-12",
+      "patient_name": "検証 太郎",
+      "medical_institution": "架空診療所",
+      "amount": 10000,
+      "insurance_reimbursement": 0,
+      "description": "保険診療の自己負担額（架空）"
+    },
+    {
+      "date": "2026-12-12",
+      "patient_name": "検証 太郎",
+      "medical_institution": "架空診療所",
+      "amount": 10000,
+      "insurance_reimbursement": 0,
+      "description": "保険診療の自己負担額（架空）"
+    }
+  ],
+  "donations": [
+    {
+      "fiscal_year": 2026,
+      "municipality_name": "架空市A",
+      "municipality_prefecture": "北海道",
+      "amount": 30000,
+      "date": "2026-06-15",
+      "receipt_number": "TEST-F-001",
+      "one_stop_applied": false
+    },
+    {
+      "fiscal_year": 2026,
+      "municipality_name": "架空町B",
+      "municipality_prefecture": "長野県",
+      "amount": 20000,
+      "date": "2026-11-15",
+      "receipt_number": "TEST-F-002",
+      "one_stop_applied": false
+    }
+  ],
+  "ideco": {
+    "annual_paid": 240000,
+    "receipt_number": "TEST-I-001"
+  },
+  "rent": {
+    "property_type": "自宅兼事務所",
+    "usage": "住宅賃貸契約の自宅の30％を事業に使う",
+    "landlord_name": "架空貸主",
+    "landlord_address": "東京都杉並区検証用架空町0-1",
+    "monthly_rent": 100000,
+    "annual_rent": 1200000,
+    "deposit": 0,
+    "business_ratio": 30
+  },
+  "pc": {
+    "name": "検証用PC",
+    "acquisition_date": "2026-04-01",
+    "in_service_date": "2026-04-01",
+    "method": "straight_line",
+    "acquisition_cost": 250000,
+    "useful_life": 4,
+    "business_use_ratio": 100,
+    "months": 9
+  }
+}

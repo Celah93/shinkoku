@@ -1,0 +1,32 @@
+{
+  "tax_year": 2026,
+  "has_business_income": true,
+  "taxpayer": {
+    "last_name": "検証",
+    "first_name": "太郎",
+    "date_of_birth": "1986-01-02"
+  },
+  "address": {
+    "prefecture": "東京都",
+    "city": "杉並区",
+    "street": "検証用架空町0-0"
+  },
+  "filing": {
+    "submission_method": "e-tax",
+    "return_type": "blue",
+    "blue_return_deduction": 650000
+  },
+  "family": {
+    "has_spouse": false,
+    "has_dependents": false,
+    "dependent_count": 0
+  },
+  "housing_loan": {
+    "applicable": false,
+    "first_year": false
+  },
+  "estimated_tax": {
+    "applicable": false,
+    "amount": 0
+  }
+}

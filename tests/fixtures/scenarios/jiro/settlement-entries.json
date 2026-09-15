@@ -1,0 +1,25 @@
+[
+  {
+    "date": "2026-12-31",
+    "description": "S2-101 未完成案件の仕掛品を棚卸計上する",
+    "counterparty": "架空の未完成Web案件",
+    "source": "adjustment",
+    "is_adjustment": true,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "1030",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "5001",
+        "amount": 100000,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  }
+]

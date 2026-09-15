@@ -1,0 +1,300 @@
+[
+  {
+    "path": "pl.total_revenue",
+    "value": 4800000,
+    "source_file": "expected.md",
+    "source_item": "2. 帳簿と青色申告特別控除 / 売上"
+  },
+  {
+    "path": "expenses.5250",
+    "value": 360000,
+    "source_file": "expected.md",
+    "source_item": "2. 帳簿と青色申告特別控除 / 地代家賃"
+  },
+  {
+    "path": "expenses.5140",
+    "value": 96000,
+    "source_file": "expected.md",
+    "source_item": "2. 帳簿と青色申告特別控除 / 通信費"
+  },
+  {
+    "path": "expenses.5230",
+    "value": 600000,
+    "source_file": "expected.md",
+    "source_item": "2. 帳簿と青色申告特別控除 / 外注工賃"
+  },
+  {
+    "path": "expenses.5190",
+    "value": 120000,
+    "source_file": "expected.md",
+    "source_item": "2. 帳簿と青色申告特別控除 / 消耗品費"
+  },
+  {
+    "path": "expenses.5200",
+    "value": 46875,
+    "source_file": "expected.md",
+    "source_item": "2. 帳簿と青色申告特別控除 / 減価償却費"
+  },
+  {
+    "path": "pl.total_expense",
+    "value": 1222875,
+    "source_file": "expected.md",
+    "source_item": "2. 帳簿と青色申告特別控除 / 必要経費"
+  },
+  {
+    "path": "pl.net_income",
+    "value": 3577125,
+    "source_file": "expected.md",
+    "source_item": "2. 帳簿と青色申告特別控除 / 青色控除前所得"
+  },
+  {
+    "path": "income.effective_blue_return_deduction",
+    "value": 650000,
+    "source_file": "expected.md",
+    "source_item": "2. 帳簿と青色申告特別控除 / 青色申告特別控除"
+  },
+  {
+    "path": "income.business_income",
+    "value": 2927125,
+    "source_file": "expected.md",
+    "source_item": "2. 帳簿と青色申告特別控除 / 事業所得・合計所得・総所得金額等"
+  },
+  {
+    "path": "income.total_income_deductions",
+    "value": 1961400,
+    "source_file": "expected.md",
+    "source_item": "3. 所得控除 / 所得控除合計"
+  },
+  {
+    "path": "deductions.basic",
+    "value": 1040000,
+    "source_file": "expected.md",
+    "source_item": "3. 所得控除 / 基礎控除"
+  },
+  {
+    "path": "deductions.social_insurance",
+    "value": 573400,
+    "source_file": "expected.md",
+    "source_item": "3. 所得控除 / 社会保険料控除"
+  },
+  {
+    "path": "deductions.small_business_mutual_aid",
+    "value": 240000,
+    "source_file": "expected.md",
+    "source_item": "3. 所得控除 / iDeCo"
+  },
+  {
+    "path": "deductions.life_insurance",
+    "value": 40000,
+    "source_file": "expected.md",
+    "source_item": "3. 所得控除 / 生命保険料控除"
+  },
+  {
+    "path": "deductions.medical",
+    "value": 20000,
+    "source_file": "expected.md",
+    "source_item": "3. 所得控除 / 医療費控除"
+  },
+  {
+    "path": "deductions.donation",
+    "value": 48000,
+    "source_file": "expected.md",
+    "source_item": "3. 所得控除 / 寄附金控除"
+  },
+  {
+    "path": "income.taxable_income",
+    "value": 965000,
+    "source_file": "expected.md",
+    "source_item": "4. 所得税と復興特別所得税 / 2. 課税所得"
+  },
+  {
+    "path": "income.income_tax_base",
+    "value": 48250,
+    "source_file": "expected.md",
+    "source_item": "4. 所得税と復興特別所得税 / 3. 所得税"
+  },
+  {
+    "path": "income.reconstruction_tax",
+    "value": 1013,
+    "source_file": "expected.md",
+    "source_item": "4. 所得税と復興特別所得税 / 4. 復興特別所得税"
+  },
+  {
+    "path": "income.total_tax",
+    "value": 49263,
+    "source_file": "expected.md",
+    "source_item": "4. 所得税と復興特別所得税 / 5. 所得税等の合計"
+  },
+  {
+    "path": "income.business_withheld_tax",
+    "value": 245040,
+    "source_file": "expected.md",
+    "source_item": "4. 所得税と復興特別所得税 / 6. 事業源泉"
+  },
+  {
+    "path": "income.tax_due",
+    "value": -195777,
+    "source_file": "expected.md",
+    "source_item": "4. 所得税と復興特別所得税 / 7. 精算額"
+  },
+  {
+    "path": "consumption.taxable_base_10",
+    "value": 4363000,
+    "source_file": "expected.md",
+    "source_item": "5. 消費税と地方消費税（2割特例） / 1. 課税標準"
+  },
+  {
+    "path": "consumption.national_tax_on_sales",
+    "value": 340314,
+    "source_file": "expected.md",
+    "source_item": "5. 消費税と地方消費税（2割特例） / 2. 国税の売上税額"
+  },
+  {
+    "path": "consumption.tax_on_purchases",
+    "value": 272251,
+    "source_file": "expected.md",
+    "source_item": "5. 消費税と地方消費税（2割特例） / 3. 特別控除税額"
+  },
+  {
+    "path": "consumption.net_tax",
+    "value": 68000,
+    "source_file": "expected.md",
+    "source_item": "5. 消費税と地方消費税（2割特例） / 4. 差引税額"
+  },
+  {
+    "path": "consumption.local_tax_due",
+    "value": 19100,
+    "source_file": "expected.md",
+    "source_item": "5. 消費税と地方消費税（2割特例） / 5. 地方消費税"
+  },
+  {
+    "path": "consumption.total_due",
+    "value": 87100,
+    "source_file": "expected.md",
+    "source_item": "5. 消費税と地方消費税（2割特例） / 6. 合計納付額"
+  },
+  {
+    "path": "resident.resident_tax_deductions_total",
+    "value": 1291400,
+    "source_file": "expected.md",
+    "source_item": "6. ふるさと納税の上限（2027年度住民税の標準推定） / 1. 所得控除"
+  },
+  {
+    "path": "resident.resident_taxable_income",
+    "value": 1635000,
+    "source_file": "expected.md",
+    "source_item": "6. ふるさと納税の上限（2027年度住民税の標準推定） / 2. 課税所得"
+  },
+  {
+    "path": "resident.adjustment_credit",
+    "value": 2500,
+    "source_file": "expected.md",
+    "source_item": "6. ふるさと納税の上限（2027年度住民税の標準推定） / 4. 調整控除"
+  },
+  {
+    "path": "resident.resident_tax_income_levy",
+    "value": 161000,
+    "source_file": "expected.md",
+    "source_item": "6. ふるさと納税の上限（2027年度住民税の標準推定） / 5. 調整控除後の標準所得割"
+  },
+  {
+    "path": "limit.special_credit_limit",
+    "value": 32200,
+    "source_file": "expected.md",
+    "source_item": "6. ふるさと納税の上限（2027年度住民税の標準推定） / 5. 所得割の20％"
+  },
+  {
+    "path": "limit.estimated_limit",
+    "value": 39929,
+    "source_file": "expected.md",
+    "source_item": "6. ふるさと納税の上限（2027年度住民税の標準推定） / 7. 推定上限"
+  },
+  {
+    "path": "summary.over_limit",
+    "value": true,
+    "source_file": "expected.md",
+    "source_item": "6. ふるさと納税の上限（2027年度住民税の標準推定） / 8. 寄附額は推定上限を上回る"
+  },
+  {
+    "path": "assets.1002",
+    "value": 501560,
+    "source_file": "expected.md",
+    "source_item": "2. 帳簿と青色申告特別控除 / 普通預金の期末"
+  },
+  {
+    "path": "assets.1130",
+    "value": 203125,
+    "source_file": "expected.md",
+    "source_item": "2. 帳簿と青色申告特別控除 / PCの期末帳簿価額"
+  },
+  {
+    "path": "assets.1200",
+    "value": 3372440,
+    "source_file": "expected.md",
+    "source_item": "2. 帳簿と青色申告特別控除 / 事業主貸の期末"
+  },
+  {
+    "path": "bs.total_assets",
+    "value": 4077125,
+    "source_file": "expected.md",
+    "source_item": "2. 帳簿と青色申告特別控除 / 資産"
+  },
+  {
+    "path": "derived.liabilities_and_equity",
+    "value": 4077125,
+    "source_file": "expected.md",
+    "source_item": "2. 帳簿と青色申告特別控除 / 負債と純資産"
+  },
+  {
+    "path": "journals.total_count",
+    "value": 161,
+    "source_file": "transactions.csv",
+    "source_item": "原簿の件数 / 全取引161件（T001〜T161）"
+  },
+  {
+    "path": "sanity.error_count",
+    "value": 0,
+    "source_file": "expected.md",
+    "source_item": "7. 判定の区分 / サニティチェックのエラーなし"
+  },
+  {
+    "path": "sanity.warning_count",
+    "value": 0,
+    "source_file": "expected.md",
+    "source_item": "7. 判定の区分 / サニティチェックの警告なし"
+  },
+  {
+    "path": "income.calculation_mode",
+    "value": "filing",
+    "source_file": "expected.md",
+    "source_item": "7. 判定の区分 / 所得税の申告用モード"
+  },
+  {
+    "path": "derived.income_eligibility",
+    "value": [
+      "eligible"
+    ],
+    "source_file": "expected.md",
+    "source_item": "7. 判定の区分 / 所得税の控除の適格性（S04）"
+  },
+  {
+    "path": "consumption.calculation_mode",
+    "value": "filing",
+    "source_file": "expected.md",
+    "source_item": "7. 判定の区分 / 消費税の申告用モード"
+  },
+  {
+    "path": "derived.consumption_eligibility",
+    "value": [
+      "eligible"
+    ],
+    "source_file": "expected.md",
+    "source_item": "7. 判定の区分 / 消費税の適格性（S10）"
+  },
+  {
+    "path": "consumption.method_verified",
+    "value": true,
+    "source_file": "expected.md",
+    "source_item": "7. 判定の区分 / 消費税方式の保存と読戻し"
+  }
+]

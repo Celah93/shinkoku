@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Added
+- 架空の検証太郎・検証二郎の凍結原簿と独立した手計算の期待値をfixture化し、全262件の仕訳から申告用計算・住民税推定・ふるさと納税上限・年度DB照合付きsanity-checkまで通すCLI結合テストを追加した
+- 94項目の回帰照合に加え、税理士側の源泉20,420円の誤合算を検出するR6の負例と、棚卸明細の保存・決算仕訳の反映を区別するR7の検証を追加した
+
 ## [0.18.4] - 2026-09-15
 
 ### Fixed
