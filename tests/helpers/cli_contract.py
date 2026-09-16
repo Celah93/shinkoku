@@ -20,7 +20,7 @@ from shinkoku.cli import build_parser
 from shinkoku.config import ShinkokuConfig
 
 
-EXPECTED_LEAF_COMMAND_COUNT = 104
+EXPECTED_LEAF_COMMAND_COUNT = 108
 
 
 @dataclass(frozen=True)

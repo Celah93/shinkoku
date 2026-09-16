@@ -12,6 +12,7 @@ description: 年度末の決算整理と減価償却を行い、試算表・損�
 ## 必要な資料
 
 - 対象年度、記帳状態、期首残高を確かめるとき: [checks](references/workflow-checks.md)
+- 固定資産の基本情報・確認状態を台帳へ保存するとき: [fixed-assets](references/workflow-fixed-assets.md)
 - 減価償却・棚卸・未払等の決算整理候補を作るとき: [adjustments](references/workflow-adjustments.md)
 - 決算書の生成と貸借一致を検証するとき: [statements](references/workflow-statements.md)
 - 決算結果と進捗を保存するとき: [result](references/workflow-result.md)

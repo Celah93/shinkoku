@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from datetime import date
+from decimal import Decimal
+import re
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator, model_validator
@@ -410,6 +412,115 @@ SmallAssetTreatment = Literal[
     "small_asset_special",
     "normal_depreciation",
 ]
+
+
+class _FixedAssetFields(BaseModel):
+    """台帳の入力事実。省略・NULLと確認済みの0/falseを区別する。"""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    name: str | None = Field(default=None, min_length=1)
+    acquisition_date: str | None = None
+    acquisition_cost: int | None = Field(default=None, gt=0)
+    useful_life: int | None = Field(default=None, gt=0)
+    method: Literal["straight_line", "declining_balance"] | None = None
+    business_use_ratio: int | None = Field(default=None, ge=0, le=100)
+    memo: str | None = None
+    origin: Literal["acquired_this_year", "verified_opening"] | None = None
+    placed_in_service_date: str | None = None
+    asset_class: Literal["tangible", "intangible", "non_depreciable"] | None = None
+    asset_account_code: str | None = None
+    quantity: str | None = None
+    quantity_unit: str | None = Field(default=None, min_length=1)
+    treatment: SmallAssetTreatment | None = None
+    opening_accumulated_depreciation: int | None = Field(default=None, ge=0)
+    book_basis: Literal["full_cost_direct", "business_portion_direct", "indirect"] | None = None
+    prior_private_use: bool | None = None
+    additional_depreciation_applicable: bool | None = None
+    evidence_ref: str | None = None
+    basis_confirmed: bool | None = None
+    annual_facts_confirmed: bool | None = None
+
+    @field_validator("acquisition_date", "placed_in_service_date")
+    @classmethod
+    def validate_asset_date(cls, value: str | None) -> str | None:
+        if value is not None:
+            if re.fullmatch(r"\d{4}-\d{2}-\d{2}", value) is None:
+                raise ValueError("日付はYYYY-MM-DD形式で指定してください")
+            date.fromisoformat(value)
+        return value
+
+    @field_validator("name", "quantity_unit", "asset_account_code")
+    @classmethod
+    def reject_blank_asset_text(cls, value: str | None) -> str | None:
+        if value is not None and not value.strip():
+            raise ValueError("空白だけの値は指定できません")
+        return value
+
+    @field_validator("quantity")
+    @classmethod
+    def validate_asset_quantity(cls, value: str | None) -> str | None:
+        if value is not None and (
+            re.fullmatch(r"(?:0|[1-9]\d*)(?:\.\d+)?", value) is None or Decimal(value) <= 0
+        ):
+            raise ValueError("数量は正の10進文字列で指定してください")
+        return value
+
+    @model_validator(mode="after")
+    def validate_asset_facts(self) -> _FixedAssetFields:
+        if self.acquisition_date and self.placed_in_service_date:
+            if self.placed_in_service_date < self.acquisition_date:
+                raise ValueError("供用開始日は取得日以後である必要があります")
+        if self.acquisition_cost is not None and self.opening_accumulated_depreciation is not None:
+            if self.opening_accumulated_depreciation > self.acquisition_cost:
+                raise ValueError("期首の償却累計額は取得価額以下である必要があります")
+        return self
+
+
+class FixedAssetInput(_FixedAssetFields):
+    """固定資産の基本情報を登録する。取得・償却仕訳は作成しない。"""
+
+    name: str = Field(min_length=1)
+    acquisition_date: str
+    acquisition_cost: int = Field(gt=0)
+
+
+class FixedAssetUpdateInput(_FixedAssetFields):
+    """未確定台帳の部分更新。省略は維持し、明示したNULLは確認を取り消す。"""
+
+    @model_validator(mode="after")
+    def validate_asset_patch(self) -> FixedAssetUpdateInput:
+        if not self.model_fields_set:
+            raise ValueError("更新する項目を1つ以上指定してください")
+        for key in ("name", "acquisition_date", "acquisition_cost"):
+            if key in self.model_fields_set and getattr(self, key) is None:
+                raise ValueError(f"{key} はnullにできません")
+        return self
+
+
+class FixedAssetListInput(BaseModel):
+    """指定年度の一覧をIDまたはUIDで絞り込む。"""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    asset_id: int | None = Field(default=None, gt=0)
+    asset_uid: str | None = Field(default=None, min_length=1)
+
+    @model_validator(mode="after")
+    def select_one_identifier(self) -> FixedAssetListInput:
+        if self.asset_id is not None and self.asset_uid is not None:
+            raise ValueError("asset_id と asset_uid は同時に指定できません")
+        return self
+
+
+class FixedAssetDeleteInput(BaseModel):
+    """年度をCLIで指定して、台帳の誤登録行だけを削除する。"""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    asset_id: int = Field(gt=0)
+
+
 SmallAssetTreatmentStatus = Literal[
     "available",
     "ineligible",

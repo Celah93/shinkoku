@@ -18,6 +18,10 @@ from shinkoku.models import (
     FXLossCarryforwardInput,
     FXTradingInput,
     FiscalYearTaxProfileUpdate,
+    FixedAssetInput,
+    FixedAssetListInput,
+    FixedAssetUpdateInput,
+    FixedAssetDeleteInput,
     HousingLoanDetailInput,
     InsurancePolicyInput,
     InventoryInput,
@@ -34,6 +38,12 @@ from shinkoku.models import (
     StockLossCarryforwardInput,
     StockTradingAccountInput,
     WithholdingSlipInput,
+)
+from shinkoku.tools.fixed_assets import (
+    ledger_add_fixed_asset,
+    ledger_list_fixed_assets,
+    ledger_update_fixed_asset,
+    ledger_delete_fixed_asset,
 )
 from shinkoku.tools.ledger import (
     ledger_add_business_withholding,
@@ -683,6 +693,50 @@ def cmd_ob_delete(args: argparse.Namespace) -> None:
 # --- Professional Fee ---
 
 
+def cmd_fa_add(args: argparse.Namespace) -> None:
+    data = _load_json(args.input)
+    asset = FixedAssetInput(**data)
+    _output(ledger_add_fixed_asset(db_path=args.db_path, fiscal_year=args.fiscal_year, asset=asset))
+
+
+def cmd_fa_list(args: argparse.Namespace) -> None:
+    if args.input is not None:
+        data = _load_json(args.input)
+    else:
+        data = {}
+    filters = FixedAssetListInput(**data)
+    _output(
+        ledger_list_fixed_assets(
+            db_path=args.db_path, fiscal_year=args.fiscal_year, filters=filters
+        )
+    )
+
+
+def cmd_fa_update(args: argparse.Namespace) -> None:
+    data = _load_json(args.input)
+    update = FixedAssetUpdateInput(**data)
+    _output(
+        ledger_update_fixed_asset(
+            db_path=args.db_path,
+            fiscal_year=args.fiscal_year,
+            asset_id=args.asset_id,
+            update=update,
+        )
+    )
+
+
+def cmd_fa_delete(args: argparse.Namespace) -> None:
+    data = _load_json(args.input)
+    target = FixedAssetDeleteInput(**data)
+    _output(
+        ledger_delete_fixed_asset(
+            db_path=args.db_path,
+            fiscal_year=args.fiscal_year,
+            asset_id=target.asset_id,
+        )
+    )
+
+
 def cmd_pf_add(args: argparse.Namespace) -> None:
     data = _load_json(args.input)
     detail = ProfessionalFeeInput(**data)
@@ -905,6 +959,32 @@ def register(parent_subparsers: argparse._SubParsersAction) -> None:
     _add_db_arg(p)
     _add_fy_arg(p)
     p.set_defaults(func=cmd_init)
+
+    # --- fixed assets (CRUD only) ---
+    p = sub.add_parser("fa-add", help="固定資産の台帳登録（仕訳は作成しない）")
+    _add_db_arg(p)
+    _add_fy_arg(p)
+    _add_input_arg(p)
+    p.set_defaults(func=cmd_fa_add)
+
+    p = sub.add_parser("fa-list", help="固定資産台帳の一覧")
+    _add_db_arg(p)
+    _add_fy_arg(p)
+    p.add_argument("--input", help="絞り込み条件のJSONファイルパス")
+    p.set_defaults(func=cmd_fa_list)
+
+    p = sub.add_parser("fa-update", help="固定資産台帳の未確定情報の更新")
+    _add_db_arg(p)
+    _add_fy_arg(p)
+    p.add_argument("--asset-id", required=True, type=int, help="年度別の固定資産ID")
+    _add_input_arg(p)
+    p.set_defaults(func=cmd_fa_update)
+
+    p = sub.add_parser("fa-delete", help="固定資産台帳の誤登録行の削除（除却ではない）")
+    _add_db_arg(p)
+    _add_fy_arg(p)
+    _add_input_arg(p)
+    p.set_defaults(func=cmd_fa_delete)
 
     # --- fiscal year tax profile ---
     p = sub.add_parser("fiscal-year-show", help="年度別消費税プロファイル表示")

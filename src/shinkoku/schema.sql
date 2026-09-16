@@ -75,13 +75,34 @@ CREATE TABLE IF NOT EXISTS fixed_assets (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     acquisition_date TEXT NOT NULL,
-    acquisition_cost INTEGER NOT NULL,
-    useful_life INTEGER NOT NULL,
-    method TEXT NOT NULL DEFAULT 'straight_line' CHECK (method IN ('straight_line', 'declining_balance')),
-    business_use_ratio INTEGER NOT NULL DEFAULT 100 CHECK (business_use_ratio BETWEEN 1 AND 100),
-    accumulated_depreciation INTEGER NOT NULL DEFAULT 0,
+    acquisition_cost INTEGER NOT NULL CHECK (acquisition_cost > 0),
+    useful_life INTEGER CHECK (useful_life > 0),
+    method TEXT CHECK (method IN ('straight_line', 'declining_balance')),
+    business_use_ratio INTEGER CHECK (business_use_ratio BETWEEN 0 AND 100),
+    accumulated_depreciation INTEGER CHECK (accumulated_depreciation >= 0),
     fiscal_year INTEGER NOT NULL REFERENCES fiscal_years(year),
-    memo TEXT
+    memo TEXT,
+    asset_uid TEXT,
+    previous_asset_id INTEGER REFERENCES fixed_assets(id) ON DELETE RESTRICT,
+    origin TEXT CHECK (origin IN ('acquired_this_year', 'verified_opening', 'rollover')),
+    placed_in_service_date TEXT,
+    asset_class TEXT CHECK (asset_class IN ('tangible', 'intangible', 'non_depreciable')),
+    asset_account_code TEXT REFERENCES accounts(code),
+    quantity TEXT,
+    quantity_unit TEXT,
+    treatment TEXT CHECK (treatment IN (
+        'immediate_expense', 'pooled_depreciation', 'small_asset_special', 'normal_depreciation'
+    )),
+    opening_accumulated_depreciation INTEGER CHECK (opening_accumulated_depreciation >= 0),
+    basis_confirmed_at TEXT,
+    book_basis TEXT CHECK (book_basis IN (
+        'full_cost_direct', 'business_portion_direct', 'indirect'
+    )),
+    prior_private_use INTEGER CHECK (prior_private_use IN (0, 1)),
+    additional_depreciation_applicable INTEGER CHECK (additional_depreciation_applicable IN (0, 1)),
+    annual_facts_confirmed_at TEXT,
+    evidence_ref TEXT,
+    UNIQUE (asset_uid, fiscal_year)
 );
 
 -- 控除情報
