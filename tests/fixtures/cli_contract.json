@@ -3519,6 +3519,19 @@
     "tax calc-depreciation": {
       "arguments": [
         {
+          "action": "_StoreTrueAction",
+          "aliases": [
+            "--details"
+          ],
+          "choices": null,
+          "default": false,
+          "destination": "details",
+          "kind": "optional",
+          "nargs": 0,
+          "required": false,
+          "type": null
+        },
+        {
           "action": "_StoreAction",
           "aliases": [
             "--input"

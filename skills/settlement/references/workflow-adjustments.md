@@ -11,7 +11,7 @@
 固定資産（1100〜1160）に残高がある場合、減価償却費を計上する。
 
 諸元は[固定資産台帳の手順](workflow-fixed-assets.md)で保存・読戻しする。
-現在の台帳機能はCRUDだけで、以下の単発計算・償却仕訳登録とは別操作である。
+現在の台帳CLIはCRUDだけで、以下の単発・詳細計算と償却仕訳登録とは別操作である。
 台帳に登録しただけで当年末累計や翌年の残高が更新されたとは扱わない。
 
 **計算ツールの呼び出し:**
@@ -43,6 +43,45 @@ shinkoku tax calc-depreciation --input depreciation_input.json
   "months": 12
 }
 ```
+
+**詳細と年次の残高を確認する場合:**
+
+```bash
+shinkoku tax calc-depreciation --details --input depreciation_annual.json
+```
+
+```json
+{
+  "method": "straight_line",
+  "acquisition_cost": 250000,
+  "useful_life": 4,
+  "business_use_ratio": 100,
+  "annual_context": {
+    "fiscal_year": 2026,
+    "acquisition_date": "2026-04-01",
+    "placed_in_service_date": "2026-04-01",
+    "opening_accumulated_depreciation": 0,
+    "asset_class": "tangible",
+    "book_basis": "full_cost_direct",
+    "prior_private_use": false,
+    "additional_depreciation_applicable": false,
+    "basis_confirmed": true,
+    "annual_facts_confirmed": true
+  }
+}
+```
+
+これは確認済みの架空PCの例である。確認していない事実をtrue・false・0へ置き換えない。
+年次文脈は定額法・100％事業用・直接法の通常の有形資産（坑道を除く）だけを対象とする。
+`annual_facts_confirmed`は当年の使用状況と処分がないことの確認も含む。
+月数は供用日と年分から求める。`months`を明示した場合は計算した月数との不一致を拒否する。
+年次文脈があれば、確認済みの期首簿価に基づいて備忘価額1円を残す終端処理を行う。
+`ordinary_amount`と`expense_amount`、期首・期末簿価、制約の適用有無を確認する。
+
+`--details`だけで`annual_context`がない場合、従来の単発算式の内訳を返し、年末簿価はNULLにする。
+定率法の単発詳細は既存の一段階の切捨てを維持し、保証・改定を含む年次の計算には対応しない。
+少額資産の処理選択で`--details`を指定すると、従来の選択結果と候補ごとの計算内訳を分けて返す。
+いずれの計算もDBへ保存せず、仕訳や翌年度の台帳を自動登録しない。
 
 **仕訳の登録:**
 ```

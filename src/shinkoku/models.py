@@ -529,6 +529,65 @@ SmallAssetTreatmentStatus = Literal[
 ]
 
 
+class DepreciationAnnualContext(BaseModel):
+    """初版の年次計算に必要な確認済み事実。省略を不適用に変換しない。"""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    fiscal_year: int = Field(ge=1, le=9999)
+    acquisition_date: str
+    placed_in_service_date: str
+    opening_accumulated_depreciation: int = Field(ge=0)
+    asset_class: Literal["tangible"] = Field(description="坑道を除く通常の有形資産")
+    book_basis: Literal["full_cost_direct"]
+    prior_private_use: StrictBool
+    additional_depreciation_applicable: StrictBool
+    basis_confirmed: StrictBool
+    annual_facts_confirmed: StrictBool = Field(
+        description="当年の使用状況と処分がないことを確認済み"
+    )
+
+    @field_validator("acquisition_date", "placed_in_service_date")
+    @classmethod
+    def validate_annual_date(cls, value: str) -> str:
+        if re.fullmatch(r"\d{4}-\d{2}-\d{2}", value) is None:
+            raise ValueError("日付はYYYY-MM-DD形式で指定してください")
+        date.fromisoformat(value)
+        return value
+
+    @model_validator(mode="after")
+    def require_supported_facts(self) -> DepreciationAnnualContext:
+        if self.placed_in_service_date < self.acquisition_date:
+            raise ValueError("供用開始日は取得日以後である必要があります")
+        if self.prior_private_use or self.additional_depreciation_applicable:
+            raise ValueError("年次計算は私用からの転用・割増や特別償却には未対応です")
+        if not self.basis_confirmed or not self.annual_facts_confirmed:
+            raise ValueError("年次計算には基礎額と当年の使用状況の確認が必要です")
+        return self
+
+
+class DepreciationDetailResult(BaseModel):
+    """DBを変更しない償却計算の内訳。文脈がない残高はNULLにする。"""
+
+    method: str
+    treatment: SmallAssetTreatment
+    depreciation_basis: int
+    rate_numerator: int
+    rate_denominator: int
+    months: int
+    monthly_proration_applied: bool
+    business_use_ratio: int
+    unconstrained_ordinary_amount: int
+    ordinary_amount: int
+    expense_amount: int
+    annual_context_applied: bool
+    memo_value_constraint_applied: bool
+    capped_to_book_value: bool
+    memo_value: int | None
+    opening_book_value: int | None
+    closing_book_value: int | None
+
+
 class DepreciationCalculationInput(BaseModel):
     """既存の定額法・定率法を計算する入力。"""
 
@@ -546,9 +605,20 @@ class DepreciationCalculationInput(BaseModel):
     )
     useful_life: int = Field(gt=0, description="法定耐用年数")
     business_use_ratio: int = Field(default=100, ge=0, le=100)
-    months: int = Field(default=12, ge=1, le=12)
+    months: int = Field(default=12, ge=0, le=12)
     book_value: int | None = Field(default=None, gt=0)
     declining_rate: int | None = Field(default=None, gt=0)
+    annual_context: DepreciationAnnualContext | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def require_integer_annual_amounts(cls, values: object) -> object:
+        # 従来入力の受理範囲は保ち、新しい年次文脈では金額・割合・月数の暗黙変換をしない。
+        if isinstance(values, dict) and values.get("annual_context") is not None:
+            for key in ("acquisition_cost", "useful_life", "business_use_ratio", "months"):
+                if key in values and type(values[key]) is not int:
+                    raise ValueError(f"annual_contextを使う場合の{key}は整数で指定してください")
+        return values
 
     @model_validator(mode="after")
     def validate_method_parameters(self) -> DepreciationCalculationInput:
@@ -558,6 +628,8 @@ class DepreciationCalculationInput(BaseModel):
                 raise ValueError("定率法では book_value と declining_rate が必要です")
         elif self.book_value is not None or self.declining_rate is not None:
             raise ValueError("book_value と declining_rate は定率法でのみ指定できます")
+        if self.annual_context is None and self.months == 0:
+            raise ValueError("単発計算のmonthsは1以上で指定してください")
         return self
 
 
@@ -657,6 +729,13 @@ class SmallAssetTreatmentResult(BaseModel):
     special_cap_remaining: int | None = None
     special_cap_overage: int = 0
     warnings: list[str] = Field(default_factory=list)
+
+
+class SmallAssetTreatmentDetailsResult(BaseModel):
+    """従来の選択結果と、計算可能な候補の内訳を分けて返す。"""
+
+    selection: SmallAssetTreatmentResult
+    calculations: dict[SmallAssetTreatment, DepreciationDetailResult]
 
 
 class DependentInfo(BaseModel):

@@ -32,15 +32,15 @@ from shinkoku.tools.ledger import ledger_get_fiscal_year_tax_profile
 from shinkoku.tools.tax_calc import (
     calc_consumption_tax,
     calc_deductions,
-    calc_depreciation_declining_balance,
-    calc_depreciation_straight_line,
     calc_furusato_deduction_limit,
     calc_income_tax,
     calc_pension_deduction,
     calc_retirement_income,
     sanity_check_income_tax,
     select_small_asset_treatment,
+    select_small_asset_treatment_details,
 )
+from shinkoku.tools.depreciation import depreciation_details_from_input
 from shinkoku.tools.tax_eligibility import (
     check_blue_return_eligibility,
     check_invoice_special_eligibility,
@@ -178,37 +178,31 @@ def _handle_calc_depreciation(args: argparse.Namespace) -> None:
         raise ValueError(f"method は {valid_methods} のいずれかを指定してください")
 
     if method == "small_asset_treatment":
+        if "annual_context" in params:
+            raise ValueError("small_asset_treatmentのannual_contextによる年次計算は未対応です")
         small_asset_input = SmallAssetTreatmentInput(**params)
-        result = select_small_asset_treatment(small_asset_input)
+        result = (
+            select_small_asset_treatment_details(small_asset_input)
+            if args.details
+            else select_small_asset_treatment(small_asset_input)
+        )
         _output_json(result.model_dump(mode="json"))
         return
 
     calc_input = DepreciationCalculationInput(**params)
-    if calc_input.method == "declining_balance":
-        assert calc_input.book_value is not None
-        assert calc_input.declining_rate is not None
-        amount = calc_depreciation_declining_balance(
-            book_value=calc_input.book_value,
-            declining_rate=calc_input.declining_rate,
-            business_use_ratio=calc_input.business_use_ratio,
-            months=calc_input.months,
-        )
-    else:
-        amount = calc_depreciation_straight_line(
-            acquisition_cost=calc_input.acquisition_cost,
-            useful_life=calc_input.useful_life,
-            business_use_ratio=calc_input.business_use_ratio,
-            months=calc_input.months,
-        )
+    detail = depreciation_details_from_input(calc_input)
+    if args.details:
+        _output_json(detail.model_dump(mode="json"))
+        return
 
     _output_json(
         {
             "method": calc_input.method,
-            "depreciation_amount": amount,
+            "depreciation_amount": detail.expense_amount,
             "acquisition_cost": calc_input.acquisition_cost,
             "useful_life": calc_input.useful_life,
             "business_use_ratio": calc_input.business_use_ratio,
-            "months": calc_input.months,
+            "months": detail.months,
         }
     )
 
@@ -425,6 +419,10 @@ def register(parent_subparsers: argparse._SubParsersAction) -> None:
             p.add_argument("--db-path", help="年度別消費税プロファイルを照合するDBパス")
         elif name == "sanity-check":
             p.add_argument("--db-path", help="本人の事業源泉と税理士等への支払源泉を照合するDBパス")
+        elif name == "calc-depreciation":
+            p.add_argument(
+                "--details", action="store_true", help="償却費の詳細と確認済みの年次残高を表示する"
+            )
         p.set_defaults(func=_dispatch)
 
     parser.set_defaults(func=lambda args: parser.print_help() or sys.exit(1))

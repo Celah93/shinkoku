@@ -1,4 +1,4 @@
-"""固定資産台帳のCRUD。計算・仕訳・年度繰越は行わない。"""
+"""固定資産台帳のCRUDと読取り専用の詳細計算。仕訳・年度繰越は行わない。"""
 
 from __future__ import annotations
 
@@ -10,7 +10,15 @@ from typing import Iterator
 from uuid import uuid4
 
 from shinkoku.db import get_connection
-from shinkoku.models import FixedAssetInput, FixedAssetListInput, FixedAssetUpdateInput
+from shinkoku.models import (
+    FixedAssetInput,
+    FixedAssetListInput,
+    FixedAssetUpdateInput,
+    DepreciationAnnualContext,
+    DepreciationCalculationInput,
+    DepreciationDetailResult,
+)
+from shinkoku.tools.depreciation import depreciation_details_from_input
 
 
 _CONFIRMATIONS = {
@@ -215,3 +223,48 @@ def ledger_delete_fixed_asset(*, db_path: str, fiscal_year: int, asset_id: int) 
             "DELETE FROM fixed_assets WHERE id = ? AND fiscal_year = ?", (asset_id, fiscal_year)
         )
         return {"status": "ok", "deleted_id": asset_id}
+
+
+def ledger_calculate_fixed_asset_depreciation(
+    *,
+    db_path: str,
+    fiscal_year: int,
+    asset_id: int,
+) -> DepreciationDetailResult:
+    """台帳の確認済み事実を共通計算へ渡す。段階2の内部関数で、DBは変更しない。"""
+    with _asset_db(db_path, fiscal_year) as conn:
+        row = conn.execute(
+            "SELECT * FROM fixed_assets WHERE id = ? AND fiscal_year = ?",
+            (asset_id, fiscal_year),
+        ).fetchone()
+        if row is None:
+            raise ValueError(f"年度{fiscal_year}に固定資産ID {asset_id}はありません")
+        record = _record(row)
+    if record["missing_fields"]:
+        raise ValueError("台帳に未確認の項目があります: " + ", ".join(record["missing_fields"]))
+    if record["treatment"] != "normal_depreciation":
+        raise ValueError("年次計算は通常償却だけに対応しています")
+    # 通常の有形資産科目に限定する。土地・無形・一括償却等を同じ終端へ通さない。
+    if record["asset_account_code"] not in {"1100", "1101", "1110", "1120", "1130"}:
+        raise ValueError("この固定資産科目の年次計算は未対応です")
+    context = DepreciationAnnualContext(
+        fiscal_year=fiscal_year,
+        acquisition_date=record["acquisition_date"],
+        placed_in_service_date=record["placed_in_service_date"],
+        opening_accumulated_depreciation=record["opening_accumulated_depreciation"],
+        asset_class=record["asset_class"],
+        book_basis=record["book_basis"],
+        prior_private_use=record["prior_private_use"],
+        additional_depreciation_applicable=record["additional_depreciation_applicable"],
+        basis_confirmed=record["basis_confirmed_at"] is not None,
+        annual_facts_confirmed=record["annual_facts_confirmed_at"] is not None,
+    )
+    return depreciation_details_from_input(
+        DepreciationCalculationInput(
+            method=record["method"],
+            acquisition_cost=record["acquisition_cost"],
+            useful_life=record["useful_life"],
+            business_use_ratio=record["business_use_ratio"],
+            annual_context=context,
+        )
+    )
