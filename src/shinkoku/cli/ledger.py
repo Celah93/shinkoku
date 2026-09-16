@@ -22,6 +22,7 @@ from shinkoku.models import (
     FixedAssetListInput,
     FixedAssetUpdateInput,
     FixedAssetDeleteInput,
+    FixedAssetCalculationInput,
     HousingLoanDetailInput,
     InsurancePolicyInput,
     InventoryInput,
@@ -44,6 +45,7 @@ from shinkoku.tools.fixed_assets import (
     ledger_list_fixed_assets,
     ledger_update_fixed_asset,
     ledger_delete_fixed_asset,
+    ledger_preview_fixed_asset_depreciation,
 )
 from shinkoku.tools.ledger import (
     ledger_add_business_withholding,
@@ -690,7 +692,7 @@ def cmd_ob_delete(args: argparse.Namespace) -> None:
     )
 
 
-# --- Professional Fee ---
+# --- Fixed Assets ---
 
 
 def cmd_fa_add(args: argparse.Namespace) -> None:
@@ -735,6 +737,24 @@ def cmd_fa_delete(args: argparse.Namespace) -> None:
             asset_id=target.asset_id,
         )
     )
+
+
+def cmd_fa_depreciation(args: argparse.Namespace) -> None:
+    if args.input is not None:
+        data = _load_json(args.input)
+    else:
+        data = {}
+    selection = FixedAssetCalculationInput(**data)
+    _output(
+        ledger_preview_fixed_asset_depreciation(
+            db_path=args.db_path,
+            fiscal_year=args.fiscal_year,
+            selection=selection,
+        )
+    )
+
+
+# --- Professional Fee ---
 
 
 def cmd_pf_add(args: argparse.Namespace) -> None:
@@ -960,7 +980,7 @@ def register(parent_subparsers: argparse._SubParsersAction) -> None:
     _add_fy_arg(p)
     p.set_defaults(func=cmd_init)
 
-    # --- fixed assets (CRUD only) ---
+    # --- fixed assets ---
     p = sub.add_parser("fa-add", help="固定資産の台帳登録（仕訳は作成しない）")
     _add_db_arg(p)
     _add_fy_arg(p)
@@ -985,6 +1005,14 @@ def register(parent_subparsers: argparse._SubParsersAction) -> None:
     _add_fy_arg(p)
     _add_input_arg(p)
     p.set_defaults(func=cmd_fa_delete)
+
+    p = sub.add_parser(
+        "fa-depreciation", help="台帳から償却計算・転記項目・仕訳候補を取得（読取り専用）"
+    )
+    _add_db_arg(p)
+    _add_fy_arg(p)
+    p.add_argument("--input", help="対象asset_idsのJSONファイルパス（省略時は年度の全資産）")
+    p.set_defaults(func=cmd_fa_depreciation)
 
     # --- fiscal year tax profile ---
     p = sub.add_parser("fiscal-year-show", help="年度別消費税プロファイル表示")

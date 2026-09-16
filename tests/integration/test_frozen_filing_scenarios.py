@@ -286,6 +286,43 @@ def test_frozen_scenario_to_filing(tmp_path: Path, name: str, comparison_count: 
         assert before["total_expense"] == 1018000  # 仕入240,000＋その他経費778,000
     else:
         pc = evidence["pc"]
+        # 台帳の登録と候補の診断だけを追加する。仕訳は従来の凍結済み経路で登録する。
+        asset = cli.ledger(
+            "fa-add",
+            data={
+                "name": pc["name"],
+                "acquisition_date": pc["acquisition_date"],
+                "placed_in_service_date": pc["in_service_date"],
+                "acquisition_cost": pc["acquisition_cost"],
+                "useful_life": pc["useful_life"],
+                "method": pc["method"],
+                "business_use_ratio": pc["business_use_ratio"],
+                "quantity": "1",
+                "quantity_unit": "台",
+                "origin": "acquired_this_year",
+                "asset_class": "tangible",
+                "asset_account_code": "1130",
+                "treatment": "normal_depreciation",
+                "opening_accumulated_depreciation": 0,
+                "book_basis": "full_cost_direct",
+                "prior_private_use": False,
+                "additional_depreciation_applicable": False,
+                "basis_confirmed": True,
+                "annual_facts_confirmed": True,
+            },
+        )["asset"]
+        before_preview = _db_digest(cli.db_path)
+        preview = cli.ledger("fa-depreciation", data={"asset_ids": [asset["id"]]})
+        assert _db_digest(cli.db_path) == before_preview
+        assert preview["complete"] is True
+        assert preview["total_expense"] == preview["calculable_subtotal"] == 46875
+        candidate = preview["assets"][0]["journal_candidate"]
+        assert candidate["date"] == settlement[0]["date"]
+        assert candidate["source"] == "adjustment" and candidate["is_adjustment"] is True
+        fields = ("side", "account_code", "amount", "tax_category", "tax_amount")
+        assert [{key: line[key] for key in fields} for line in candidate["lines"]] == [
+            {key: line[key] for key in fields} for line in settlement[0]["lines"]
+        ]
         depreciation = cli.call(
             "tax",
             "calc-depreciation",

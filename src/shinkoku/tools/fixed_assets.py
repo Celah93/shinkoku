@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from datetime import datetime, timezone
 from pathlib import Path
 import sqlite3
@@ -17,6 +17,12 @@ from shinkoku.models import (
     DepreciationAnnualContext,
     DepreciationCalculationInput,
     DepreciationDetailResult,
+    FixedAssetCalculationInput,
+    FixedAssetDepreciationResult,
+    FixedAssetDepreciationRowResult,
+    FixedAssetStatementFields,
+    JournalEntry,
+    JournalLine,
 )
 from shinkoku.tools.depreciation import depreciation_details_from_input
 
@@ -88,7 +94,8 @@ def _record(row: sqlite3.Row) -> dict:
     result["legacy_values"] = {} if legacy is None else {"accumulated_depreciation": legacy}
     result["accumulated_depreciation"] = None
     result["state"] = "draft" if legacy is None else "legacy_unverified"
-    result["calculation_available"] = False
+    # コマンドの提供を示す。各行の計算可否はfa-depreciationの診断で判定する。
+    result["calculation_available"] = True
     result["missing_fields"] = [key for key in _REQUIRED_FACTS if result[key] is None]
     return result
 
@@ -230,9 +237,13 @@ def ledger_calculate_fixed_asset_depreciation(
     db_path: str,
     fiscal_year: int,
     asset_id: int,
+    _connection: sqlite3.Connection | None = None,
 ) -> DepreciationDetailResult:
     """台帳の確認済み事実を共通計算へ渡す。段階2の内部関数で、DBは変更しない。"""
-    with _asset_db(db_path, fiscal_year) as conn:
+    connection_scope = (
+        _asset_db(db_path, fiscal_year) if _connection is None else nullcontext(_connection)
+    )
+    with connection_scope as conn:
         row = conn.execute(
             "SELECT * FROM fixed_assets WHERE id = ? AND fiscal_year = ?",
             (asset_id, fiscal_year),
@@ -268,3 +279,133 @@ def ledger_calculate_fixed_asset_depreciation(
             annual_context=context,
         )
     )
+
+
+def _statement_fields(record: dict, detail: DepreciationDetailResult) -> FixedAssetStatementFields:
+    """段階2の検証済み結果を転記する。率・丸め・終端はここでは計算しない。"""
+    assert detail.closing_book_value is not None
+    return FixedAssetStatementFields(
+        name=record["name"],
+        quantity=record["quantity"],
+        quantity_unit=record["quantity_unit"],
+        acquisition_date=record["acquisition_date"],
+        placed_in_service_date=record["placed_in_service_date"],
+        acquisition_cost=record["acquisition_cost"],
+        treatment=record["treatment"],
+        method=detail.method,
+        useful_life=record["useful_life"],
+        depreciation_basis=detail.depreciation_basis,
+        rate_numerator=detail.rate_numerator,
+        rate_denominator=detail.rate_denominator,
+        months=detail.months,
+        ordinary_amount=detail.ordinary_amount,
+        # 段階2の内部関数が追加償却の不適用を検証した行だけに到達する。
+        additional_depreciation_amount=0,
+        total_depreciation_amount=detail.ordinary_amount,
+        business_use_ratio=detail.business_use_ratio,
+        expense_amount=detail.expense_amount,
+        closing_book_value=detail.closing_book_value,
+        memo=record["memo"],
+    )
+
+
+def ledger_preview_fixed_asset_depreciation(
+    *,
+    db_path: str,
+    fiscal_year: int,
+    selection: FixedAssetCalculationInput,
+) -> dict:
+    """同じ読取りスナップショットから診断と候補を返す。DBへ保存しない。"""
+    results: list[FixedAssetDepreciationRowResult] = []
+    with _asset_db(db_path, fiscal_year) as conn:
+        conn.execute("PRAGMA query_only = ON")
+        conn.execute("BEGIN")
+        rows = conn.execute(
+            "SELECT * FROM fixed_assets WHERE fiscal_year = ? ORDER BY id",
+            (fiscal_year,),
+        ).fetchall()
+        by_id = {row["id"]: row for row in rows}
+        asset_ids = list(by_id) if selection.asset_ids is None else selection.asset_ids
+        for asset_id in asset_ids:
+            row = by_id.get(asset_id)
+            if row is None:
+                results.append(
+                    FixedAssetDepreciationRowResult(
+                        asset_id=asset_id,
+                        calculation_status="blocked",
+                        error_code="FA_NOT_FOUND",
+                        blocking_reason=f"年度{fiscal_year}に固定資産ID {asset_id}はありません",
+                    )
+                )
+                continue
+            record = _record(row)
+            try:
+                detail = ledger_calculate_fixed_asset_depreciation(
+                    db_path=db_path,
+                    fiscal_year=fiscal_year,
+                    asset_id=asset_id,
+                    _connection=conn,
+                )
+            except ValueError as exc:
+                results.append(
+                    FixedAssetDepreciationRowResult(
+                        asset_id=asset_id,
+                        asset_uid=record["asset_uid"],
+                        name=record["name"],
+                        calculation_status="blocked",
+                        missing_fields=record["missing_fields"],
+                        error_code="FA_INPUT_UNCONFIRMED"
+                        if record["missing_fields"]
+                        else "FA_CALCULATION_BLOCKED",
+                        blocking_reason=str(exc),
+                    )
+                )
+                continue
+            candidate = None
+            if detail.expense_amount > 0:
+                candidate = JournalEntry(
+                    date=f"{fiscal_year}-12-31",
+                    description=f"{record['name']}の減価償却費",
+                    source="adjustment",
+                    is_adjustment=True,
+                    lines=[
+                        JournalLine(
+                            side="debit",
+                            account_code="5200",
+                            amount=detail.expense_amount,
+                            tax_category="out_of_scope",
+                            tax_amount=0,
+                        ),
+                        JournalLine(
+                            side="credit",
+                            account_code=record["asset_account_code"],
+                            amount=detail.expense_amount,
+                            tax_category="out_of_scope",
+                            tax_amount=0,
+                        ),
+                    ],
+                )
+            results.append(
+                FixedAssetDepreciationRowResult(
+                    asset_id=asset_id,
+                    asset_uid=record["asset_uid"],
+                    name=record["name"],
+                    calculation_status="ready" if candidate is not None else "no_depreciation",
+                    ordinary_amount=detail.ordinary_amount,
+                    expense_amount=detail.expense_amount,
+                    closing_book_value=detail.closing_book_value,
+                    calculation=detail,
+                    statement_fields=_statement_fields(record, detail),
+                    journal_candidate=candidate,
+                )
+            )
+    complete = all(row.calculation_status != "blocked" for row in results)
+    subtotal = sum(row.expense_amount for row in results if row.expense_amount is not None)
+    return FixedAssetDepreciationResult(
+        fiscal_year=fiscal_year,
+        assets=results,
+        count=len(results),
+        complete=complete,
+        total_expense=subtotal if complete else None,
+        calculable_subtotal=subtotal,
+    ).model_dump(mode="json")

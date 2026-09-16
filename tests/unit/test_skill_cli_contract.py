@@ -168,6 +168,15 @@ def test_all_ledger_input_commands_have_derived_validators() -> None:
     assert set(SKILL_JSON_INPUT_MODELS) == expected
 
 
+def test_fixed_asset_depreciation_example_is_present_and_derived() -> None:
+    from shinkoku.models import FixedAssetCalculationInput
+
+    scan = scan_skill_json_contract(REPOSITORY_ROOT)
+    command = ("ledger", "fa-depreciation")
+    assert command in {item.command_path for item in scan.examples}
+    assert SKILL_JSON_INPUT_MODELS[command] is FixedAssetCalculationInput
+
+
 def _parser_with_input_handler(handler: object) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     ledger = parser.add_subparsers().add_parser("ledger")

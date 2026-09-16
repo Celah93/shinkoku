@@ -49,7 +49,7 @@ def test_skill_crud_examples_execute_without_format_adjustments(tmp_path: Path) 
     examples = {
         example.command_path[1]: json.loads(example.text)
         for example in scan.examples
-        if example.command_path[1].startswith("fa-")
+        if example.command_path[1] in {"fa-add", "fa-list", "fa-update", "fa-delete"}
     }
     assert set(examples) == {"fa-add", "fa-list", "fa-update", "fa-delete"}
     _ledger(tmp_path, "init")

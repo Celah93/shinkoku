@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-09-16
+
+### Added
+- `ledger fa-depreciation`で年度の全資産または指定したasset_idsの計算結果・不足情報・決算書への転記項目・仕訳候補を取得できるようにした。段階2の共通計算を再利用し、DBへ保存しない
+- ready・no_depreciation・blockedを区別し、未確認の金額をNULLに保つ。全件計算できない場合は合計をNULLにし、計算できた行の小計を別に返す
+- 計算前後のDBの論理内容の一致、書込み禁止、太郎の候補と凍結済み決算仕訳の一致を検証し、既存49項目と仕訳登録経路を維持した
+
+### Changed
+- CLI契約を109コマンドへ更新し、settlementの候補取得JSON例を自動契約検査へ含めた。台帳CRUDのcalculation_availableはコマンド提供を示すtrueとなり、行の計算可否は新しい診断で返す
+
 ## [0.20.0] - 2026-09-16
 
 ### Added

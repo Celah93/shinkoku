@@ -521,6 +521,27 @@ class FixedAssetDeleteInput(BaseModel):
     asset_id: int = Field(gt=0)
 
 
+class FixedAssetCalculationInput(BaseModel):
+    """省略時は年度の全件を診断し、指定時は順序を保って対象を限定する。"""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    asset_ids: list[int] | None = Field(default=None, min_length=1)
+
+    @model_validator(mode="after")
+    def validate_selection(self) -> FixedAssetCalculationInput:
+        if self.asset_ids is None:
+            if "asset_ids" in self.model_fields_set:
+                raise ValueError(
+                    "asset_idsにnullは指定できません。全件の場合は項目を省略してください"
+                )
+        elif any(value <= 0 for value in self.asset_ids):
+            raise ValueError("asset_idsには正の整数を指定してください")
+        elif len(self.asset_ids) != len(set(self.asset_ids)):
+            raise ValueError("asset_idsに同じIDを重複して指定できません")
+        return self
+
+
 SmallAssetTreatmentStatus = Literal[
     "available",
     "ineligible",
@@ -586,6 +607,61 @@ class DepreciationDetailResult(BaseModel):
     memo_value: int | None
     opening_book_value: int | None
     closing_book_value: int | None
+
+
+class FixedAssetStatementFields(BaseModel):
+    """計算できた通常の有形資産について、決算書へ照合・転記する項目。"""
+
+    name: str
+    quantity: str
+    quantity_unit: str
+    acquisition_date: str
+    placed_in_service_date: str
+    acquisition_cost: int
+    treatment: SmallAssetTreatment
+    method: str
+    useful_life: int
+    depreciation_basis: int
+    rate_numerator: int
+    rate_denominator: int
+    months: int
+    ordinary_amount: int
+    additional_depreciation_amount: int
+    total_depreciation_amount: int
+    business_use_ratio: int
+    expense_amount: int
+    closing_book_value: int
+    memo: str | None
+
+
+class FixedAssetDepreciationRowResult(BaseModel):
+    """対象行の計算可否と、保存しない計算結果・仕訳候補。"""
+
+    asset_id: int
+    asset_uid: str | None = None
+    name: str | None = None
+    calculation_status: Literal["ready", "no_depreciation", "blocked"]
+    missing_fields: list[str] = Field(default_factory=list)
+    error_code: str | None = None
+    blocking_reason: str | None = None
+    ordinary_amount: int | None = None
+    expense_amount: int | None = None
+    closing_book_value: int | None = None
+    calculation: DepreciationDetailResult | None = None
+    statement_fields: FixedAssetStatementFields | None = None
+    journal_candidate: JournalEntry | None = None
+
+
+class FixedAssetDepreciationResult(BaseModel):
+    """選択した資産の全体額と、計算できた行だけの小計を分ける。"""
+
+    status: Literal["ok"] = "ok"
+    fiscal_year: int
+    assets: list[FixedAssetDepreciationRowResult]
+    count: int
+    complete: bool
+    total_expense: int | None
+    calculable_subtotal: int
 
 
 class DepreciationCalculationInput(BaseModel):

@@ -54,7 +54,7 @@ def test_crud_retains_types_uid_and_does_not_create_journals(asset_db: str) -> N
     assert first["asset_uid"] != second["asset_uid"]
     assert str(UUID(first["asset_uid"])) == first["asset_uid"]
     assert first["missing_fields"] == []
-    assert first["calculation_available"] is False
+    assert first["calculation_available"] is True
     assert first["accumulated_depreciation"] is None
     assert first["opening_accumulated_depreciation"] == 0
     assert first["prior_private_use"] is False

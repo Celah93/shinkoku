@@ -2,7 +2,7 @@
 
 作成日：2026-09-16。起点は `9a3aa44`（`codex/fix-setup-confirmation-roundtrip`）。初回案への承認と簡素化の指示を反映した。本書は段階1から順に実装する設計であり、将来のコマンドを実装済みとは扱わない。
 
-実装状況：0.19.0で段階1のモデル・移行・CRUDを、0.20.0で段階2の共通詳細計算・単発CLIの年次文脈・台帳の読取り専用内部計算を提供する。段階3以後は未実装である。
+実装状況：0.19.0で段階1のモデル・移行・CRUDを、0.20.0で段階2の共通詳細計算を、0.21.0で段階3の読取り専用CLI・転記項目・仕訳候補を提供する。段階4以後は未実装である。
 
 このforkの独自機能として設計する。fork元への還流やスキーマ互換性は前提にしない。このforkの既存DBは移行し、追加列は初期値を `NULL=未確認` とする。
 
@@ -94,6 +94,30 @@
 
 成功は`status: "ok"`を返す。追加・更新は`asset`、一覧は`fiscal_year`・`assets`・`count`、削除は`deleted_id`を持つ。各資産には基本情報、追加した確認情報、`missing_fields`、段階1で年次計算が未提供であることを示す状態を含める。
 
+段階3以後のCRUD出力の`calculation_available`はtrueで、計算コマンドの提供を示す能力フラグである。個々の資産の計算可能性は、このフラグではなく次の診断で確認する。
+
+### 段階3の読取り専用CLI
+
+`shinkoku ledger fa-depreciation --db-path DB --fiscal-year YEAR`は年度の全資産を診断する。任意の`--input selection.json`で対象の年度行IDを指定できる。
+
+```json
+{"asset_ids": [1]}
+```
+
+`FixedAssetCalculationInput`は省略または空のオブジェクトを全件として扱う。asset_idsの空配列・null・重複・正の整数以外の値・未知キーを拒否する。全件はID順、指定時は入力順に返す。指定IDが対象年度にない場合も行を省略せず、FA_NOT_FOUNDのblocked行にする。
+
+出力は`status`、`fiscal_year`、`assets`、`count`、`complete`、`total_expense`、`calculable_subtotal`を持つ。各行の状態はready・no_depreciation・blockedの3つだけとし、already_postedは段階4で追加する。
+
+- readyでは`calculation`に段階2の詳細、`statement_fields`に決算書用の項目、`journal_candidate`に年末の借方5200／貸方の資産科目を返す。sourceはadjustment、is_adjustmentはtrue、税区分はout_of_scopeである。
+- no_depreciationでは確認済みの額0と転記項目を返し、仕訳候補はNULLにする。0円のJournalLineは作らない。
+- blockedでは計算額・計算結果・転記項目・仕訳候補をNULLにし、`missing_fields`と`error_code`・`blocking_reason`を返す。不足情報はFA_INPUT_UNCONFIRMED、その他の段階2の拒否はFA_CALCULATION_BLOCKEDとする。
+
+1行でもblockedならcomplete=false・total_expense=nullにし、計算できた行の合計だけをcalculable_subtotalへ返す。診断の取得自体は成功なのでexit 0である。入力不正、DB未存在・未移行、年度未作成、DBの操作エラーは従来のエラーJSONとexit 1とする。資産0件では空のassets・count=0・complete=true・合計0となり、未確認行がある場合とは区別する。
+
+実装は`ledger_preview_fixed_asset_depreciation`から段階2の`ledger_calculate_fixed_asset_depreciation`を呼ぶ。後者へ共有の読み取り接続を渡し、同じスナップショットから入力事実と計算結果を取得する。query_onlyを有効にした通常の読取りトランザクションを使い、台帳・仕訳・確認状態・累計を保存しない。率・丸め・終端を再実装せず、転記項目は検証済みの結果を写す。
+
+blockedの条件は、段階2が必要とする事実や確認日時の不足、通常償却以外、対応外の資産科目・資産区分・計上方式、定率法、100％以外の割合、私用からの転用、追加償却の適用、旧定額法の取得時期、日付・年分・期首累計の不整合、指定IDの年度不一致・不存在である。readyは未計上の保証ではない。手動で償却済みでも同じ候補を返し得るので、登録前に既存仕訳と照合する。
+
 失敗は既存と同じstdoutのJSONとexit 1で返す。`status`と`message`を維持し、必要に応じて`code`・`asset_id`を付加する。列挙値のエラーには許容値を含める。存在しないDB・未移行のDBは勝手に作成・移行せず、初期化の操作を案内する。
 
 ### 入力例
@@ -166,9 +190,9 @@
 
 詳細には通常計算の額と制限後の普通償却費を分けて残す。制約を評価したことと、実際に額が減ったことも別の真偽値で返す。定率法の単発詳細は従来の一段階の切捨てを保持し、表示用の普通額に改めて割合を掛けて従来額を変えない。年次の定率法は保証・改定が未実装なので拒否する。
 
-段階2の台帳経由の計算は、読取り専用の内部関数として提供する。`fa-depreciation`のCLIや仕訳候補は段階3のため、ここでは追加しない。少額資産の詳細は各候補の適格性と計算内訳を返すが、年次文脈による一括償却等の継続計算は行わない。
+段階2の台帳経由の計算は、読取り専用の内部関数として提供し、段階3の`fa-depreciation`も同じ関数を使用する。少額資産の詳細は各候補の適格性と計算内訳を返すが、年次文脈による一括償却等の継続計算は行わない。
 
-実装は`tools/depreciation.py`の`calculate_depreciation_details`と`depreciation_months`を正本とする。台帳の入口は`ledger_calculate_fixed_asset_depreciation`で、通常の有形資産科目（1100・1101・1110・1120・1130）の確認済み記録を読む。台帳の`calculation_available`は年次CLI未提供を示すため、段階2では従来どおりfalseである。
+実装は`tools/depreciation.py`の`calculate_depreciation_details`と`depreciation_months`を正本とする。台帳の入口は`ledger_calculate_fixed_asset_depreciation`で、通常の有形資産科目（1100・1101・1110・1120・1130）の確認済み記録を読む。段階3の計算コマンド提供に合わせ、`calculation_available`はtrueとなる。
 
 通常の詳細出力は`ordinary_amount`、`expense_amount`、`depreciation_basis`、`rate_numerator`・`rate_denominator`、`months`、`unconstrained_ordinary_amount`、`memo_value_constraint_applied`、`capped_to_book_value`、`opening_book_value`・`closing_book_value`を含む。少額資産の`--details`は従来の結果を`selection`、計算可能な候補の内訳を`calculations`へ分ける。既存の`remaining_balance`は従来の候補値として維持し、確認済みの年次簿価へ昇格させない。
 
@@ -269,6 +293,8 @@ e-taxには次の一覧を加える。欄の構成は[国税庁・一般用決�
 繰越は年度飛ばし、前年未確定、翌年行の重複、既存行との衝突、後続年度がある場合の取消拒否、台帳繰越だけで期首残高を変えないことを確認する。revisionやダイジェスト、再送成功のテストは初版に追加しない。
 
 ### 太郎の結合テスト
+
+段階3では、PCのfa-addとfa-depreciationによる照合だけを既存の経路へ追加する。候補の日付・借貸・科目・金額・税区分を凍結済みの決算仕訳と比較し、46,875円で一致すること、候補取得でDBの論理内容が変わらないことを確認する。既存49項目と凍結済みの仕訳をjournal-batch-addで登録する経路は維持する。
 
 段階6で、[既存の結合テスト](../tests/integration/test_frozen_filing_scenarios.py)へ台帳を組み込む。日常仕訳160件を保持し、PCを台帳へ登録する。台帳保存だけではPL・BS・仕訳件数が変わらないことを確認する。
 

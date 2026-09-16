@@ -1,6 +1,6 @@
 # settlement: 固定資産台帳の登録と確認
 
-固定資産の基本情報、供用開始日、期首累計、確認状態を年度ごとに保存する。現在の台帳CLIはCRUDだけに対応し、台帳の年次計算CLI、償却仕訳の確定・取消、翌期繰越は未実装である。確認済みの事実は単発CLIの年次文脈へ渡して詳細計算できる。台帳を保存しても取得仕訳・償却仕訳・PL・BSは変わらない。
+固定資産の基本情報、供用開始日、期首累計、確認状態を年度ごとに保存し、読取り専用の年次計算で転記項目と仕訳候補を確認する。償却仕訳の確定・取消、翌期繰越は未実装である。台帳の保存や候補の取得だけでは、取得仕訳・償却仕訳・PL・BSは変わらない。
 
 既存DBの移行は `shinkoku ledger init --db-path DB_PATH --fiscal-year YEAR` の既存の初期化経路で行う。既存の帳簿を消したり、空のDBへ置き換えたりしない。旧台帳の値とIDを保ち、追加項目はNULLのままにする。登録や一覧コマンドはDBを勝手に新規作成・移行しない。
 
@@ -55,7 +55,37 @@ shinkoku ledger fa-list --db-path DB_PATH --fiscal-year YEAR --input asset-filte
 }
 ```
 
-返り値の`assets`、`count`、各資産の`missing_fields`と確認日時を確かめる。`state=legacy_unverified`の旧累計は`legacy_values.accumulated_depreciation`へ表示され、計算用の`accumulated_depreciation`はNULLになる。旧値を確認済みの当年末や期首額として流用しない。`calculation_available=false`は、現段階では台帳からの計算を提供していないことを示す。
+返り値の`assets`、`count`、各資産の`missing_fields`と確認日時を確かめる。`state=legacy_unverified`の旧累計は`legacy_values.accumulated_depreciation`へ表示され、計算用の`accumulated_depreciation`はNULLになる。旧値を確認済みの当年末や期首額として流用しない。`calculation_available=true`は計算コマンドの提供を示す能力フラグであり、この行を計算できるかは下記の`calculation_status`で確認する。
+
+## 年次の診断・転記項目・仕訳候補
+
+登録済みの年度行IDを指定して、計算結果と候補を取得する。`--input`を省略するか空のオブジェクトを渡すと、その年度の全資産を診断する。次の例は登録結果のIDが1の場合である。
+
+```bash
+shinkoku ledger fa-depreciation --db-path DB_PATH --fiscal-year YEAR --input depreciation-assets.json
+```
+
+```json
+{
+  "asset_ids": [1]
+}
+```
+
+`asset_ids`の空配列、null、重複、数値文字列は受け付けない。対象年度にないIDも行を省略せず、`blocked`として返す。年度自体が未作成、DBがない・未移行、入力形式が不正な場合はエラーとなる。
+
+各行について次を確認する。
+
+| calculation_status | 意味と確認事項 |
+|---|---|
+| `ready` | 段階2の共通関数で計算できた。`calculation`の内訳、`statement_fields`の転記項目、`journal_candidate`の候補を確認する |
+| `no_depreciation` | 供用前や償却済み等で当年額が確認済み0となる。転記項目は返すが、0円の仕訳候補は作らない |
+| `blocked` | 不足情報や対応範囲外等で計算できない。`missing_fields`、`error_code`、`blocking_reason`を確認する。計算額、転記項目、候補はNULLであり、0円とは異なる |
+
+全件計算できた場合だけ`complete=true`と`total_expense`を返す。1行でもblockedなら`complete=false`・`total_expense=null`となり、計算できた行だけの小計を`calculable_subtotal`に返す。この小計を年度の経費合計として転記しない。対象0件ではcount=0・合計0となるので、台帳の漏れがないかも確かめる。明示したIDだけを選んだ場合の合計は、年度の全資産の合計ではない。
+
+当面の計算範囲は、定額法・100％事業用・直接法の通常の有形資産である。確認日時・供用日・期首累計等が未確認、または転用・追加償却・対象外の方式等がある場合は止める。率・丸め・備忘価額は単発CLIと同じ共通関数で扱い、Skillで再計算しない。
+
+候補は年末日付の借方5200／貸方の資産科目で、sourceはadjustment、税区分はout_of_scopeである。候補取得はDBへ書き込まない。`ready`は未計上の保証ではなく、既存の償却仕訳との照合が必要である。実帳簿への登録は別操作としてユーザー確認を経る。同じ候補を取得し直しても登録済みを示す状態にはならない。
 
 ## 更新
 
@@ -90,6 +120,6 @@ shinkoku ledger fa-delete --db-path DB_PATH --fiscal-year YEAR --input asset-del
 
 ## 償却と帳簿への引継ぎ
 
-現段階では、読戻した確認済みの諸元を[決算整理の手順](workflow-adjustments.md)の単発計算へ渡し、結果を確認する。台帳への登録を、仕訳登録への承認と扱わない。実帳簿への償却仕訳は対象内容のユーザー確認を経て別途登録する。同じ内容が承認済みなら再承認を求めない。
+台帳がある場合は上記の候補取得を使う。単発計算で確認する場合は、読戻した確認済みの諸元を[決算整理の手順](workflow-adjustments.md)へ渡す。台帳の保存や候補取得を、仕訳登録への承認と扱わない。実帳簿への償却仕訳は対象内容のユーザー確認を経て別途登録する。同じ内容が承認済みなら再承認を求めない。
 
 単発計算の結果は台帳へ自動保存されず、翌年の累計・残高も自動では引き継がれない。計算結果、登録した仕訳、期末残高を照合して引継ぎ資料に残し、未実装の繰越まで完了したとは記録しない。
