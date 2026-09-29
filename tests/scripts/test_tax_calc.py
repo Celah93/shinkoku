@@ -1458,6 +1458,69 @@ def test_sanity_check_missing_keys(tmp_path: Path) -> None:
     assert output["status"] == "error"
 
 
+@pytest.mark.parametrize("include_fee_tax", [False, True])
+def test_sanity_check_cli_compares_personal_withholding_to_ledger(
+    tmp_path: Path, include_fee_tax: bool
+) -> None:
+    db = _initialize_tax_profile_db(tmp_path, fiscal_year=2026)
+    for command, payload in [
+        (
+            "bw-add",
+            {"client_name": "架空取引先", "gross_amount": 1320000, "withholding_tax": 134772},
+        ),
+        (
+            "pf-add",
+            {
+                "payer_name": "架空税理士",
+                "payer_address": "架空の支払先住所",
+                "fee_amount": 220000,
+                "expense_deduction": 220000,
+                "withheld_tax": 20420,
+            },
+        ),
+    ]:
+        path = _write_input(tmp_path, payload, command + ".json")
+        added = run_cli(
+            "ledger", command, "--db-path", str(db), "--fiscal-year", "2026", "--input", str(path)
+        )
+        assert added.returncode == 0, added.stdout
+    withholding = 155192 if include_fee_tax else 134772
+    path = _write_input(
+        tmp_path,
+        {
+            "input": {"fiscal_year": 2026, "business_withheld_tax": withholding},
+            "result": {"fiscal_year": 2026, "business_withheld_tax": withholding, "tax_due": 0},
+        },
+        "sanity.json",
+    )
+    before = db.read_bytes()
+
+    completed = run_cli("tax", "sanity-check", "--db-path", str(db), "--input", str(path))
+
+    assert completed.returncode == 0, completed.stdout
+    output = json.loads(completed.stdout)
+    assert output["passed"] is (not include_fee_tax)
+    assert output["error_count"] == int(include_fee_tax)
+    if include_fee_tax:
+        assert output["items"][0]["code"] == "PROFESSIONAL_FEE_WITHHOLDING_MIXED"
+    assert db.read_bytes() == before
+
+
+def test_sanity_check_cli_missing_db_does_not_initialize_it(tmp_path: Path) -> None:
+    db = tmp_path / "missing.db"
+    path = _write_input(
+        tmp_path,
+        {
+            "input": {"fiscal_year": 2026},
+            "result": {"fiscal_year": 2026, "tax_due": 0},
+        },
+    )
+    completed = run_cli("tax", "sanity-check", "--db-path", str(db), "--input", str(path))
+    assert completed.returncode == 1
+    assert json.loads(completed.stdout)["status"] == "error"
+    assert not db.exists()
+
+
 # ============================================================
 # Error handling
 # ============================================================

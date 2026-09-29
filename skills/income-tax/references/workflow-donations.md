@@ -10,16 +10,14 @@
 2. 未登録の場合は `shinkoku ledger don-add --db-path DB_PATH --fiscal-year YEAR --input donation.json` で登録する:
    ```json
    {
-     "fiscal_year": 2025,
-     "detail": {
-       "donation_type": "npo",
-       "recipient_name": "寄附先名",
-       "amount": 50000,
-       "date": "2025-06-01",
-       "receipt_number": null
-     }
+     "donation_type": "npo",
+     "recipient_name": "寄附先名",
+     "amount": 50000,
+     "date": "2025-06-01",
+     "receipt_number": null
    }
    ```
+   年分は `--fiscal-year` で指定する。JSONには `fiscal_year` や `detail` のラッパーを付けない。
    donation_type: political / npo / public_interest / specified / other
 3. 寄附金控除の計算:
    - 政治・認定NPO・公益社団法人等の3区分ごとに、年中の全額を所得控除か税額控除のどちらか一方へそろえる

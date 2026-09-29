@@ -1,0 +1,26 @@
+[
+  {
+    "date": "2026-12-31",
+    "description": "T161 PCの当年分の減価償却費を計上する（架空）",
+    "counterparty": "本人",
+    "source": "adjustment",
+    "source_file": "tests/fixtures/scenarios/taro/transactions.csv",
+    "is_adjustment": true,
+    "lines": [
+      {
+        "side": "debit",
+        "account_code": "5200",
+        "amount": 46875,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      },
+      {
+        "side": "credit",
+        "account_code": "1130",
+        "amount": 46875,
+        "tax_category": "out_of_scope",
+        "tax_amount": 0
+      }
+    ]
+  }
+]

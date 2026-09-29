@@ -1,0 +1,23 @@
+{
+  "blue_return": {
+    "blue_return_approved": true,
+    "eligible_business_income": true,
+    "bookkeeping": "double_entry",
+    "cash_basis_special": false,
+    "filing_within_deadline": true,
+    "required_statements_included": true,
+    "deduction_claim_recorded": true,
+    "etax_filing": true
+  },
+  "invoice_special": {
+    "domestic_individual": true,
+    "invoice_registration_effective": true,
+    "invoice_registration_date": "2026-01-01",
+    "base_period_taxable_sales": 2400000,
+    "specific_period_taxation_applies": false,
+    "inheritance_taxation_applies": false,
+    "asset_tax_exemption_restriction": false,
+    "other_tax_exemption_restriction": false,
+    "shortened_tax_period": false
+  }
+}

@@ -63,3 +63,26 @@ OCR 結果の整合性を検証するため、「所得控除の額の合計額�
 
 1. 複数の勤務先がある場合は各社分を取り込む
 2. 年末調整済みの控除を確認し、追加控除の有無を判定する
+
+### 確認済みの源泉徴収票をDBへ保存する
+
+確認した内容を `shinkoku ledger ws-save --db-path DB_PATH --fiscal-year YEAR --input salary.json` で保存し、`ws-list`で読戻す。
+以下は2026年分の架空の1枚の例であり、給与収入や控除・源泉税は実際に確認した票の値で置き換える。
+
+```json
+{
+  "payer_name": "架空勤務先",
+  "payment_amount": 6000000,
+  "withheld_tax": 107700,
+  "social_insurance": 900000,
+  "spouse_deduction": 380000,
+  "dependent_deduction": 380000,
+  "basic_deduction": 670000,
+  "housing_loan_deduction": 0
+}
+```
+
+`payer_name` は給与を支払った勤務先である。`pf-add`の同名フィールドとは対象が異なる。
+年分は `--fiscal-year` で指定し、`fiscal_year`・`detail`のラッパーは付けない。
+`payment_amount` は `calc-income` の `salary_income`、給与の `withheld_tax` は同じく `withheld_tax` へ渡す。
+給与の源泉を事業源泉へ混ぜず、年末調整済みの控除と追加控除を二重に加算しない。

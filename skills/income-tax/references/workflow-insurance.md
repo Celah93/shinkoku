@@ -27,14 +27,12 @@
 2. 未登録の場合は `shinkoku ledger si-add --db-path DB_PATH --fiscal-year YEAR --input insurance.json` で種別ごとに登録する:
    ```json
    {
-     "fiscal_year": 2025,
-     "detail": {
-       "insurance_type": "national_health",
-       "name": "保険者名",
-       "amount": 300000
-     }
+     "insurance_type": "national_health",
+     "name": "保険者名",
+     "amount": 300000
    }
    ```
+   年分は `--fiscal-year` で指定する。JSONには `fiscal_year` や `detail` のラッパーを付けない。
    insurance_type: national_health / national_pension / national_pension_fund / nursing_care / labor_insurance / other
 3. 合計額を `social_insurance` として控除計算に使用する
 
@@ -50,13 +48,11 @@
 2. 未登録の場合は `shinkoku ledger ip-add --db-path DB_PATH --fiscal-year YEAR --input policy.json` で登録する:
    ```json
    {
-     "fiscal_year": 2026,
-     "detail": {
-       "policy_type": "life_general_new",
-       "company_name": "保険会社名",
-       "premium": 80000
-     }
+     "policy_type": "life_general_new",
+     "company_name": "保険会社名",
+     "premium": 80000
    }
    ```
+   年分は `--fiscal-year` で指定する。JSONには `fiscal_year` や `detail` のラッパーを付けない。
    policy_type: life_general_new / life_general_old / life_medical_care / life_annuity_new / life_annuity_old / earthquake / old_long_term
 3. 生命保険料は `life_insurance_detail` パラメータに、地震保険料は `earthquake_insurance_premium` に反映する

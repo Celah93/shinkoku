@@ -1,0 +1,272 @@
+[
+  {
+    "path": "pl.total_revenue",
+    "value": 2640000,
+    "source_file": "expected.md",
+    "source_item": "所得の計算と繰越控除の順序 / 事業売上"
+  },
+  {
+    "path": "pl.total_expense",
+    "value": 918000,
+    "source_file": "expected.md",
+    "source_item": "所得の計算と繰越控除の順序 / 必要経費合計"
+  },
+  {
+    "path": "expenses.5001",
+    "value": 140000,
+    "source_file": "expected.md",
+    "source_item": "所得の計算と繰越控除の順序 / 売上原価"
+  },
+  {
+    "path": "derived.other_business_expenses",
+    "value": 778000,
+    "source_file": "expected.md",
+    "source_item": "所得の計算と繰越控除の順序 / その他の事業経費"
+  },
+  {
+    "path": "pl.net_income",
+    "value": 1722000,
+    "source_file": "expected.md",
+    "source_item": "所得の計算と繰越控除の順序 / 青色控除前の事業所得"
+  },
+  {
+    "path": "income.effective_blue_return_deduction",
+    "value": 650000,
+    "source_file": "expected.md",
+    "source_item": "所得の計算と繰越控除の順序 / 青色申告特別控除"
+  },
+  {
+    "path": "income.business_income",
+    "value": 1072000,
+    "source_file": "expected.md",
+    "source_item": "所得の計算と繰越控除の順序 / 事業所得"
+  },
+  {
+    "path": "income.salary_income_after_deduction",
+    "value": 4360000,
+    "source_file": "expected.md",
+    "source_item": "所得の計算と繰越控除の順序 / 給与所得"
+  },
+  {
+    "path": "income_input.misc_income",
+    "value": 390000,
+    "source_file": "expected.md",
+    "source_item": "所得の計算と繰越控除の順序 / 雑所得合計"
+  },
+  {
+    "path": "income.aggregate_income_before_loss_carryforward",
+    "value": 5822000,
+    "source_file": "expected.md",
+    "source_item": "所得の計算と繰越控除の順序 / 合計所得金額"
+  },
+  {
+    "path": "income.loss_carryforward_applied",
+    "value": 400000,
+    "source_file": "expected.md",
+    "source_item": "所得の計算と繰越控除の順序 / 2024年の繰越損失の適用"
+  },
+  {
+    "path": "income.total_income",
+    "value": 5422000,
+    "source_file": "expected.md",
+    "source_item": "所得の計算と繰越控除の順序 / 総所得金額等"
+  },
+  {
+    "path": "deductions.basic",
+    "value": 670000,
+    "source_file": "expected.md",
+    "source_item": "所得税・NPO寄附の選択・精算（税額控除を選択） / 基礎"
+  },
+  {
+    "path": "deductions.social_insurance",
+    "value": 900000,
+    "source_file": "expected.md",
+    "source_item": "所得税・NPO寄附の選択・精算（税額控除を選択） / 社会保険"
+  },
+  {
+    "path": "deductions.spouse",
+    "value": 380000,
+    "source_file": "expected.md",
+    "source_item": "所得税・NPO寄附の選択・精算（税額控除を選択） / 配偶者"
+  },
+  {
+    "path": "deductions.dependent",
+    "value": 380000,
+    "source_file": "expected.md",
+    "source_item": "所得税・NPO寄附の選択・精算（税額控除を選択） / 一般扶養"
+  },
+  {
+    "path": "income.total_income_deductions",
+    "value": 2330000,
+    "source_file": "expected.md",
+    "source_item": "所得税・NPO寄附の選択・精算（税額控除を選択） / 所得控除合計"
+  },
+  {
+    "path": "income.taxable_income",
+    "value": 3092000,
+    "source_file": "expected.md",
+    "source_item": "所得税・NPO寄附の選択・精算（税額控除を選択） / 課税所得"
+  },
+  {
+    "path": "income.income_tax_base",
+    "value": 211700,
+    "source_file": "expected.md",
+    "source_item": "所得税・NPO寄附の選択・精算（税額控除を選択） / 所得税の算出税額"
+  },
+  {
+    "path": "income.npo_donation_credit",
+    "value": 39200,
+    "source_file": "expected.md",
+    "source_item": "所得税・NPO寄附の選択・精算（税額控除を選択） / NPOの税額控除"
+  },
+  {
+    "path": "income.income_tax_after_credits",
+    "value": 172500,
+    "source_file": "expected.md",
+    "source_item": "所得税・NPO寄附の選択・精算（税額控除を選択） / 控除後所得税"
+  },
+  {
+    "path": "income.reconstruction_tax",
+    "value": 3622,
+    "source_file": "expected.md",
+    "source_item": "所得税・NPO寄附の選択・精算（税額控除を選択） / 復興特別所得税"
+  },
+  {
+    "path": "income.total_tax",
+    "value": 176122,
+    "source_file": "expected.md",
+    "source_item": "所得税・NPO寄附の選択・精算（税額控除を選択） / 合計税額"
+  },
+  {
+    "path": "income.withheld_tax",
+    "value": 107700,
+    "source_file": "expected.md",
+    "source_item": "所得税・NPO寄附の選択・精算（税額控除を選択） / 給与源泉"
+  },
+  {
+    "path": "income.business_withheld_tax",
+    "value": 134772,
+    "source_file": "expected.md",
+    "source_item": "所得税・NPO寄附の選択・精算（税額控除を選択） / 本人の事業源泉"
+  },
+  {
+    "path": "income_input.other_income_withheld_tax",
+    "value": 22462,
+    "source_file": "expected.md",
+    "source_item": "所得税・NPO寄附の選択・精算（税額控除を選択） / 原稿料源泉"
+  },
+  {
+    "path": "income.estimated_tax_payment",
+    "value": 120000,
+    "source_file": "expected.md",
+    "source_item": "所得税・NPO寄附の選択・精算（税額控除を選択） / 予定納税"
+  },
+  {
+    "path": "income.tax_due",
+    "value": -208812,
+    "source_file": "expected.md",
+    "source_item": "所得税・NPO寄附の選択・精算（税額控除を選択） / 精算額"
+  },
+  {
+    "path": "consumption.taxable_sales_total",
+    "value": 2860000,
+    "source_file": "expected.md",
+    "source_item": "消費税（簡易課税・第5種） / 課税売上"
+  },
+  {
+    "path": "consumption.taxable_base_10",
+    "value": 2600000,
+    "source_file": "expected.md",
+    "source_item": "消費税（簡易課税・第5種） / 1. 課税標準"
+  },
+  {
+    "path": "consumption.national_tax_on_sales",
+    "value": 202800,
+    "source_file": "expected.md",
+    "source_item": "消費税（簡易課税・第5種） / 2. 国税"
+  },
+  {
+    "path": "consumption.tax_on_purchases",
+    "value": 101400,
+    "source_file": "expected.md",
+    "source_item": "消費税（簡易課税・第5種） / 3. みなし仕入率50％による控除"
+  },
+  {
+    "path": "consumption.net_tax",
+    "value": 101400,
+    "source_file": "expected.md",
+    "source_item": "消費税（簡易課税・第5種） / 4. 差引国税"
+  },
+  {
+    "path": "consumption.local_tax_due",
+    "value": 28600,
+    "source_file": "expected.md",
+    "source_item": "消費税（簡易課税・第5種） / 5. 地方消費税"
+  },
+  {
+    "path": "consumption.total_due",
+    "value": 130000,
+    "source_file": "expected.md",
+    "source_item": "消費税（簡易課税・第5種） / 6. 合計納付額"
+  },
+  {
+    "path": "resident.resident_tax_deductions_total",
+    "value": 1990000,
+    "source_file": "expected.md",
+    "source_item": "住民税・ふるさと納税 / 所得控除"
+  },
+  {
+    "path": "resident.resident_taxable_income",
+    "value": 3432000,
+    "source_file": "expected.md",
+    "source_item": "住民税・ふるさと納税 / 課税所得"
+  },
+  {
+    "path": "resident.resident_tax_income_levy",
+    "value": 340700,
+    "source_file": "expected.md",
+    "source_item": "住民税・ふるさと納税 / 調整控除後所得割"
+  },
+  {
+    "path": "limit.estimated_limit",
+    "value": 87399,
+    "source_file": "expected.md",
+    "source_item": "住民税・ふるさと納税 / 推定上限（末尾のCLIを使わない整数演算による検算結果）"
+  },
+  {
+    "path": "assets.1002",
+    "value": 1787648,
+    "source_file": "expected.md",
+    "source_item": "帳簿の検算 / 普通預金の期末"
+  },
+  {
+    "path": "assets.1200",
+    "value": 354772,
+    "source_file": "expected.md",
+    "source_item": "帳簿の検算 / 事業主貸"
+  },
+  {
+    "path": "assets.1030",
+    "value": 100000,
+    "source_file": "expected.md",
+    "source_item": "帳簿の検算 / 棚卸資産"
+  },
+  {
+    "path": "liabilities.2050",
+    "value": 20420,
+    "source_file": "expected.md",
+    "source_item": "帳簿の検算 / 税理士報酬の預り源泉"
+  },
+  {
+    "path": "bs.total_assets",
+    "value": 2242420,
+    "source_file": "expected.md",
+    "source_item": "帳簿の検算 / 資産合計"
+  },
+  {
+    "path": "journals.total_count",
+    "value": 101,
+    "source_file": "expected.md",
+    "source_item": "帳簿の検算 / 事業仕訳の件数"
+  }
+]

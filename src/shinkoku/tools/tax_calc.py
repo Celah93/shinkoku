@@ -42,11 +42,15 @@ from shinkoku.models import (
     SmallAssetTreatmentInput,
     SmallAssetTreatmentOption,
     SmallAssetTreatmentResult,
+    SmallAssetTreatmentDetailsResult,
+    DepreciationDetailResult,
+    SmallAssetTreatment,
     TaxSanityCheckItem,
     TaxSanityCheckResult,
     TaxRateAmountBreakdown,
     TransitionalCreditBreakdown,
 )
+from shinkoku.tools.depreciation import calculate_depreciation_details
 from shinkoku.tax_constants import (
     DEPENDENT_AGE_ELDERLY,
     DEPENDENT_AGE_MIN,
@@ -132,6 +136,7 @@ from shinkoku.tax_constants import (
     SPECIAL_30PCT_RATE,
     SMALL_ASSET_INCOME_TAX_ORDER_138_EXCLUSIVE_MAX,
     SMALL_ASSET_POOLED_DEPRECIATION_EXCLUSIVE_MAX,
+    SMALL_ASSET_POOLED_DEPRECIATION_YEARS,
     SMALL_ASSET_SPECIAL_ANNUAL_CAP,
     SMALL_ASSET_SPECIAL_PERIODS,
     SMALL_ASSET_SPECIAL_TAX_MEASURES_ACT_28_2_EXCLUDED_BELOW,
@@ -1700,15 +1705,13 @@ def calc_depreciation_straight_line(
       必要経費算入額 = 普通償却費 × 事業専用割合              …1円未満切上げ
     端数切上げは確定申告書等作成コーナーの方針（FAQ scid1736）。
     """
-    if useful_life <= 0 or months <= 0:
-        return 0
-    # 率表をコードに重複保持せず、別表第八の定額法償却率を整数演算で求める。
-    # ceil(1000/n) と公式手引き掲載の2〜50年・49件との一致はテストで保証する。
-    rate_permille = -(-1000 // useful_life)
-    # 決算書の普通償却費欄と必要経費算入額欄へ整数円で転記するため、
-    # 最後にまとめて丸めず、各欄で1円未満を切り上げる。
-    ordinary = -(-(acquisition_cost * rate_permille * months) // (1000 * 12))
-    return -(-(ordinary * business_use_ratio) // 100)
+    return calculate_depreciation_details(
+        method="straight_line",
+        acquisition_cost=acquisition_cost,
+        useful_life=useful_life,
+        business_use_ratio=business_use_ratio,
+        months=months,
+    ).expense_amount
 
 
 def calc_depreciation_declining_balance(
@@ -1722,10 +1725,15 @@ def calc_depreciation_declining_balance(
     amount = book_value * (declining_rate/1000) * (business_use_ratio/100) * (months/12)
     declining_rate is expressed in per-mille (e.g., 500 means 0.500).
     """
-    if book_value <= 0 or months <= 0:
-        return 0
-    amount = book_value * declining_rate * business_use_ratio * months // (1000 * 100 * 12)
-    return amount
+    return calculate_depreciation_details(
+        method="declining_balance",
+        acquisition_cost=book_value,
+        useful_life=0,
+        book_value=book_value,
+        declining_rate=declining_rate,
+        business_use_ratio=business_use_ratio,
+        months=months,
+    ).expense_amount
 
 
 def _small_asset_option(
@@ -1805,38 +1813,16 @@ def _small_asset_cap_limit(input_data: SmallAssetTreatmentInput) -> tuple[int | 
     return SMALL_ASSET_SPECIAL_ANNUAL_CAP // 12 * months, []
 
 
-def _normal_depreciation_option(
-    input_data: SmallAssetTreatmentInput,
-) -> SmallAssetTreatmentOption:
-    """既存関数へ委譲して通常償却候補を作る。"""
-    if input_data.depreciation_method == "declining_balance":
-        assert input_data.book_value is not None
-        assert input_data.declining_rate is not None
-        amount = calc_depreciation_declining_balance(
-            book_value=input_data.book_value,
-            declining_rate=input_data.declining_rate,
-            business_use_ratio=input_data.business_use_ratio,
-            months=input_data.months,
-        )
-    else:
-        amount = calc_depreciation_straight_line(
-            acquisition_cost=input_data.acquisition_cost,
-            useful_life=input_data.useful_life,
-            business_use_ratio=input_data.business_use_ratio,
-            months=input_data.months,
-        )
-    return _small_asset_option(
-        "normal_depreciation",
-        "available",
-        legal_basis="所得税法49条・所得税法施行令120条以下",
-        current_year_expense=amount,
-        remaining_balance=max(0, input_data.acquisition_cost - amount),
-    )
-
-
 def select_small_asset_treatment(
     input_data: SmallAssetTreatmentInput,
 ) -> SmallAssetTreatmentResult:
+    """詳細計算から従来の選択結果だけを返す。"""
+    return select_small_asset_treatment_details(input_data).selection
+
+
+def select_small_asset_treatment_details(
+    input_data: SmallAssetTreatmentInput,
+) -> SmallAssetTreatmentDetailsResult:
     """取得価額と適格要件から少額資産の4処理候補を返す。
 
     措法28条の2は10万円未満を法律本文で除外する。法人税側には同じ下限が
@@ -1845,6 +1831,22 @@ def select_small_asset_treatment(
     acquisition_costは、税込経理なら税込額、税抜経理なら税抜額で
     確定した税法上の取得価額を受け取る。この関数は経理方式を変換しない。
     """
+    calculations: dict[SmallAssetTreatment, DepreciationDetailResult] = {}
+
+    def calculate(treatment: SmallAssetTreatment) -> int:
+        detail = calculate_depreciation_details(
+            method=input_data.depreciation_method,
+            acquisition_cost=input_data.acquisition_cost,
+            useful_life=input_data.useful_life,
+            business_use_ratio=input_data.business_use_ratio,
+            months=input_data.months,
+            book_value=input_data.book_value,
+            declining_rate=input_data.declining_rate,
+            treatment=treatment,
+        )
+        calculations[treatment] = detail
+        return detail.expense_amount
+
     period = get_small_asset_special_period(input_data.acquisition_date)
     excluded_lending = input_data.is_lending_use and not input_data.is_main_business_lending
     immediate_candidate = (
@@ -1880,7 +1882,7 @@ def select_small_asset_treatment(
             "immediate_expense",
             "available",
             legal_basis="所得税法施行令138条",
-            current_year_expense=input_data.acquisition_cost,
+            current_year_expense=calculate("immediate_expense"),
             remaining_balance=0,
         )
 
@@ -1916,14 +1918,14 @@ def select_small_asset_treatment(
         )
     else:
         # 決算書の必要経費算入額は1円未満切上げ。月割りはしない。
-        amount = -(-input_data.acquisition_cost // 3)
+        amount = calculate("pooled_depreciation")
         pooled = _small_asset_option(
             "pooled_depreciation",
             "available",
             legal_basis="所得税法施行令139条",
             current_year_expense=amount,
             remaining_balance=max(0, input_data.acquisition_cost - amount),
-            calculation_years=3,
+            calculation_years=SMALL_ASSET_POOLED_DEPRECIATION_YEARS,
             monthly_proration_applied=False,
             continues_after_disposal=True,
         )
@@ -2073,11 +2075,18 @@ def select_small_asset_treatment(
             "small_asset_special",
             "available",
             legal_basis="租税特別措置法28条の2第1項",
-            current_year_expense=input_data.acquisition_cost,
+            current_year_expense=calculate("small_asset_special"),
             remaining_balance=0,
         )
 
-    normal = _normal_depreciation_option(input_data)
+    normal_amount = calculate("normal_depreciation")
+    normal = _small_asset_option(
+        "normal_depreciation",
+        "available",
+        legal_basis="所得税法49条・所得税法施行令120条以下",
+        current_year_expense=normal_amount,
+        remaining_balance=max(0, input_data.acquisition_cost - normal_amount),
+    )
     options = [immediate, pooled, special, normal]
     warnings = list(dict.fromkeys(warning for option in options for warning in option.warnings))
 
@@ -2111,7 +2120,7 @@ def select_small_asset_treatment(
     else:
         cap_remaining_after = cap_remaining_before
 
-    return SmallAssetTreatmentResult(
+    selection = SmallAssetTreatmentResult(
         status=status,
         options=options,
         selected_treatment=selected_treatment,
@@ -2128,6 +2137,7 @@ def select_small_asset_treatment(
         special_cap_overage=cap_overage,
         warnings=warnings,
     )
+    return SmallAssetTreatmentDetailsResult(selection=selection, calculations=calculations)
 
 
 # ============================================================
@@ -3192,13 +3202,72 @@ def calc_retirement_income(input_data: RetirementIncomeInput) -> RetirementIncom
 # ============================================================
 
 
+def _check_business_withholding_against_ledger(
+    input_data: IncomeTaxInput,
+    result: IncomeTaxResult,
+    db_path: str,
+) -> TaxSanityCheckItem | None:
+    """本人の源泉と支払先の源泉を年度DBで照合する。税額の自動修正はしない。"""
+    from pathlib import Path
+
+    from shinkoku.db import get_connection
+
+    if not Path(db_path).is_file():
+        raise FileNotFoundError(f"照合対象のDBがありません: {db_path}")
+    conn = get_connection(db_path)
+    try:
+        # 一つのSELECTで同じ時点・同じ年度の合計を読む。初期化や移行はしない。
+        row = conn.execute(
+            "SELECT "
+            "(SELECT COALESCE(SUM(withholding_tax), 0) FROM business_withholding "
+            " WHERE fiscal_year = ?), "
+            "(SELECT COALESCE(SUM(withheld_tax), 0) FROM professional_fees "
+            " WHERE fiscal_year = ?) "
+            "FROM fiscal_years WHERE year = ?",
+            (input_data.fiscal_year, input_data.fiscal_year, input_data.fiscal_year),
+        ).fetchone()
+        if row is None:
+            raise ValueError(f"照合対象の会計年度がありません: {input_data.fiscal_year}")
+        personal_tax, paid_fee_tax = row
+    finally:
+        conn.close()
+    amounts = (input_data.business_withheld_tax, result.business_withheld_tax)
+    if all(amount == personal_tax for amount in amounts):
+        return None
+    suspected_mixing = paid_fee_tax > 0 and personal_tax + paid_fee_tax in amounts
+    return TaxSanityCheckItem(
+        severity="error",
+        code=(
+            "PROFESSIONAL_FEE_WITHHOLDING_MIXED"
+            if suspected_mixing
+            else "BUSINESS_WITHHOLDING_LEDGER_MISMATCH"
+        ),
+        message=(
+            f"本人の事業源泉がDBの事業源泉合計（{personal_tax:,}円）と一致しません"
+            f"（入力{amounts[0]:,}円、結果{amounts[1]:,}円）。"
+            + (
+                f"差額が税理士等への支払源泉合計（{paid_fee_tax:,}円）と一致し、"
+                "支払先の税額を本人分へ合算した疑いがあります。"
+                if suspected_mixing
+                else ""
+            )
+            + "税理士等への支払源泉は本人の源泉徴収税額・還付に含めません。"
+            "DBの登録漏れも含めて明細の網羅性と帰属を確認し、入力を確定して再計算してください。"
+        ),
+    )
+
+
 def sanity_check_income_tax(
     input_data: IncomeTaxInput,
     result: IncomeTaxResult,
+    *,
+    db_path: str | None = None,
 ) -> TaxSanityCheckResult:
     """所得税計算結果のサニティチェック。
 
     入力と出力の整合性を検証し、明らかな異常を検出する。
+    db_pathがある場合は本人の事業源泉も年度DBと照合する。DBの完全性や
+    税の帰属そのものの証明ではないため、差異を自動修正せず確認を促す。
     """
     require_supported_tax_year(input_data.fiscal_year, "income_tax")
     require_supported_tax_year(result.fiscal_year, "income_tax")
@@ -3424,6 +3493,11 @@ def sanity_check_income_tax(
                 f"源泉徴収+予定納税の合計（{total_prepaid:,}円）を超過しています",
             )
         )
+
+    if db_path is not None:
+        withholding_issue = _check_business_withholding_against_ledger(input_data, result, db_path)
+        if withholding_issue is not None:
+            items.append(withholding_issue)
 
     error_count = sum(1 for item in items if item.severity == "error")
     warning_count = sum(1 for item in items if item.severity == "warning")

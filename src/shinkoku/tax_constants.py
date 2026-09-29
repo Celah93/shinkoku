@@ -320,6 +320,12 @@ def get_income_tax_constants(fiscal_year: int) -> IncomeTaxYearConstants:
 
 
 # ============================================================
+# 減価償却の年次終端（国税庁No.2106・概要／限度額）
+# https://www.nta.go.jp/taxes/shiraberu/taxanswer/shotoku/2106.htm
+# 坑道を除く通常の有形資産だけに使い、無形資産や一括償却へ流用しない。
+DEPRECIATION_MODERN_ACQUISITION_START: Final[date] = date(2007, 4, 1)
+DEPRECIATION_TANGIBLE_MEMO_VALUE: Final[int] = 1
+
 # 少額減価償却資産（措法28条の2・所令138条・139条）
 # ============================================================
 
@@ -329,6 +335,7 @@ SMALL_ASSET_INCOME_TAX_ORDER_138_EXCLUSIVE_MAX: Final[int] = 100_000
 # 所令138条と根拠が別なので、現行値が同じでも定数を共有しない。
 SMALL_ASSET_SPECIAL_TAX_MEASURES_ACT_28_2_EXCLUDED_BELOW: Final[int] = 100_000
 SMALL_ASSET_POOLED_DEPRECIATION_EXCLUSIVE_MAX: Final[int] = 200_000
+SMALL_ASSET_POOLED_DEPRECIATION_YEARS: Final[int] = 3
 SMALL_ASSET_SPECIAL_ANNUAL_CAP: Final[int] = 3_000_000
 
 

@@ -1,0 +1,12 @@
+{
+  "blue_return": {
+    "blue_return_approved": true,
+    "eligible_business_income": true,
+    "bookkeeping": "double_entry",
+    "cash_basis_special": false,
+    "filing_within_deadline": true,
+    "required_statements_included": true,
+    "deduction_claim_recorded": true,
+    "etax_filing": true
+  }
+}

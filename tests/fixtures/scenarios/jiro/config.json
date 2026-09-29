@@ -1,0 +1,32 @@
+{
+  "tax_year": 2026,
+  "has_business_income": true,
+  "taxpayer": {
+    "last_name": "検証",
+    "first_name": "二郎",
+    "date_of_birth": "1982-05-10"
+  },
+  "address": {
+    "prefecture": "東京都",
+    "city": "杉並区",
+    "street": "検証用架空町0-2"
+  },
+  "filing": {
+    "submission_method": "e-tax",
+    "return_type": "blue",
+    "blue_return_deduction": 650000
+  },
+  "family": {
+    "has_spouse": true,
+    "has_dependents": true,
+    "dependent_count": 1
+  },
+  "housing_loan": {
+    "applicable": false,
+    "first_year": null
+  },
+  "estimated_tax": {
+    "applicable": true,
+    "amount": 120000
+  }
+}

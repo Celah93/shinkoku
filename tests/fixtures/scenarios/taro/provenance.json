@@ -1,0 +1,45 @@
+{
+  "source_directory": "playground/scenario",
+  "source_frozen_at_utc": "2026-09-14T04:10:00.748725+00:00",
+  "source_sha256": {
+    "eligibility-facts.json": "7ba5b13f9a52de5d4e25173a66b1ab70c0d137e7d3508ee5ccc139a16077793a",
+    "evidence.json": "267ce081e7dcccd2f8e8b1819f63c6f058b7747183c6b6ecd54118b77f3f0883",
+    "expected-values.json": "98a99fd1f3d3dfc6b41999580bdf38cda1a401dc87325b6cce23dc31b0a532f0",
+    "expected.md": "cef69837dfbc4921e3ae44b9538726d58660be1a8fceb381b0cc7ebd4df2ec98",
+    "journal-entries.json": "38ec1b07b7bfbbb92c7e4923fa1f8bfeeb0926fae475c5f0ae69ba78952f5162",
+    "journal-lines.csv": "3497d81937653b74e20d6483e152ebe428d83c0d514d1fa226e6f788e6505a21",
+    "monthly.csv": "307af5b7af891eaa4564f63243d02d98e991c59693da6d67ab642475a75617f7",
+    "persona.md": "41a7fa8c62ee2842ccab446a0b15df7d2f9fe6ad7a5c09f6669a75e1ca522a9f",
+    "settlement-entries.json": "38555190d232dd5c98b6eb35db4861679efde79031be3fb712c42c5abb9a0991",
+    "transactions.csv": "95e2c6a14597264597453de03e57aaa8e220159813f6efadb3b0aecaa29efb9b",
+    "transactions.md": "b05e9938abbd40f82ccda34839517985a58cd115683ad064c37b95b73515310a"
+  },
+  "copied_files": [
+    "persona.md",
+    "expected.md",
+    "evidence.json",
+    "eligibility-facts.json",
+    "journal-entries.json",
+    "settlement-entries.json",
+    "transactions.csv"
+  ],
+  "normalizations": [
+    {
+      "file": "journal-entries.json",
+      "source_enum_and_portable_source_file": 160,
+      "taxable_to_taxable_10": 61
+    },
+    {
+      "file": "settlement-entries.json",
+      "source_enum_and_portable_source_file": 1,
+      "taxable_to_taxable_10": 0
+    }
+  ],
+  "config_source": "persona.md / 人物と申告方法・個人の支払と控除",
+  "daily_journal_count": 160,
+  "settlement_journal_count": 1,
+  "monthly_sales": 400000,
+  "duplicate_pairs": 12,
+  "consumption_method": "special_20pct",
+  "simplified_business_type": null
+}

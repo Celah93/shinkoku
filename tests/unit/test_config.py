@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
+import yaml
+from pydantic import ValidationError
 
 from shinkoku.config import (
     AddressConfig,
@@ -13,6 +18,141 @@ from shinkoku.config import (
     determine_blue_return_deduction,
     load_config,
 )
+from shinkoku.tools.profile import get_taxpayer_profile
+
+
+CONFIRMATION_FIELDS = {
+    "family": ("has_spouse", "has_dependents", "dependent_count"),
+    "housing_loan": ("applicable", "first_year"),
+    "estimated_tax": ("applicable", "amount"),
+}
+
+
+def _confirmation_values(config: ShinkokuConfig) -> dict:
+    values = config.model_dump()
+    return {section: values[section] for section in CONFIRMATION_FIELDS}
+
+
+@pytest.mark.parametrize("section_value", ["omitted", None, {}, "null_fields"])
+def test_unconfirmed_setup_sections_roundtrip(tmp_path: Path, section_value: object) -> None:
+    data: dict = {"tax_year": 2026, "db_path": str(tmp_path / "not-opened.db")}
+    for section, fields in CONFIRMATION_FIELDS.items():
+        if section_value == "null_fields":
+            data[section] = dict.fromkeys(fields)
+        elif section_value != "omitted":
+            data[section] = section_value
+    path = tmp_path / "unconfirmed.yaml"
+    path.write_text(yaml.safe_dump(data), encoding="utf-8")
+    original_bytes = path.read_bytes()
+    expected = {section: dict.fromkeys(fields) for section, fields in CONFIRMATION_FIELDS.items()}
+
+    config = load_config(str(path))
+    profile = get_taxpayer_profile(config_path=str(path))
+
+    assert _confirmation_values(config) == expected
+    assert {section: profile[section] for section in CONFIRMATION_FIELDS} == expected
+    saved = tmp_path / "saved.yaml"
+    saved.write_text(yaml.safe_dump(config.model_dump()), encoding="utf-8")
+    assert _confirmation_values(load_config(str(saved))) == expected
+    assert path.read_bytes() == original_bytes
+    assert not (tmp_path / "not-opened.db").exists()
+
+
+@pytest.mark.parametrize(
+    "sections",
+    [
+        {
+            "family": {"has_spouse": False, "has_dependents": False, "dependent_count": 0},
+            "housing_loan": {"applicable": False, "first_year": False},
+            "estimated_tax": {"applicable": False, "amount": 0},
+        },
+        {
+            "family": {"has_spouse": True, "has_dependents": True, "dependent_count": 2},
+            "housing_loan": {"applicable": True, "first_year": False},
+            "estimated_tax": {"applicable": True, "amount": 120000},
+        },
+        {
+            "family": {"has_spouse": None, "has_dependents": False, "dependent_count": None},
+            "housing_loan": {"applicable": True, "first_year": None},
+            "estimated_tax": {"applicable": None, "amount": 0},
+        },
+    ],
+)
+def test_setup_values_keep_none_false_and_zero_through_profile(
+    tmp_path: Path, sections: dict
+) -> None:
+    path = tmp_path / "confirmed.yaml"
+    path.write_text(yaml.safe_dump({"tax_year": 2026, **sections}), encoding="utf-8")
+    original_bytes = path.read_bytes()
+    config = load_config(str(path))
+    saved = tmp_path / "saved.yaml"
+    saved.write_text(yaml.safe_dump(config.model_dump()), encoding="utf-8")
+
+    profile = json.loads(json.dumps(get_taxpayer_profile(config_path=str(saved))))
+
+    assert _confirmation_values(config) == sections
+    for section, expected in sections.items():
+        assert profile[section] == expected
+        for field, value in expected.items():
+            # PythonではFalse == 0のため、値だけでなくJSON往復後の型も検証する。
+            assert type(profile[section][field]) is type(value)
+    assert path.read_bytes() == original_bytes
+
+
+def test_partial_setup_sections_do_not_infer_missing_values(tmp_path: Path) -> None:
+    path = tmp_path / "partial-confirmation.yaml"
+    path.write_text(
+        "family:\n  has_dependents: false\nhousing_loan:\n  applicable: false\n"
+        "estimated_tax:\n  applicable: false\n",
+        encoding="utf-8",
+    )
+
+    profile = get_taxpayer_profile(config_path=str(path))
+
+    assert profile["family"] == {
+        "has_spouse": None,
+        "has_dependents": False,
+        "dependent_count": None,
+    }
+    assert profile["housing_loan"] == {"applicable": False, "first_year": None}
+    assert profile["estimated_tax"] == {"applicable": False, "amount": None}
+
+
+@pytest.mark.parametrize(
+    ("section", "field", "value"),
+    [
+        ("family", "has_spouse", 0),
+        ("family", "has_dependents", "false"),
+        ("housing_loan", "applicable", 0),
+        ("housing_loan", "first_year", "false"),
+        ("estimated_tax", "applicable", 0),
+        ("family", "dependent_count", False),
+        ("family", "dependent_count", -1),
+        ("estimated_tax", "amount", False),
+        ("estimated_tax", "amount", "0"),
+        ("estimated_tax", "amount", -1),
+    ],
+)
+def test_setup_confirmation_types_are_not_coerced(
+    tmp_path: Path, section: str, field: str, value: object
+) -> None:
+    path = tmp_path / "invalid.yaml"
+    path.write_text(yaml.safe_dump({section: {field: value}}), encoding="utf-8")
+
+    with pytest.raises(ValidationError):
+        load_config(str(path))
+
+
+def test_example_config_keeps_setup_sections_unconfirmed(tmp_path: Path) -> None:
+    template = Path(__file__).resolve().parents[2] / "shinkoku.config.example.yaml"
+    path = tmp_path / "example.yaml"
+    path.write_text(template.read_text(encoding="utf-8"), encoding="utf-8")
+
+    profile = get_taxpayer_profile(config_path=str(path))
+
+    assert {section: profile[section] for section in CONFIRMATION_FIELDS} == {
+        section: dict.fromkeys(fields) for section, fields in CONFIRMATION_FIELDS.items()
+    }
 
 
 @pytest.fixture

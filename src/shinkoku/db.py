@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import sqlite3
 from pathlib import Path
 
@@ -21,15 +22,23 @@ def init_db(db_path: str) -> sqlite3.Connection:
     """Initialize the database: create file, apply schema, return connection."""
     Path(db_path).parent.mkdir(parents=True, exist_ok=True)
     conn = get_connection(db_path)
-    schema_sql = SCHEMA_PATH.read_text(encoding="utf-8")
-    conn.executescript(schema_sql)
-    _migrate(conn)
-    conn.commit()
-    return conn
+    try:
+        schema_sql = SCHEMA_PATH.read_text(encoding="utf-8")
+        conn.executescript(schema_sql)
+        # 後続の移行で中断しても、固定資産だけが確定しないよう通常のトランザクションを張る。
+        conn.execute("BEGIN")
+        _migrate(conn)
+        conn.commit()
+        return conn
+    except BaseException:
+        conn.rollback()
+        conn.close()
+        raise
 
 
 def _migrate(conn: sqlite3.Connection) -> None:
     """既存DBに新しいカラム・テーブルを追加するマイグレーション。"""
+    _migrate_fixed_assets(conn)
     # fiscal_years: 年度別の消費税プロファイル
     fy_cols = {row[1] for row in conn.execute("PRAGMA table_info(fiscal_years)").fetchall()}
     if "taxpayer_status" not in fy_cols:
@@ -78,6 +87,77 @@ def _migrate(conn: sqlite3.Connection) -> None:
     ):
         if column not in hl_cols:
             conn.execute(f"ALTER TABLE housing_loan_details ADD COLUMN {column} {sql_type}")
+
+
+def _migrate_fixed_assets(conn: sqlite3.Connection) -> None:
+    """旧台帳の全値・ID・採番上限を保ち、追加の事実をNULLのまま移行する。"""
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(fixed_assets)")}
+    if "asset_uid" in columns:
+        return
+    legacy_columns = (
+        "id",
+        "name",
+        "acquisition_date",
+        "acquisition_cost",
+        "useful_life",
+        "method",
+        "business_use_ratio",
+        "accumulated_depreciation",
+        "fiscal_year",
+        "memo",
+    )
+    if columns != set(legacy_columns):
+        raise ValueError("固定資産台帳の旧スキーマを識別できません。既存DBは置き換えません")
+
+    # 新規DBと移行後DBの定義を二重に持たず、schema.sqlの同じCREATE文を使う。
+    match = re.search(
+        r"CREATE TABLE IF NOT EXISTS fixed_assets \([\s\S]+?\n\);",
+        SCHEMA_PATH.read_text(encoding="utf-8"),
+    )
+    if match is None:
+        raise ValueError("schema.sqlに固定資産台帳の定義がありません")
+    definition = (
+        match.group()
+        .replace("CREATE TABLE IF NOT EXISTS", "CREATE TABLE")
+        .replace("fixed_assets", "fixed_assets_migration")
+    )
+    conn.execute("SAVEPOINT migrate_fixed_assets")
+    try:
+        schema_objects = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE tbl_name = 'fixed_assets' "
+            "AND type IN ('index', 'trigger') AND sql IS NOT NULL"
+        ).fetchall()
+        sequence = conn.execute(
+            "SELECT seq FROM sqlite_sequence WHERE name = 'fixed_assets'"
+        ).fetchone()
+        conn.execute(definition)
+        names = ", ".join(legacy_columns)
+        conn.execute(
+            f"INSERT INTO fixed_assets_migration ({names}) SELECT {names} FROM fixed_assets"
+        )
+        differences = conn.execute(
+            f"SELECT {names} FROM fixed_assets EXCEPT SELECT {names} FROM fixed_assets_migration"
+        ).fetchall()
+        old_count = conn.execute("SELECT COUNT(*) FROM fixed_assets").fetchone()[0]
+        new_count = conn.execute("SELECT COUNT(*) FROM fixed_assets_migration").fetchone()[0]
+        if differences or old_count != new_count:
+            raise ValueError("固定資産台帳の移行前後で値が一致しません")
+        conn.execute("DROP TABLE fixed_assets")
+        conn.execute("ALTER TABLE fixed_assets_migration RENAME TO fixed_assets")
+        if sequence is not None:
+            conn.execute(
+                "UPDATE sqlite_sequence SET seq = MAX(seq, ?) WHERE name = 'fixed_assets'",
+                (sequence[0],),
+            )
+        for row in schema_objects:
+            conn.execute(row[0])
+        if conn.execute("PRAGMA foreign_key_check(fixed_assets)").fetchall():
+            raise ValueError("固定資産台帳の外部キーに不整合があります")
+    except BaseException:
+        conn.execute("ROLLBACK TO SAVEPOINT migrate_fixed_assets")
+        conn.execute("RELEASE SAVEPOINT migrate_fixed_assets")
+        raise
+    conn.execute("RELEASE SAVEPOINT migrate_fixed_assets")
 
 
 def _rebuild_housing_loan_details(conn: sqlite3.Connection) -> None:

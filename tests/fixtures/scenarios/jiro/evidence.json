@@ -1,0 +1,108 @@
+{
+  "opening_balances": [
+    {
+      "account_code": "1002",
+      "amount": 500000
+    },
+    {
+      "account_code": "3001",
+      "amount": 500000
+    }
+  ],
+  "salary_slip": {
+    "payer_name": "架空勤務先",
+    "payment_amount": 6000000,
+    "withheld_tax": 107700,
+    "social_insurance": 900000,
+    "spouse_deduction": 380000,
+    "dependent_deduction": 380000,
+    "basic_deduction": 670000,
+    "housing_loan_deduction": 0
+  },
+  "salary_slip_extra": {
+    "salary_income_after_deduction": 4360000,
+    "income_deductions_total": 2330000,
+    "year_end_adjusted": true
+  },
+  "business_withholding": {
+    "client_name": "架空デザイン法人A2",
+    "gross_amount": 1320000,
+    "withholding_tax": 134772
+  },
+  "professional_fee": {
+    "payer_address": "東京都杉並区検証用架空税理士町0-3",
+    "payer_name": "架空税理士",
+    "fee_amount": 220000,
+    "expense_deduction": 0,
+    "withheld_tax": 20420
+  },
+  "loss": {
+    "loss_year": 2024,
+    "amount": 400000
+  },
+  "npo_donation": {
+    "donation_type": "npo",
+    "recipient_name": "架空認定NPO法人",
+    "amount": 100000,
+    "date": "2026-06-10",
+    "receipt_number": "TEST2-NPO-001"
+  },
+  "other_income": {
+    "income_type": "miscellaneous",
+    "description": "継続する原稿の執筆報酬",
+    "revenue": 220000,
+    "expenses": 20000,
+    "withheld_tax": 22462,
+    "payer_name": "架空出版社"
+  },
+  "crypto": {
+    "exchange_name": "架空交換所",
+    "gains": 200000,
+    "expenses": 10000
+  },
+  "inventory": [
+    {
+      "period": "beginning",
+      "amount": 0,
+      "method": "cost",
+      "details": "期首仕掛品なし"
+    },
+    {
+      "period": "ending",
+      "amount": 100000,
+      "method": "cost",
+      "details": "未完成Web案件1件の個別原価"
+    }
+  ],
+  "spouse": {
+    "name": "検証 花",
+    "date_of_birth": "1983-06-15",
+    "income": 480000,
+    "disability": null,
+    "cohabiting": true,
+    "other_taxpayer_dependent": false
+  },
+  "dependent": {
+    "name": "検証 葵",
+    "relationship": "子",
+    "date_of_birth": "2009-03-10",
+    "income": 0,
+    "disability": null,
+    "cohabiting": true,
+    "other_taxpayer_dependent": false
+  },
+  "estimated_tax": {
+    "first_period": 60000,
+    "second_period": 60000,
+    "total": 120000
+  },
+  "consumption": {
+    "taxable_sales_business": 2640000,
+    "taxable_sales_manuscript": 220000,
+    "method": "simplified",
+    "business_type": 5,
+    "base_period_sales": 4400000,
+    "interim_national": 0,
+    "interim_local": 0
+  }
+}

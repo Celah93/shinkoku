@@ -3,16 +3,24 @@
 from __future__ import annotations
 
 import argparse
+import ast
+import inspect
 import json
 import re
 import shlex
+import textwrap
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Any
 
+from pydantic import BaseModel, TypeAdapter, ValidationError
 
-EXPECTED_LEAF_COMMAND_COUNT = 104
+from shinkoku.cli import build_parser
+from shinkoku.config import ShinkokuConfig
+
+
+EXPECTED_LEAF_COMMAND_COUNT = 109
 
 
 @dataclass(frozen=True)
@@ -72,6 +80,28 @@ class SkillContractScan:
     violations: tuple[ContractViolation, ...]
     exclusions: tuple[CommandExclusion, ...]
     exceptions: tuple[NonCommandException, ...]
+
+
+JsonInputValidator = type[BaseModel] | TypeAdapter
+
+
+@dataclass(frozen=True)
+class SkillJsonExample:
+    """直前の入力コマンドと対応する、同じ節内のJSON例。"""
+
+    path: str
+    line: int
+    command: SkillCommand
+    command_path: tuple[str, ...]
+    text: str
+
+
+@dataclass(frozen=True)
+class SkillJsonContractScan:
+    """対象コマンドのJSON例と、構文・入力モデルの違反。"""
+
+    examples: tuple[SkillJsonExample, ...]
+    violations: tuple[ContractViolation, ...]
 
 
 # fenced block内の案内文2件と、コマンド名だけを示す説明1件。
@@ -184,6 +214,76 @@ def iter_leaf_parsers(
     return tuple(sorted(leaves, key=lambda item: item[0]))
 
 
+def derive_ledger_json_input_models(
+    parser: argparse.ArgumentParser,
+) -> dict[tuple[str, ...], JsonInputValidator]:
+    """全ledger入力をhandlerのASTから導出する。未対応の構造は除外せず停止する。
+
+    _load_json(args.input)の代入先からModel(**data)、又は
+    [Model(**item) for item in data]へ渡す現行構造を認識する。
+    handlerは実行せず、DBも開かない。
+    """
+    validators: dict[tuple[str, ...], JsonInputValidator] = {}
+    for path, leaf in iter_leaf_parsers(parser):
+        if path[0] != "ledger" or not any("--input" in a.option_strings for a in leaf._actions):
+            continue
+        handler = leaf.get_default("func")
+        try:
+            tree = ast.parse(textwrap.dedent(inspect.getsource(handler)))
+        except (OSError, TypeError, SyntaxError) as exc:
+            raise ValueError(f"{' '.join(path)}: 入力モデルを導出できません") from exc
+        loads = {
+            target.id
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Assign)
+            and isinstance(node.value, ast.Call)
+            and isinstance(node.value.func, ast.Name)
+            and node.value.func.id == "_load_json"
+            and len(node.value.args) == 1
+            and isinstance(node.value.args[0], ast.Attribute)
+            and node.value.args[0].attr == "input"
+            for target in node.targets
+            if isinstance(target, ast.Name)
+        }
+        candidates: list[JsonInputValidator] = []
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Name):
+                continue
+            model = handler.__globals__.get(node.func.id)
+            if not isinstance(model, type) or not issubclass(model, BaseModel):
+                continue
+            if node.args or len(node.keywords) != 1 or node.keywords[0].arg is not None:
+                continue
+            data = node.keywords[0].value
+            if not isinstance(data, ast.Name):
+                continue
+            if data.id in loads:
+                candidates.append(model)
+                continue
+            for parent in ast.walk(tree):
+                if not isinstance(parent, ast.ListComp) or parent.elt is not node:
+                    continue
+                if len(parent.generators) != 1:
+                    continue
+                generator = parent.generators[0]
+                if (
+                    isinstance(generator.target, ast.Name)
+                    and generator.target.id == data.id
+                    and isinstance(generator.iter, ast.Name)
+                    and generator.iter.id in loads
+                    and not generator.ifs
+                    and not generator.is_async
+                ):
+                    candidates.append(TypeAdapter(list[model]))
+        if len(loads) != 1 or len(candidates) != 1:
+            raise ValueError(f"{' '.join(path)}: 入力モデル又はJSONの形を一意に導出できません")
+        validators[path] = candidates[0]
+    return validators
+
+
+SKILL_JSON_INPUT_MODELS = derive_ledger_json_input_models(build_parser())
+
+
 def _normalize_action(action: argparse.Action) -> dict[str, object]:
     aliases = list(action.option_strings)
     return {
@@ -216,10 +316,16 @@ def _normalized_arguments(parser: argparse.ArgumentParser) -> list[dict[str, obj
 
 
 def snapshot_parser_contract(parser: argparse.ArgumentParser) -> dict[str, object]:
-    """parserからJSONへ保存できるCLI契約を生成する。"""
+    """parserの契約と、profileで公開する確認状態の出力スキーマを生成する。"""
     commands = {
         " ".join(path): {"arguments": _normalized_arguments(leaf)}
         for path, leaf in iter_leaf_parsers(parser)
+    }
+    # profileの追加出力は任意のサンプル値ではなく、設定モデルの型から固定する。
+    config = ShinkokuConfig()
+    commands["profile"]["output_sections"] = {
+        section: type(getattr(config, section)).model_json_schema()["properties"]
+        for section in ("family", "housing_loan", "estimated_tax")
     }
     return {
         "commands": commands,
@@ -294,6 +400,101 @@ def extract_markdown_commands(markdown: str, path: str) -> tuple[SkillCommand, .
                 commands.append(SkillCommand(path=path, line=line_number, text=invocation))
 
     return tuple(commands)
+
+
+def extract_markdown_json_examples(markdown: str, path: str) -> tuple[SkillJsonExample, ...]:
+    """既存の抽出結果から直前のCLIを選び、見出しをまたがずJSON例を対応付ける。
+
+    本文のインラインコマンドとfenced shellの両方を扱う。コマンド名とJSONの
+    フィールド名からの推測はせず、対象外コマンドや新しい節で関連付けを切る。
+    """
+    commands = extract_markdown_commands(markdown, path)
+    examples: list[SkillJsonExample] = []
+    section_line = 0
+    fence: str | None = None
+    language = ""
+    start_line = 0
+    body: list[str] = []
+    for line_number, line in enumerate(markdown.splitlines(), 1):
+        marker = _FENCE_PATTERN.match(line)
+        if marker:
+            if fence is None:
+                fence = marker.group(1)
+                language = line[marker.end() :].strip().lower()
+                start_line = line_number
+                body = []
+            elif marker.group(1) == fence:
+                if language == "json":
+                    preceding = [c for c in commands if section_line <= c.line < start_line]
+                    if preceding:
+                        command = preceding[-1]
+                        tokens = shlex.split(command.text)
+                        command_path = tuple(tokens[1:3])
+                        options = {token.split("=", 1)[0] for token in tokens[3:]}
+                        if command_path in SKILL_JSON_INPUT_MODELS and "--input" in options:
+                            examples.append(
+                                SkillJsonExample(
+                                    path=path,
+                                    line=start_line + 1,
+                                    command=command,
+                                    command_path=command_path,
+                                    text="\n".join(body),
+                                )
+                            )
+                fence = None
+            continue
+        if fence is not None:
+            body.append(line)
+        elif re.match(r"^\s{0,3}#{1,6}\s", line):
+            section_line = line_number
+    return tuple(examples)
+
+
+def scan_skill_json_contract(repository_root: Path) -> SkillJsonContractScan:
+    """skills配下を再帰走査し、JSON本文をCLIと同じ入力モデルで厳密に検証する。"""
+    examples: list[SkillJsonExample] = []
+    violations: list[ContractViolation] = []
+    for markdown_path in sorted((repository_root / "skills").rglob("*.md")):
+        relative_path = markdown_path.relative_to(repository_root).as_posix()
+        examples.extend(
+            extract_markdown_json_examples(markdown_path.read_text(encoding="utf-8"), relative_path)
+        )
+    for example in examples:
+        model = SKILL_JSON_INPUT_MODELS[example.command_path]
+        try:
+            data = json.loads(example.text)
+        except json.JSONDecodeError as exc:
+            kind, detail = "invalid_json", str(exc)
+        else:
+            try:
+                if isinstance(model, TypeAdapter):
+                    records = model.validate_python(data, strict=True)
+                    objects = data
+                else:
+                    records = [model.model_validate(data, strict=True)]
+                    objects = [data]
+                # strict=Trueだけではextra=ignoreのモデルが未知のキーを捨てる。
+                # 全項目が任意の年度パッチでも、文書のラッパー誤りを見逃さない。
+                for raw, record in zip(objects, records, strict=True):
+                    fields = set(type(record).model_fields)
+                    fields.update(type(record).model_json_schema()["properties"])
+                    unknown = set(raw) - fields
+                    if unknown:
+                        raise ValueError(f"入力モデルにないキー: {', '.join(sorted(unknown))}")
+            except (ValidationError, ValueError) as exc:
+                kind, detail = "invalid_json_input", str(exc)
+            else:
+                continue
+        violations.append(
+            ContractViolation(
+                path=example.path,
+                line=example.line,
+                command=example.command.text,
+                kind=kind,
+                detail=detail,
+            )
+        )
+    return SkillJsonContractScan(tuple(examples), tuple(violations))
 
 
 def _command_contracts(

@@ -68,17 +68,15 @@ uv run shinkoku tax calc-pension --input pension_input.json
 2. 未登録の収入がある場合は `shinkoku ledger oi-add --db-path DB_PATH --fiscal-year YEAR --input other_income.json` で登録する:
    ```json
    {
-     "fiscal_year": 2025,
-     "detail": {
-       "income_type": "miscellaneous",
-       "description": "収入の内容",
-       "revenue": 500000,
-       "expenses": 50000,
-       "withheld_tax": 51050,
-       "payer_name": "支払者名"
-     }
+     "income_type": "miscellaneous",
+     "description": "収入の内容",
+     "revenue": 500000,
+     "expenses": 50000,
+     "withheld_tax": 51050,
+     "payer_name": "支払者名"
    }
    ```
+   年分は `--fiscal-year` で指定する。JSONには `fiscal_year` や `detail` のラッパーを付けない。
 3. 雑所得 = 収入 - 経費（特別控除なし）
 
 ### 仮想通貨（暗号資産）
@@ -89,14 +87,12 @@ uv run shinkoku tax calc-pension --input pension_input.json
 2. 未登録の場合は `shinkoku ledger ci-add --db-path DB_PATH --fiscal-year YEAR --input crypto.json` で取引所別に登録する:
    ```json
    {
-     "fiscal_year": 2025,
-     "detail": {
-       "exchange_name": "取引所名",
-       "gains": 300000,
-       "expenses": 10000
-     }
+     "exchange_name": "取引所名",
+     "gains": 300000,
+     "expenses": 10000
    }
    ```
+   年分は `--fiscal-year` で指定する。JSONには `fiscal_year` や `detail` のラッパーを付けない。
 3. 合計を雑所得として total_income に加算する
 
 ### 配当所得（総合課税選択分）

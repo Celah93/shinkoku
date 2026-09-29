@@ -12,15 +12,13 @@
 2. 未登録の医療費がある場合は `shinkoku ledger me-add --db-path DB_PATH --fiscal-year YEAR --input medical.json` で登録する:
    ```json
    {
-     "fiscal_year": 2025,
-     "detail": {
-       "date": "2025-03-15",
-       "patient_name": "山田太郎",
-       "medical_institution": "ABC病院",
-       "amount": 150000,
-       "insurance_reimbursement": 0,
-       "description": null
-     }
+     "date": "2025-03-15",
+     "patient_name": "山田太郎",
+     "medical_institution": "ABC病院",
+     "amount": 150000,
+     "insurance_reimbursement": 0,
+     "description": null
    }
    ```
+   年分は `--fiscal-year` で指定する。JSONには `fiscal_year` や `detail` のラッパーを付けない。
 3. 集計結果（total_amount - total_reimbursement）を医療費控除の計算に使用する

@@ -9,7 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, StrictBool, field_validator, model_validator
 
 
 class TaxpayerConfig(BaseModel):
@@ -113,6 +113,28 @@ class RefundAccountConfig(BaseModel):
     account_holder: str = ""  # 口座名義（カナ）
 
 
+class FamilyConfig(BaseModel):
+    """setupで確認した家族構成。Noneは未確認であり、該当なしとは区別する。"""
+
+    has_spouse: StrictBool | None = None
+    has_dependents: StrictBool | None = None
+    dependent_count: int | None = Field(default=None, ge=0, strict=True)
+
+
+class HousingLoanConfig(BaseModel):
+    """住宅ローン控除の適用有無と初年度の確認状態。"""
+
+    applicable: StrictBool | None = None
+    first_year: StrictBool | None = None
+
+
+class EstimatedTaxConfig(BaseModel):
+    """予定納税の確認状態。金額は円単位で、未確認と0円を区別する。"""
+
+    applicable: StrictBool | None = None
+    amount: int | None = Field(default=None, ge=0, strict=True)
+
+
 class ShinkokuConfig(BaseModel):
     """shinkoku 設定ファイル全体。"""
 
@@ -139,6 +161,15 @@ class ShinkokuConfig(BaseModel):
     business: BusinessConfig = Field(default_factory=BusinessConfig)
     filing: FilingConfig = Field(default_factory=FilingConfig)
     refund_account: RefundAccountConfig = Field(default_factory=RefundAccountConfig)
+    family: FamilyConfig = Field(default_factory=FamilyConfig)
+    housing_loan: HousingLoanConfig = Field(default_factory=HousingLoanConfig)
+    estimated_tax: EstimatedTaxConfig = Field(default_factory=EstimatedTaxConfig)
+
+    @field_validator("family", "housing_loan", "estimated_tax", mode="before")
+    @classmethod
+    def preserve_unconfirmed_sections(cls, value: object) -> object:
+        """旧設定の空欄セクションも、全項目が未確認の設定として読み込む。"""
+        return {} if value is None else value
 
 
 def load_config(config_path: str) -> ShinkokuConfig:

@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from datetime import date
+from decimal import Decimal
+import re
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator, model_validator
@@ -66,7 +68,13 @@ class JournalLine(BaseModel):
     side: str = Field(pattern=r"^(debit|credit)$")
     account_code: str
     amount: int = Field(gt=0, description="円単位の整数")
-    tax_category: str | None = None
+    # 勘定科目の分類ではなく、journal_linesのCHECK制約と同じ税率別区分を使う。
+    tax_category: (
+        Literal[
+            "taxable_10", "taxable_8", "taxable_8_reduced", "non_taxable", "exempt", "out_of_scope"
+        ]
+        | None
+    ) = None
     tax_amount: int = 0
 
 
@@ -77,7 +85,9 @@ class JournalEntry(BaseModel):
     description: str | None = None
     counterparty: str | None = None
     lines: list[JournalLine] = Field(min_length=2)
-    source: str | None = None
+    source: Literal["csv_import", "receipt_ocr", "invoice_ocr", "manual", "adjustment"] | None = (
+        None
+    )
     source_file: str | None = None
     is_adjustment: bool = False
 
@@ -402,12 +412,256 @@ SmallAssetTreatment = Literal[
     "small_asset_special",
     "normal_depreciation",
 ]
+
+
+class _FixedAssetFields(BaseModel):
+    """台帳の入力事実。省略・NULLと確認済みの0/falseを区別する。"""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    name: str | None = Field(default=None, min_length=1)
+    acquisition_date: str | None = None
+    acquisition_cost: int | None = Field(default=None, gt=0)
+    useful_life: int | None = Field(default=None, gt=0)
+    method: Literal["straight_line", "declining_balance"] | None = None
+    business_use_ratio: int | None = Field(default=None, ge=0, le=100)
+    memo: str | None = None
+    origin: Literal["acquired_this_year", "verified_opening"] | None = None
+    placed_in_service_date: str | None = None
+    asset_class: Literal["tangible", "intangible", "non_depreciable"] | None = None
+    asset_account_code: str | None = None
+    quantity: str | None = None
+    quantity_unit: str | None = Field(default=None, min_length=1)
+    treatment: SmallAssetTreatment | None = None
+    opening_accumulated_depreciation: int | None = Field(default=None, ge=0)
+    book_basis: Literal["full_cost_direct", "business_portion_direct", "indirect"] | None = None
+    prior_private_use: bool | None = None
+    additional_depreciation_applicable: bool | None = None
+    evidence_ref: str | None = None
+    basis_confirmed: bool | None = None
+    annual_facts_confirmed: bool | None = None
+
+    @field_validator("acquisition_date", "placed_in_service_date")
+    @classmethod
+    def validate_asset_date(cls, value: str | None) -> str | None:
+        if value is not None:
+            if re.fullmatch(r"\d{4}-\d{2}-\d{2}", value) is None:
+                raise ValueError("日付はYYYY-MM-DD形式で指定してください")
+            date.fromisoformat(value)
+        return value
+
+    @field_validator("name", "quantity_unit", "asset_account_code")
+    @classmethod
+    def reject_blank_asset_text(cls, value: str | None) -> str | None:
+        if value is not None and not value.strip():
+            raise ValueError("空白だけの値は指定できません")
+        return value
+
+    @field_validator("quantity")
+    @classmethod
+    def validate_asset_quantity(cls, value: str | None) -> str | None:
+        if value is not None and (
+            re.fullmatch(r"(?:0|[1-9]\d*)(?:\.\d+)?", value) is None or Decimal(value) <= 0
+        ):
+            raise ValueError("数量は正の10進文字列で指定してください")
+        return value
+
+    @model_validator(mode="after")
+    def validate_asset_facts(self) -> _FixedAssetFields:
+        if self.acquisition_date and self.placed_in_service_date:
+            if self.placed_in_service_date < self.acquisition_date:
+                raise ValueError("供用開始日は取得日以後である必要があります")
+        if self.acquisition_cost is not None and self.opening_accumulated_depreciation is not None:
+            if self.opening_accumulated_depreciation > self.acquisition_cost:
+                raise ValueError("期首の償却累計額は取得価額以下である必要があります")
+        return self
+
+
+class FixedAssetInput(_FixedAssetFields):
+    """固定資産の基本情報を登録する。取得・償却仕訳は作成しない。"""
+
+    name: str = Field(min_length=1)
+    acquisition_date: str
+    acquisition_cost: int = Field(gt=0)
+
+
+class FixedAssetUpdateInput(_FixedAssetFields):
+    """未確定台帳の部分更新。省略は維持し、明示したNULLは確認を取り消す。"""
+
+    @model_validator(mode="after")
+    def validate_asset_patch(self) -> FixedAssetUpdateInput:
+        if not self.model_fields_set:
+            raise ValueError("更新する項目を1つ以上指定してください")
+        for key in ("name", "acquisition_date", "acquisition_cost"):
+            if key in self.model_fields_set and getattr(self, key) is None:
+                raise ValueError(f"{key} はnullにできません")
+        return self
+
+
+class FixedAssetListInput(BaseModel):
+    """指定年度の一覧をIDまたはUIDで絞り込む。"""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    asset_id: int | None = Field(default=None, gt=0)
+    asset_uid: str | None = Field(default=None, min_length=1)
+
+    @model_validator(mode="after")
+    def select_one_identifier(self) -> FixedAssetListInput:
+        if self.asset_id is not None and self.asset_uid is not None:
+            raise ValueError("asset_id と asset_uid は同時に指定できません")
+        return self
+
+
+class FixedAssetDeleteInput(BaseModel):
+    """年度をCLIで指定して、台帳の誤登録行だけを削除する。"""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    asset_id: int = Field(gt=0)
+
+
+class FixedAssetCalculationInput(BaseModel):
+    """省略時は年度の全件を診断し、指定時は順序を保って対象を限定する。"""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    asset_ids: list[int] | None = Field(default=None, min_length=1)
+
+    @model_validator(mode="after")
+    def validate_selection(self) -> FixedAssetCalculationInput:
+        if self.asset_ids is None:
+            if "asset_ids" in self.model_fields_set:
+                raise ValueError(
+                    "asset_idsにnullは指定できません。全件の場合は項目を省略してください"
+                )
+        elif any(value <= 0 for value in self.asset_ids):
+            raise ValueError("asset_idsには正の整数を指定してください")
+        elif len(self.asset_ids) != len(set(self.asset_ids)):
+            raise ValueError("asset_idsに同じIDを重複して指定できません")
+        return self
+
+
 SmallAssetTreatmentStatus = Literal[
     "available",
     "ineligible",
     "indeterminate",
     "requires_confirmation",
 ]
+
+
+class DepreciationAnnualContext(BaseModel):
+    """初版の年次計算に必要な確認済み事実。省略を不適用に変換しない。"""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    fiscal_year: int = Field(ge=1, le=9999)
+    acquisition_date: str
+    placed_in_service_date: str
+    opening_accumulated_depreciation: int = Field(ge=0)
+    asset_class: Literal["tangible"] = Field(description="坑道を除く通常の有形資産")
+    book_basis: Literal["full_cost_direct"]
+    prior_private_use: StrictBool
+    additional_depreciation_applicable: StrictBool
+    basis_confirmed: StrictBool
+    annual_facts_confirmed: StrictBool = Field(
+        description="当年の使用状況と処分がないことを確認済み"
+    )
+
+    @field_validator("acquisition_date", "placed_in_service_date")
+    @classmethod
+    def validate_annual_date(cls, value: str) -> str:
+        if re.fullmatch(r"\d{4}-\d{2}-\d{2}", value) is None:
+            raise ValueError("日付はYYYY-MM-DD形式で指定してください")
+        date.fromisoformat(value)
+        return value
+
+    @model_validator(mode="after")
+    def require_supported_facts(self) -> DepreciationAnnualContext:
+        if self.placed_in_service_date < self.acquisition_date:
+            raise ValueError("供用開始日は取得日以後である必要があります")
+        if self.prior_private_use or self.additional_depreciation_applicable:
+            raise ValueError("年次計算は私用からの転用・割増や特別償却には未対応です")
+        if not self.basis_confirmed or not self.annual_facts_confirmed:
+            raise ValueError("年次計算には基礎額と当年の使用状況の確認が必要です")
+        return self
+
+
+class DepreciationDetailResult(BaseModel):
+    """DBを変更しない償却計算の内訳。文脈がない残高はNULLにする。"""
+
+    method: str
+    treatment: SmallAssetTreatment
+    depreciation_basis: int
+    rate_numerator: int
+    rate_denominator: int
+    months: int
+    monthly_proration_applied: bool
+    business_use_ratio: int
+    unconstrained_ordinary_amount: int
+    ordinary_amount: int
+    expense_amount: int
+    annual_context_applied: bool
+    memo_value_constraint_applied: bool
+    capped_to_book_value: bool
+    memo_value: int | None
+    opening_book_value: int | None
+    closing_book_value: int | None
+
+
+class FixedAssetStatementFields(BaseModel):
+    """計算できた通常の有形資産について、決算書へ照合・転記する項目。"""
+
+    name: str
+    quantity: str
+    quantity_unit: str
+    acquisition_date: str
+    placed_in_service_date: str
+    acquisition_cost: int
+    treatment: SmallAssetTreatment
+    method: str
+    useful_life: int
+    depreciation_basis: int
+    rate_numerator: int
+    rate_denominator: int
+    months: int
+    ordinary_amount: int
+    additional_depreciation_amount: int
+    total_depreciation_amount: int
+    business_use_ratio: int
+    expense_amount: int
+    closing_book_value: int
+    memo: str | None
+
+
+class FixedAssetDepreciationRowResult(BaseModel):
+    """対象行の計算可否と、保存しない計算結果・仕訳候補。"""
+
+    asset_id: int
+    asset_uid: str | None = None
+    name: str | None = None
+    calculation_status: Literal["ready", "no_depreciation", "blocked"]
+    missing_fields: list[str] = Field(default_factory=list)
+    error_code: str | None = None
+    blocking_reason: str | None = None
+    ordinary_amount: int | None = None
+    expense_amount: int | None = None
+    closing_book_value: int | None = None
+    calculation: DepreciationDetailResult | None = None
+    statement_fields: FixedAssetStatementFields | None = None
+    journal_candidate: JournalEntry | None = None
+
+
+class FixedAssetDepreciationResult(BaseModel):
+    """選択した資産の全体額と、計算できた行だけの小計を分ける。"""
+
+    status: Literal["ok"] = "ok"
+    fiscal_year: int
+    assets: list[FixedAssetDepreciationRowResult]
+    count: int
+    complete: bool
+    total_expense: int | None
+    calculable_subtotal: int
 
 
 class DepreciationCalculationInput(BaseModel):
@@ -427,9 +681,20 @@ class DepreciationCalculationInput(BaseModel):
     )
     useful_life: int = Field(gt=0, description="法定耐用年数")
     business_use_ratio: int = Field(default=100, ge=0, le=100)
-    months: int = Field(default=12, ge=1, le=12)
+    months: int = Field(default=12, ge=0, le=12)
     book_value: int | None = Field(default=None, gt=0)
     declining_rate: int | None = Field(default=None, gt=0)
+    annual_context: DepreciationAnnualContext | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def require_integer_annual_amounts(cls, values: object) -> object:
+        # 従来入力の受理範囲は保ち、新しい年次文脈では金額・割合・月数の暗黙変換をしない。
+        if isinstance(values, dict) and values.get("annual_context") is not None:
+            for key in ("acquisition_cost", "useful_life", "business_use_ratio", "months"):
+                if key in values and type(values[key]) is not int:
+                    raise ValueError(f"annual_contextを使う場合の{key}は整数で指定してください")
+        return values
 
     @model_validator(mode="after")
     def validate_method_parameters(self) -> DepreciationCalculationInput:
@@ -439,6 +704,8 @@ class DepreciationCalculationInput(BaseModel):
                 raise ValueError("定率法では book_value と declining_rate が必要です")
         elif self.book_value is not None or self.declining_rate is not None:
             raise ValueError("book_value と declining_rate は定率法でのみ指定できます")
+        if self.annual_context is None and self.months == 0:
+            raise ValueError("単発計算のmonthsは1以上で指定してください")
         return self
 
 
@@ -538,6 +805,13 @@ class SmallAssetTreatmentResult(BaseModel):
     special_cap_remaining: int | None = None
     special_cap_overage: int = 0
     warnings: list[str] = Field(default_factory=list)
+
+
+class SmallAssetTreatmentDetailsResult(BaseModel):
+    """従来の選択結果と、計算可能な候補の内訳を分けて返す。"""
+
+    selection: SmallAssetTreatmentResult
+    calculations: dict[SmallAssetTreatment, DepreciationDetailResult]
 
 
 class DependentInfo(BaseModel):
@@ -1674,7 +1948,13 @@ class InventoryRecord(BaseModel):
 
 
 class ProfessionalFeeInput(BaseModel):
-    """税理士等報酬の入力。"""
+    """本人が支払った税理士等の報酬を決算書の内訳用に保存する。
+
+    payer_name・payer_addressは旧来のフィールド名で、報酬の支払先である
+    税理士・弁護士等の氏名・住所を指す。支払者である本人の情報ではない。
+    withheld_taxは本人が預かって納付する支払先の源泉税であり、本人の
+    business_withheld_taxや還付の計算には含めない。
+    """
 
     payer_address: str
     payer_name: str
@@ -1684,7 +1964,10 @@ class ProfessionalFeeInput(BaseModel):
 
 
 class ProfessionalFeeRecord(BaseModel):
-    """税理士等報酬のDBレコード。"""
+    """支払先の氏名・住所と報酬・支払先の源泉税を保持するDBレコード。
+
+    payer_*の意味はProfessionalFeeInputと同じであり、本人の事業源泉ではない。
+    """
 
     id: int
     fiscal_year: int
