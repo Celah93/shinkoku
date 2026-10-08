@@ -11,6 +11,7 @@ from pathlib import Path
 from shinkoku.db import get_connection
 from shinkoku.duplicate_detection import check_source_file_imported, record_import_source
 from shinkoku.hashing import compute_file_hash
+from shinkoku.models import WithholdingSlipData
 
 
 def _detect_encoding(file_path: str) -> str:
@@ -286,7 +287,7 @@ def import_invoice(*, file_path: str) -> dict:
 
 
 def import_withholding(*, file_path: str) -> dict:
-    """源泉徴収票の読み取り。PDF の場合はテキスト抽出し、画像の場合は Claude Vision に委任する。"""
+    """ファイルを確認してテキストと未読のテンプレートを返す。数値の読取りは行わない。"""
     path = Path(file_path)
     if not path.exists():
         return {"status": "error", "message": f"File not found: {file_path}"}
@@ -295,18 +296,8 @@ def import_withholding(*, file_path: str) -> dict:
     if path.suffix.lower() == ".pdf":
         extracted_text = _extract_pdf_text(file_path)
 
-    return {
-        "status": "ok",
-        "file_path": file_path,
-        "extracted_text": extracted_text,
-        "payer_name": None,
-        "payment_amount": 0,
-        "withheld_tax": 0,
-        "social_insurance": 0,
-        "life_insurance_deduction": 0,
-        "earthquake_insurance_deduction": 0,
-        "housing_loan_deduction": 0,
-    }
+    data = WithholdingSlipData(file_path=file_path, extracted_text=extracted_text)
+    return {"status": "ok", **data.model_dump()}
 
 
 def import_furusato_receipt(*, file_path: str) -> dict:

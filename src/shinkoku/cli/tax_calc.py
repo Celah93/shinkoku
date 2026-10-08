@@ -9,6 +9,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import NoReturn
 
+from pydantic import ValidationError
+
 from shinkoku.models import (
     ConsumptionTaxInput,
     DepreciationCalculationInput,
@@ -22,6 +24,7 @@ from shinkoku.models import (
     LifeInsurancePremiumInput,
     PensionDeductionInput,
     RetirementIncomeInput,
+    SalaryEvidenceInput,
     SmallAssetTreatmentInput,
     SmallBusinessMutualAidInput,
     TaxEligibilityInput,
@@ -340,8 +343,19 @@ def _handle_sanity_check(args: argparse.Namespace) -> None:
 
     input_data = IncomeTaxInput(**input_raw)
     tax_result = IncomeTaxResult(**result_raw)
+    try:
+        salary_evidence = (
+            SalaryEvidenceInput(**params["salary_evidence"])
+            if params.get("salary_evidence") is not None
+            else None
+        )
+    except (ValidationError, TypeError):
+        _error_exit("salary_evidenceの項目、型または選択IDが不正です")
     check_result = sanity_check_income_tax(
-        input_data, tax_result, db_path=getattr(args, "db_path", None)
+        input_data,
+        tax_result,
+        db_path=getattr(args, "db_path", None),
+        salary_evidence=salary_evidence,
     )
     _output_json(check_result.model_dump())
 

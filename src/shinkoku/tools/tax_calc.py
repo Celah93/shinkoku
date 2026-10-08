@@ -47,6 +47,7 @@ from shinkoku.models import (
     SmallAssetTreatment,
     TaxSanityCheckItem,
     TaxSanityCheckResult,
+    SalaryEvidenceInput,
     TaxRateAmountBreakdown,
     TransitionalCreditBreakdown,
 )
@@ -3257,11 +3258,146 @@ def _check_business_withholding_against_ledger(
     )
 
 
+def _check_salary_against_ledger(
+    input_data: IncomeTaxInput,
+    result: IncomeTaxResult,
+    db_path: str,
+    salary_evidence: SalaryEvidenceInput | None,
+) -> list[TaxSanityCheckItem]:
+    """選択した原本だけを照合する。未読NULLを集計で消さず、DBを変更しない。"""
+    from pathlib import Path
+
+    from shinkoku.db import get_connection
+    from shinkoku.models import WithholdingSlipInput
+    from shinkoku.tools.withholding import (
+        check_withholding_slip,
+        get_withholding_social_insurance,
+        withholding_slip_from_row,
+    )
+
+    if salary_evidence is None and not (
+        input_data.salary_income or input_data.withheld_tax or result.withheld_tax
+    ):
+        return []
+    severity = "error" if input_data.calculation_mode == "filing" else "warning"
+    if salary_evidence is None:
+        return [
+            TaxSanityCheckItem(
+                severity=severity,
+                code="SALARY_EVIDENCE_UNCONFIRMED",
+                message="年間給与の根拠とする源泉徴収票の選択が未確認です。salary_evidenceを指定してください",
+            )
+        ]
+    items: list[TaxSanityCheckItem] = []
+    if (
+        salary_evidence.selection_confirmed is not True
+        or salary_evidence.additional_social_insurance is None
+    ):
+        items.append(
+            TaxSanityCheckItem(
+                severity=severity,
+                code="SALARY_EVIDENCE_UNCONFIRMED",
+                message="年間給与を網羅して重複を除いた選択と、追加の社会保険料を確認してください",
+            )
+        )
+    if not Path(db_path).is_file():
+        raise FileNotFoundError("照合対象のDBがありません")
+    conn = get_connection(db_path)
+    try:
+        conn.execute("PRAGMA query_only=ON")
+        columns = {row[1] for row in conn.execute("PRAGMA table_info(withholding_slips)")}
+        if not set(WithholdingSlipInput.model_fields) <= columns:
+            raise ValueError(
+                "給与証憑の照合には源泉徴収票DBの移行が必要です。検査中には移行しません"
+            )
+        marks = ",".join("?" for _ in salary_evidence.slip_ids)
+        rows = conn.execute(
+            f"SELECT * FROM withholding_slips WHERE id IN ({marks}) ORDER BY id",
+            salary_evidence.slip_ids,
+        ).fetchall()
+    finally:
+        conn.close()
+    if len(rows) != len(salary_evidence.slip_ids):
+        items.append(
+            TaxSanityCheckItem(
+                severity="error",
+                code="SALARY_EVIDENCE_NOT_FOUND",
+                message="選択した源泉徴収票の一部がDBにありません。対象IDを確認してください",
+            )
+        )
+        return items
+    slips = [withholding_slip_from_row(dict(row)) for row in rows]
+    if any(slip.fiscal_year != input_data.fiscal_year for slip in slips):
+        items.append(
+            TaxSanityCheckItem(
+                severity="error",
+                code="SALARY_EVIDENCE_FISCAL_YEAR_MISMATCH",
+                message="選択した源泉徴収票のDB年分と申告対象年分が一致しません",
+            )
+        )
+        return items
+    all_ready = True
+    for slip in slips:
+        validation = check_withholding_slip(slip, fiscal_year=input_data.fiscal_year)
+        for issue in validation.issues:
+            if issue.severity == "error":
+                items.append(
+                    TaxSanityCheckItem(severity="error", code=issue.code, message=issue.message)
+                )
+        if not validation.ready_for_calculation:
+            all_ready = False
+            items.append(
+                TaxSanityCheckItem(
+                    severity=severity,
+                    code="SALARY_EVIDENCE_UNCONFIRMED",
+                    message="選択した源泉徴収票の原本照合または必要項目が未確認です。ws-checkの結果を確認してください",
+                )
+            )
+    if not all_ready or salary_evidence.selection_confirmed is not True:
+        return items
+    payment = [slip.payment_amount for slip in slips]
+    withholding = [slip.withheld_tax for slip in slips]
+    social = [get_withholding_social_insurance(slip) for slip in slips]
+    comparisons = [
+        (payment, [input_data.salary_income], "SALARY_AMOUNT_LEDGER_MISMATCH", "給与収入"),
+        (
+            withholding,
+            [input_data.withheld_tax, result.withheld_tax],
+            "SALARY_WITHHOLDING_LEDGER_MISMATCH",
+            "給与の源泉徴収税額",
+        ),
+    ]
+    if salary_evidence.additional_social_insurance is not None:
+        social.append(salary_evidence.additional_social_insurance)
+        comparisons.append(
+            (
+                social,
+                [input_data.social_insurance],
+                "SALARY_SOCIAL_INSURANCE_LEDGER_MISMATCH",
+                "社会保険料",
+            )
+        )
+    for amounts, actual, code, label in comparisons:
+        if any(value is None for value in amounts):
+            continue
+        total = sum(value for value in amounts if value is not None)
+        if any(value != total for value in actual):
+            items.append(
+                TaxSanityCheckItem(
+                    severity="error",
+                    code=code,
+                    message=f"{label}が選択した証憑の確認済み合計（{total:,}円）と一致しません。入力を確定して再計算してください",
+                )
+            )
+    return items
+
+
 def sanity_check_income_tax(
     input_data: IncomeTaxInput,
     result: IncomeTaxResult,
     *,
     db_path: str | None = None,
+    salary_evidence: SalaryEvidenceInput | None = None,
 ) -> TaxSanityCheckResult:
     """所得税計算結果のサニティチェック。
 
@@ -3269,6 +3405,8 @@ def sanity_check_income_tax(
     db_pathがある場合は本人の事業源泉も年度DBと照合する。DBの完全性や
     税の帰属そのものの証明ではないため、差異を自動修正せず確認を促す。
     """
+    if salary_evidence is not None and db_path is None:
+        raise ValueError("salary_evidenceを指定する場合はDBの指定が必要です")
     require_supported_tax_year(input_data.fiscal_year, "income_tax")
     require_supported_tax_year(result.fiscal_year, "income_tax")
     if input_data.fiscal_year != result.fiscal_year:
@@ -3498,6 +3636,7 @@ def sanity_check_income_tax(
         withholding_issue = _check_business_withholding_against_ledger(input_data, result, db_path)
         if withholding_issue is not None:
             items.append(withholding_issue)
+        items.extend(_check_salary_against_ledger(input_data, result, db_path, salary_evidence))
 
     error_count = sum(1 for item in items if item.severity == "error")
     warning_count = sum(1 for item in items if item.severity == "warning")

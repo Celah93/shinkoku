@@ -39,6 +39,7 @@ def init_db(db_path: str) -> sqlite3.Connection:
 def _migrate(conn: sqlite3.Connection) -> None:
     """既存DBに新しいカラム・テーブルを追加するマイグレーション。"""
     _migrate_fixed_assets(conn)
+    _migrate_withholding_slips(conn)
     # fiscal_years: 年度別の消費税プロファイル
     fy_cols = {row[1] for row in conn.execute("PRAGMA table_info(fiscal_years)").fetchall()}
     if "taxpayer_status" not in fy_cols:
@@ -158,6 +159,90 @@ def _migrate_fixed_assets(conn: sqlite3.Connection) -> None:
         conn.execute("RELEASE SAVEPOINT migrate_fixed_assets")
         raise
     conn.execute("RELEASE SAVEPOINT migrate_fixed_assets")
+
+
+def _migrate_withholding_slips(conn: sqlite3.Connection) -> None:
+    """全旧値・作成日時・採番を保持し、未確認情報をNULLで追加する。"""
+    legacy = (
+        "id",
+        "fiscal_year",
+        "payer_name",
+        "payment_amount",
+        "withheld_tax",
+        "social_insurance",
+        "life_insurance_deduction",
+        "earthquake_insurance_deduction",
+        "housing_loan_deduction",
+        "spouse_deduction",
+        "dependent_deduction",
+        "basic_deduction",
+        "life_insurance_general_new",
+        "life_insurance_general_old",
+        "life_insurance_medical_care",
+        "life_insurance_annuity_new",
+        "life_insurance_annuity_old",
+        "national_pension_premium",
+        "old_long_term_insurance_premium",
+        "source_file",
+        "created_at",
+    )
+    match = re.search(
+        r"CREATE TABLE IF NOT EXISTS withholding_slips \([\s\S]+?\n\);",
+        SCHEMA_PATH.read_text(encoding="utf-8"),
+    )
+    if match is None:
+        raise ValueError("schema.sqlに源泉徴収票の定義がありません")
+    definition = match.group()
+    expected = set(re.findall(r"^\s+(\w+)\s+(?:INTEGER|TEXT)", definition, re.MULTILINE))
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(withholding_slips)")}
+    if columns == expected:
+        return
+    if columns != set(legacy):
+        raise ValueError("源泉徴収票の旧スキーマを識別できません。既存DBは置き換えません")
+    definition = definition.replace("CREATE TABLE IF NOT EXISTS", "CREATE TABLE").replace(
+        "withholding_slips", "withholding_slips_migration"
+    )
+    conn.execute("SAVEPOINT migrate_withholding_slips")
+    try:
+        objects = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE tbl_name='withholding_slips' AND type IN ('index','trigger') AND sql IS NOT NULL"
+        ).fetchall()
+        sequence = conn.execute(
+            "SELECT seq FROM sqlite_sequence WHERE name='withholding_slips'"
+        ).fetchone()
+        conn.execute(definition)
+        names = ", ".join(legacy)
+        conn.execute(
+            f"INSERT INTO withholding_slips_migration ({names}) SELECT {names} FROM withholding_slips"
+        )
+        differences = conn.execute(
+            f"SELECT {names} FROM withholding_slips EXCEPT SELECT {names} FROM withholding_slips_migration"
+        ).fetchall()
+        old_count = conn.execute("SELECT COUNT(*) FROM withholding_slips").fetchone()[0]
+        new_count = conn.execute("SELECT COUNT(*) FROM withholding_slips_migration").fetchone()[0]
+        if differences or old_count != new_count:
+            raise ValueError("源泉徴収票の移行前後で値が一致しません")
+        conn.execute("DROP TABLE withholding_slips")
+        conn.execute("ALTER TABLE withholding_slips_migration RENAME TO withholding_slips")
+        if sequence is not None:
+            cursor = conn.execute(
+                "UPDATE sqlite_sequence SET seq=MAX(seq, ?) WHERE name='withholding_slips'",
+                (sequence[0],),
+            )
+            if not cursor.rowcount:
+                conn.execute(
+                    "INSERT INTO sqlite_sequence(name,seq) VALUES('withholding_slips', ?)",
+                    (sequence[0],),
+                )
+        for row in objects:
+            conn.execute(row[0])
+        if conn.execute("PRAGMA foreign_key_check").fetchall():
+            raise ValueError("源泉徴収票の移行後に外部キーの不整合があります")
+    except BaseException:
+        conn.execute("ROLLBACK TO SAVEPOINT migrate_withholding_slips")
+        conn.execute("RELEASE SAVEPOINT migrate_withholding_slips")
+        raise
+    conn.execute("RELEASE SAVEPOINT migrate_withholding_slips")
 
 
 def _rebuild_housing_loan_details(conn: sqlite3.Connection) -> None:

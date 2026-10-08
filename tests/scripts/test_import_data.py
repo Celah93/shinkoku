@@ -170,6 +170,17 @@ def test_import_invoice_image_file(tmp_path: Path):
 # --- withholding ---
 
 
+def test_import_withholding_preserves_unread_amounts_as_null(tmp_path: Path) -> None:
+    path = tmp_path / "fictional-slip.txt"
+    path.write_text("架空資料", encoding="utf-8")
+    completed = run_import("withholding", "--file-path", str(path))
+    data = json.loads(completed.stdout)
+    assert completed.returncode == 0
+    assert data["payment_amount"] is None
+    assert data["withheld_tax"] is None
+    assert data["social_insurance"] is None
+
+
 def test_import_withholding(tmp_path: Path):
     f = tmp_path / "withholding.txt"
     f.write_text("dummy", encoding="utf-8")

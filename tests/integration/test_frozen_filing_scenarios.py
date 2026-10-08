@@ -145,7 +145,11 @@ def _taro_details(cli: ScenarioCLI, evidence: dict) -> dict:
 
 
 def _jiro_details(cli: ScenarioCLI, evidence: dict) -> tuple[dict, dict]:
-    salary = cli.details("ws-save", "ws-list", "slips", [evidence["salary_slip"]])[0]
+    confirmation = _read(FIXTURES.parent / "withholding/jiro-confirmation.json")
+    salary = cli.details(
+        "ws-save", "ws-list", "slips", [{**evidence["salary_slip"], **confirmation}]
+    )[0]
+    assert salary["validation"]["ready_for_calculation"] is True
     cli.ledger("spouse-set", data=evidence["spouse"])
     spouse = cli.ledger("spouse-get")["spouse"]
     _assert_subset(evidence["spouse"], spouse)
@@ -174,7 +178,17 @@ def _jiro_details(cli: ScenarioCLI, evidence: dict) -> tuple[dict, dict]:
         + sum(row["gains"] - row["expenses"] for row in crypto),
         "other_income_withheld_tax": sum(row["withheld_tax"] for row in other),
         "loss_carryforward_amount": sum(row["remaining"] for row in loss),
-    }, {"spouse": spouse, "dependent": dependent, "pf": pf, "other": other}
+    }, {
+        "spouse": spouse,
+        "dependent": dependent,
+        "pf": pf,
+        "other": other,
+        "salary_evidence": {
+            "slip_ids": [salary["id"]],
+            "selection_confirmed": True,
+            "additional_social_insurance": 0,
+        },
+    }
 
 
 def _resident_relative(row: dict) -> dict:
@@ -221,7 +235,7 @@ def _db_digest(db_path: str) -> str:
         return hashlib.sha256("\n".join(conn.iterdump()).encode()).hexdigest()
 
 
-def _r6_negative(cli: ScenarioCLI, params: dict, pf: list[dict]) -> None:
+def _r6_negative(cli: ScenarioCLI, params: dict, pf: list[dict], salary_evidence: dict) -> None:
     fee_withholding = sum(row["withheld_tax"] for row in pf)
     assert fee_withholding == 20420  # expected.md / 帳簿の検算・税理士報酬の預り源泉
     bad_input = {
@@ -230,7 +244,7 @@ def _r6_negative(cli: ScenarioCLI, params: dict, pf: list[dict]) -> None:
     }
     bad_result = cli.call("tax", "calc-income", data=bad_input)
     assert bad_result["tax_due"] == -229232  # 正しい還付208,812円に20,420円を誤加算した負例
-    payload = {"input": bad_input, "result": bad_result}
+    payload = {"input": bad_input, "result": bad_result, "salary_evidence": salary_evidence}
     original_payload = json.dumps(payload, ensure_ascii=False, sort_keys=True)
     original_db = _db_digest(cli.db_path)
     check = cli.call("tax", "sanity-check", "--db-path", cli.db_path, data=payload)
@@ -447,9 +461,10 @@ def test_frozen_scenario_to_filing(tmp_path: Path, name: str, comparison_count: 
     cli.ledger("bw-add", year=2025, data=bw_record)
     if name == "jiro":
         cli.ledger("pf-add", year=2025, data=evidence["professional_fee"])
-    sanity = cli.call(
-        "tax", "sanity-check", "--db-path", cli.db_path, data={"input": params, "result": income}
-    )
+    sanity_input = {"input": params, "result": income}
+    if name == "jiro":
+        sanity_input["salary_evidence"] = details["salary_evidence"]
+    sanity = cli.call("tax", "sanity-check", "--db-path", cli.db_path, data=sanity_input)
     assert sanity["passed"] is True
     assert sanity["error_count"] == sanity["warning_count"] == 0
     assert cli.ledger("pl") == pl
@@ -481,4 +496,4 @@ def test_frozen_scenario_to_filing(tmp_path: Path, name: str, comparison_count: 
     }
     _compare_expected(fixture, observed, comparison_count)
     if name == "jiro":
-        _r6_negative(cli, params, details["pf"])
+        _r6_negative(cli, params, details["pf"], details["salary_evidence"])

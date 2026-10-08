@@ -73,3 +73,22 @@
    ```
    申告対象の年分は `--fiscal-year` で指定し、損失が発生した年はJSONの `loss_year` に記載する。`fiscal_year` や `detail` のラッパーは付けない。
 3. 繰越損失の合計を `loss_carryforward_amount` として所得税計算に使用する
+
+
+## 給与もある場合のDB照合条件
+
+本人の事業源泉と税理士等への支払源泉を分ける既存の検査を維持する。給与のある年は、年間給与を網羅し、前職分との重複を除いた確認済み票のIDも指定する。次は給与票1枚を選び、票に含まれない追加社会保険料がないと確認した架空の条件例である。inputとresultは実際の計算の入出力を使う。
+
+```json
+{
+  "salary_evidence": {
+    "slip_ids": [
+      1
+    ],
+    "selection_confirmed": true,
+    "additional_social_insurance": 0
+  }
+}
+```
+
+`salary_evidence`は税額計算のinputの外側へ置く。DB付きsanity-checkで給与・給与源泉・社会保険料を照合し、選択や必要項目が未確認なら申告用には採用しない。税理士側の源泉20,420円を本人の事業源泉へ加えるR6の負例も、給与証憑の正しい選択を保ったまま不合格になる。

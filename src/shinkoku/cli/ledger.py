@@ -10,6 +10,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from pydantic import ValidationError
+
 from shinkoku.models import (
     BusinessWithholdingInput,
     CryptoIncomeInput,
@@ -47,6 +49,7 @@ from shinkoku.tools.fixed_assets import (
     ledger_delete_fixed_asset,
     ledger_preview_fixed_asset_depreciation,
 )
+from shinkoku.tools.withholding import check_withholding_slip
 from shinkoku.tools.ledger import (
     ledger_add_business_withholding,
     ledger_add_crypto_income,
@@ -578,12 +581,49 @@ def cmd_dep_delete(args: argparse.Namespace) -> None:
 # --- Withholding Slip ---
 
 
+def cmd_ws_check(args: argparse.Namespace) -> None:
+    data = _load_json(args.input)
+    try:
+        detail = WithholdingSlipInput(**data)
+    except (ValidationError, TypeError):
+        _output(
+            {
+                "status": "error",
+                "code": "WS_INPUT_INVALID",
+                "validation": None,
+                "message": "源泉徴収票の入力項目、型または空欄指定が不正です",
+            }
+        )
+        return
+    _output(
+        {
+            "status": "ok",
+            "fiscal_year": args.fiscal_year,
+            "validation": check_withholding_slip(detail, fiscal_year=args.fiscal_year).model_dump(),
+        }
+    )
+
+
 def cmd_ws_save(args: argparse.Namespace) -> None:
     data = _load_json(args.input)
-    detail = WithholdingSlipInput(**data)
+    try:
+        detail = WithholdingSlipInput(**data)
+    except (ValidationError, TypeError):
+        _output(
+            {
+                "status": "error",
+                "code": "WS_INPUT_INVALID",
+                "validation": None,
+                "message": "源泉徴収票の入力項目、型または空欄指定が不正です",
+            }
+        )
+        return
     _output(
         ledger_save_withholding_slip(
-            db_path=args.db_path, fiscal_year=args.fiscal_year, detail=detail
+            db_path=args.db_path,
+            fiscal_year=args.fiscal_year,
+            detail=detail,
+            withholding_slip_id=args.withholding_slip_id,
         )
     )
 
@@ -1219,10 +1259,16 @@ def register(parent_subparsers: argparse._SubParsersAction) -> None:
     p.set_defaults(func=cmd_dep_delete)
 
     # --- Withholding Slip ---
+    p = sub.add_parser("ws-check", help="源泉徴収票の検算（読取り専用）")
+    _add_fy_arg(p)
+    _add_input_arg(p)
+    p.set_defaults(func=cmd_ws_check)
+
     p = sub.add_parser("ws-save", help="源泉徴収票保存")
     _add_db_arg(p)
     _add_fy_arg(p)
     _add_input_arg(p)
+    p.add_argument("--withholding-slip-id", type=int, help="同じ年分の既存票を全項目訂正するID")
     p.set_defaults(func=cmd_ws_save)
 
     p = sub.add_parser("ws-list", help="源泉徴収票一覧")

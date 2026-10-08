@@ -1,0 +1,13 @@
+{
+  "document_fiscal_year": 2026,
+  "year_end_adjusted": true,
+  "source_confirmed": true,
+  "salary_income_after_deduction": 4360000,
+  "total_income_deductions": 2330000,
+  "specific_relative_special_deduction": 0,
+  "life_insurance_deduction": 0,
+  "earthquake_insurance_deduction": 0,
+  "social_insurance_small_business_mutual_aid": 0,
+  "other_personal_deductions": 0,
+  "deduction_derivation_note": "scenarios/jiro/persona.mdの人物・家族と給与設定。2026年分。一般扶養親族1人×380,000円=380,000円。障害者・寡婦・ひとり親・勤労学生の対象者は0人で合計0円。給与外所得も見積もった年末調整の基礎控除670,000円を保持する。"
+}

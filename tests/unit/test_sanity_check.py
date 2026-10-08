@@ -18,6 +18,7 @@ from shinkoku.tools.ledger import (
     ledger_init,
 )
 from shinkoku.tools.tax_calc import sanity_check_income_tax
+from tests.helpers.withholding import withholding_input
 
 
 def _make_input(**kwargs) -> IncomeTaxInput:
@@ -32,7 +33,300 @@ def _make_result(**kwargs) -> IncomeTaxResult:
     return IncomeTaxResult(**defaults)
 
 
+def _salary_db(tmp_path: Path, **changes) -> tuple[str, int]:
+    from shinkoku.models import WithholdingSlipInput
+    from shinkoku.tools.ledger import ledger_save_withholding_slip
+
+    db = str(tmp_path / "salary.db")
+    ledger_init(db_path=db, fiscal_year=2025)
+    saved = ledger_save_withholding_slip(
+        db_path=db, fiscal_year=2025, detail=WithholdingSlipInput(**withholding_input(**changes))
+    )
+    assert saved["status"] == "ok"
+    return db, saved["withholding_slip_id"]
+
+
+def _salary_params(mode: str = "estimate", **changes) -> IncomeTaxInput:
+    return _make_input(
+        salary_income=5000000,
+        withheld_tax=77500,
+        social_insurance=750000,
+        blue_return_deduction=0,
+        minimum_tax_income_complete=True,
+        calculation_mode=mode,
+        **changes,
+    )
+
+
+@pytest.mark.parametrize("value", [[], [1, 1], [0], [-1], [True], [1.0], ["1"]])
+def test_salary_evidence_selection_is_strict(value: list) -> None:
+    from pydantic import ValidationError
+    from shinkoku.models import SalaryEvidenceInput
+
+    with pytest.raises(ValidationError):
+        SalaryEvidenceInput(slip_ids=value)
+
+
+@pytest.mark.parametrize("mode,severity", [("estimate", "warning"), ("filing", "error")])
+def test_salary_evidence_required_by_mode(tmp_path: Path, mode: str, severity: str) -> None:
+    from shinkoku.tools.tax_calc import calc_income_tax
+
+    db, _ = _salary_db(tmp_path)
+    params = _salary_params(mode)
+    checked = sanity_check_income_tax(params, calc_income_tax(params), db_path=db)
+    item = next(item for item in checked.items if item.code == "SALARY_EVIDENCE_UNCONFIRMED")
+    assert item.severity == severity
+    assert checked.passed is (mode == "estimate")
+
+
+@pytest.mark.parametrize("mode", ["estimate", "filing"])
+@pytest.mark.parametrize(
+    "field,code",
+    [
+        ("salary_income", "SALARY_AMOUNT_LEDGER_MISMATCH"),
+        ("withheld_tax", "SALARY_WITHHOLDING_LEDGER_MISMATCH"),
+        ("social_insurance", "SALARY_SOCIAL_INSURANCE_LEDGER_MISMATCH"),
+        ("result_withheld_tax", "SALARY_WITHHOLDING_LEDGER_MISMATCH"),
+    ],
+)
+def test_salary_ledger_mismatches_are_errors_in_both_modes(
+    tmp_path: Path, mode: str, field: str, code: str
+) -> None:
+    from shinkoku.models import SalaryEvidenceInput
+    from shinkoku.tools.tax_calc import calc_income_tax
+
+    db, wid = _salary_db(tmp_path)
+    params = _salary_params(mode)
+    if field != "result_withheld_tax":
+        params = params.model_copy(update={field: getattr(params, field) + 1})
+    result = calc_income_tax(params)
+    if field == "result_withheld_tax":
+        result = result.model_copy(update={"withheld_tax": result.withheld_tax + 1})
+    checked = sanity_check_income_tax(
+        params,
+        result,
+        db_path=db,
+        salary_evidence=SalaryEvidenceInput(
+            slip_ids=[wid], selection_confirmed=True, additional_social_insurance=0
+        ),
+    )
+    assert any(item.code == code and item.severity == "error" for item in checked.items)
+    assert checked.passed is False
+
+
+@pytest.mark.parametrize("mode,severity", [("estimate", "warning"), ("filing", "error")])
+@pytest.mark.parametrize("changes", [{"source_confirmed": None}, {"payment_amount": None}])
+def test_unconfirmed_salary_slip_is_reported_by_mode(
+    tmp_path: Path, mode: str, severity: str, changes: dict
+) -> None:
+    from shinkoku.models import SalaryEvidenceInput
+    from shinkoku.tools.tax_calc import calc_income_tax
+
+    db, wid = _salary_db(tmp_path, **changes)
+    params = _salary_params(mode)
+    checked = sanity_check_income_tax(
+        params,
+        calc_income_tax(params),
+        db_path=db,
+        salary_evidence=SalaryEvidenceInput(
+            slip_ids=[wid], selection_confirmed=True, additional_social_insurance=0
+        ),
+    )
+    assert any(
+        item.code == "SALARY_EVIDENCE_UNCONFIRMED" and item.severity == severity
+        for item in checked.items
+    )
+
+
+def test_salary_ledger_uses_confirmed_blank_without_hiding_unread_null(tmp_path: Path) -> None:
+    from shinkoku.db import get_connection
+    from shinkoku.models import SalaryEvidenceInput
+    from shinkoku.tools.tax_calc import calc_income_tax
+
+    blank = withholding_input()["blank_fields"] + ["social_insurance"]
+    db, wid = _salary_db(
+        tmp_path, social_insurance=None, total_income_deductions=1290000, blank_fields=blank
+    )
+    params = _salary_params().model_copy(update={"social_insurance": 0})
+    evidence = SalaryEvidenceInput(
+        slip_ids=[wid], selection_confirmed=True, additional_social_insurance=0
+    )
+    checked = sanity_check_income_tax(
+        params, calc_income_tax(params), db_path=db, salary_evidence=evidence
+    )
+    assert not any(item.code.startswith("SALARY_") for item in checked.items)
+    conn = get_connection(db)
+    conn.execute(
+        "UPDATE withholding_slips SET blank_fields=? WHERE id=?",
+        ('["social_insurance_small_business_mutual_aid"]', wid),
+    )
+    conn.commit()
+    conn.close()
+    checked = sanity_check_income_tax(
+        params, calc_income_tax(params), db_path=db, salary_evidence=evidence
+    )
+    assert any(item.code == "SALARY_EVIDENCE_UNCONFIRMED" for item in checked.items)
+
+
+def test_salary_evidence_requires_db_and_checks_selected_zero_salary(tmp_path: Path) -> None:
+    from shinkoku.models import SalaryEvidenceInput
+    from shinkoku.tools.tax_calc import calc_income_tax
+
+    evidence = SalaryEvidenceInput(
+        slip_ids=[999], selection_confirmed=True, additional_social_insurance=0
+    )
+    params = _make_input(blue_return_deduction=0)
+    result = calc_income_tax(params)
+    with pytest.raises(ValueError, match="DB"):
+        sanity_check_income_tax(params, result, salary_evidence=evidence)
+    db, _ = _salary_db(tmp_path)
+    checked = sanity_check_income_tax(params, result, db_path=db, salary_evidence=evidence)
+    assert any(item.code == "SALARY_EVIDENCE_NOT_FOUND" for item in checked.items)
+
+
+def test_salary_check_is_read_only_and_uses_only_selected_ids(tmp_path: Path, monkeypatch) -> None:
+    import shinkoku.db as database
+    from shinkoku.models import SalaryEvidenceInput, WithholdingSlipInput
+    from shinkoku.tools.ledger import ledger_save_withholding_slip
+    from shinkoku.tools.tax_calc import calc_income_tax
+
+    db, wid = _salary_db(tmp_path)
+    ledger_save_withholding_slip(
+        db_path=db, fiscal_year=2025, detail=WithholdingSlipInput(**withholding_input())
+    )
+    original = database.get_connection
+    conn = original(db)
+    before = list(conn.iterdump())
+    conn.close()
+
+    def read_only(path):
+        connection = original(path)
+        connection.execute("PRAGMA query_only=ON")
+        return connection
+
+    monkeypatch.setattr(database, "get_connection", read_only)
+    params = _salary_params()
+    checked = sanity_check_income_tax(
+        params,
+        calc_income_tax(params),
+        db_path=db,
+        salary_evidence=SalaryEvidenceInput(
+            slip_ids=[wid], selection_confirmed=True, additional_social_insurance=0
+        ),
+    )
+    assert not any(item.code.startswith("SALARY_") for item in checked.items)
+    conn = original(db)
+    assert list(conn.iterdump()) == before
+    conn.close()
+
+
+def test_salary_old_db_is_not_migrated(tmp_path: Path) -> None:
+    from tests.unit.test_withholding_migration import make_legacy_withholding_db
+    from shinkoku.db import get_connection
+    from shinkoku.models import SalaryEvidenceInput
+    from shinkoku.tools.tax_calc import calc_income_tax
+
+    db = tmp_path / "old.db"
+    make_legacy_withholding_db(db)
+    conn = get_connection(str(db))
+    before = list(conn.iterdump())
+    conn.close()
+
+    params = _salary_params()
+    with pytest.raises(ValueError, match="移行"):
+        sanity_check_income_tax(
+            params,
+            calc_income_tax(params),
+            db_path=str(db),
+            salary_evidence=SalaryEvidenceInput(
+                slip_ids=[7], selection_confirmed=True, additional_social_insurance=0
+            ),
+        )
+    conn = get_connection(str(db))
+    assert list(conn.iterdump()) == before
+    conn.close()
+
+
+@pytest.mark.parametrize("unconfirmed", ["selection", "source"])
+def test_estimate_unconfirmed_salary_evidence_keeps_explicit_assumptions(
+    tmp_path: Path, unconfirmed: str
+) -> None:
+    from shinkoku.models import SalaryEvidenceInput
+    from shinkoku.tools.tax_calc import calc_income_tax
+
+    db, wid = _salary_db(
+        tmp_path, **({"source_confirmed": None} if unconfirmed == "source" else {})
+    )
+    params = _salary_params().model_copy(update={"salary_income": 6000000})
+    evidence = SalaryEvidenceInput(
+        slip_ids=[wid],
+        selection_confirmed=None if unconfirmed == "selection" else True,
+        additional_social_insurance=0,
+    )
+    result = sanity_check_income_tax(
+        params, calc_income_tax(params), db_path=db, salary_evidence=evidence
+    )
+    assert any(
+        item.code == "SALARY_EVIDENCE_UNCONFIRMED" and item.severity == "warning"
+        for item in result.items
+    )
+    assert not any(item.code.endswith("LEDGER_MISMATCH") for item in result.items)
+    assert result.error_count == 0 and result.passed is True
+
+
 # --- 1. BLUE_DEDUCTION_ON_LOSS ---
+
+
+def test_salary_other_year_and_known_slip_conflict_remain_errors(tmp_path: Path) -> None:
+    from shinkoku.db import get_connection
+    from shinkoku.models import SalaryEvidenceInput
+    from shinkoku.tools.tax_calc import calc_income_tax
+
+    db, wid = _salary_db(tmp_path)
+    evidence = SalaryEvidenceInput(
+        slip_ids=[wid], selection_confirmed=True, additional_social_insurance=0
+    )
+    params = _salary_params()
+    conn = get_connection(db)
+    conn.execute("UPDATE withholding_slips SET total_income_deductions=1 WHERE id=?", (wid,))
+    conn.commit()
+    conn.close()
+    checked = sanity_check_income_tax(
+        params, calc_income_tax(params), db_path=db, salary_evidence=evidence
+    )
+    assert any(
+        item.code == "WS_DEDUCTION_TOTAL_MISMATCH" and item.severity == "error"
+        for item in checked.items
+    )
+    assert checked.passed is False
+    ledger_init(db_path=db, fiscal_year=2026)
+    params = params.model_copy(update={"fiscal_year": 2026})
+    checked = sanity_check_income_tax(
+        params, calc_income_tax(params), db_path=db, salary_evidence=evidence
+    )
+    assert any(
+        item.code == "SALARY_EVIDENCE_FISCAL_YEAR_MISMATCH" and item.severity == "error"
+        for item in checked.items
+    )
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("selection_confirmed", 1),
+        ("additional_social_insurance", False),
+        ("additional_social_insurance", 1.0),
+        ("additional_social_insurance", "0"),
+        ("additional_social_insurance", -1),
+        ("unknown", 0),
+    ],
+)
+def test_salary_evidence_confirmation_and_amount_are_strict(field: str, value: object) -> None:
+    from pydantic import ValidationError
+    from shinkoku.models import SalaryEvidenceInput
+
+    with pytest.raises(ValidationError):
+        SalaryEvidenceInput(slip_ids=[1], **{field: value})
 
 
 def test_blue_deduction_on_loss() -> None:

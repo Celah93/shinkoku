@@ -1,0 +1,2 @@
+# 架空票のPDFをバイナリとして保持し、改行変換による破損を防ぐ。
+tests/fixtures/withholding/**/*.pdf binary

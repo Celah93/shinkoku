@@ -3238,6 +3238,36 @@
         }
       ]
     },
+    "ledger ws-check": {
+      "arguments": [
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--fiscal-year"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "fiscal_year",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": "builtins.int"
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--input"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "input",
+          "kind": "optional",
+          "nargs": null,
+          "required": true,
+          "type": null
+        }
+      ]
+    },
     "ledger ws-delete": {
       "arguments": [
         {
@@ -3338,6 +3368,19 @@
           "nargs": null,
           "required": true,
           "type": null
+        },
+        {
+          "action": "_StoreAction",
+          "aliases": [
+            "--withholding-slip-id"
+          ],
+          "choices": null,
+          "default": null,
+          "destination": "withholding_slip_id",
+          "kind": "optional",
+          "nargs": null,
+          "required": false,
+          "type": "builtins.int"
         }
       ]
     },

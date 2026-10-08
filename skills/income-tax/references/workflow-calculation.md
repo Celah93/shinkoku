@@ -117,8 +117,9 @@ DBを指定しない旧形式ではこの照合は行われず、passed=trueだ�
 入力 JSON:
 ```json
 {
-  "input": { ... },
-  "result": { ... }
+  "input": {"fiscal_year": 2025, "salary_income": 5000000, "withheld_tax": 77500, "social_insurance": 750000},
+  "result": {"fiscal_year": 2025, "withheld_tax": 77500, "tax_due": 0},
+  "salary_evidence": {"slip_ids": [1], "selection_confirmed": true, "additional_social_insurance": 0}
 }
 ```
 - `input`: ステップ3で `calc-income` に渡した IncomeTaxInput
@@ -134,4 +135,11 @@ DBを指定しない旧形式ではこの照合は行われず、passed=trueだ�
 
 - **error > 0**: 計算結果に問題があります。エラー内容を確認し、入力を修正してステップ3を再実行してください
 - **warning > 0**: 警告内容をユーザーに提示し、確認してから続行してください
-- **passed = true**: 問題なし。次のステップに進む
+- **passed = true**: エラーはない。警告と証憑の確認状況を確認し、未確認の票を申告用に採用しない
+
+
+給与の証憑をDBで管理する場合は、年間給与を網羅し、前職分等の重複を除いた選択を確認してsalary_evidenceを渡す。上のID1は確認済みの架空票を選んだ例であり、追加社会保険料がないことを確認して0を指定している。inputとresultは実際のcalc-incomeの入出力で置き換え、上の簡略な結果例を計算結果として採用しない。
+
+DB付きで給与収入又は給与源泉が非0なら、証憑選択が必要である。給与・入力と結果の給与源泉・社会保険料を選択した票と照合する。必要情報や選択が未確認ならfilingではerror、estimateではwarningである。年分や揃った金額の不一致は両モードでerrorになり、値は自動修正されない。旧DBに必要列がなければ移行が必要なエラーになるが、sanity-check自体は移行しない。
+
+salary_evidenceを指定する場合はDBが必要である。DBなしの単発計算とsanity-checkは使えるが、証憑照合済みとは表示しない。warningだけのpassed=trueも証憑確認や申告準備完了の意味ではない。

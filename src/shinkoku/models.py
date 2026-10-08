@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal
 import re
-from typing import Literal
+from typing import Annotated, Literal, get_args
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool, field_validator, model_validator
 
@@ -309,18 +309,102 @@ class InvoiceData(BaseModel):
     tax_amount: int | None = None
 
 
-class WithholdingSlipData(BaseModel):
-    """源泉徴収票の構造化データ。"""
+WithholdingAmount = Annotated[int, Field(ge=0, strict=True)]
+WithholdingSlipAmountField = Literal[
+    "payment_amount",
+    "withheld_tax",
+    "social_insurance",
+    "life_insurance_deduction",
+    "earthquake_insurance_deduction",
+    "housing_loan_deduction",
+    "spouse_deduction",
+    "dependent_deduction",
+    "basic_deduction",
+    "life_insurance_general_new",
+    "life_insurance_general_old",
+    "life_insurance_medical_care",
+    "life_insurance_annuity_new",
+    "life_insurance_annuity_old",
+    "national_pension_premium",
+    "old_long_term_insurance_premium",
+    "specific_relative_special_deduction",
+    "total_income_deductions",
+    "salary_income_after_deduction",
+    "social_insurance_small_business_mutual_aid",
+    "other_personal_deductions",
+]
+WITHHOLDING_AMOUNT_FIELDS: tuple[str, ...] = get_args(WithholdingSlipAmountField)
+
+
+class WithholdingSlipInput(BaseModel):
+    """原本の未読・空欄・記載額を区別した源泉徴収票の共通入力。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    payer_name: str | None = None
+    payment_amount: WithholdingAmount | None = None
+    withheld_tax: WithholdingAmount | None = None
+    social_insurance: WithholdingAmount | None = None
+    life_insurance_deduction: WithholdingAmount | None = None
+    earthquake_insurance_deduction: WithholdingAmount | None = None
+    housing_loan_deduction: WithholdingAmount | None = None
+    spouse_deduction: WithholdingAmount | None = None
+    dependent_deduction: WithholdingAmount | None = None
+    basic_deduction: WithholdingAmount | None = None
+    life_insurance_general_new: WithholdingAmount | None = None
+    life_insurance_general_old: WithholdingAmount | None = None
+    life_insurance_medical_care: WithholdingAmount | None = None
+    life_insurance_annuity_new: WithholdingAmount | None = None
+    life_insurance_annuity_old: WithholdingAmount | None = None
+    national_pension_premium: WithholdingAmount | None = None
+    old_long_term_insurance_premium: WithholdingAmount | None = None
+    specific_relative_special_deduction: WithholdingAmount | None = None
+    total_income_deductions: WithholdingAmount | None = None
+    salary_income_after_deduction: WithholdingAmount | None = None
+    social_insurance_small_business_mutual_aid: WithholdingAmount | None = None
+    other_personal_deductions: WithholdingAmount | None = None
+    document_fiscal_year: int | None = Field(default=None, strict=True)
+    year_end_adjusted: StrictBool | None = None
+    source_confirmed: StrictBool | None = None
+    blank_fields: list[WithholdingSlipAmountField] = Field(default_factory=list)
+    deduction_derivation_note: str | None = None
+    source_file: str | None = None
+
+    @model_validator(mode="after")
+    def validate_blank_fields(self) -> WithholdingSlipInput:
+        if len(set(self.blank_fields)) != len(self.blank_fields):
+            raise ValueError("blank_fieldsには同じ項目を重複して指定できません")
+        if any(getattr(self, name) is not None for name in self.blank_fields):
+            raise ValueError("空欄と金額を同時に指定できません")
+        return self
+
+
+class WithholdingSlipData(WithholdingSlipInput):
+    """ファイル受付・テキスト抽出と源泉徴収票の構造化データ。"""
 
     file_path: str
     extracted_text: str
-    payer_name: str | None = None
-    payment_amount: int = 0
-    withheld_tax: int = 0
-    social_insurance: int = 0
-    life_insurance_deduction: int = 0
-    earthquake_insurance_deduction: int = 0
-    housing_loan_deduction: int = 0
+
+
+class WithholdingSlipValidationIssue(BaseModel):
+    """源泉徴収票の原本へ戻って確認する問題。"""
+
+    severity: Literal["error", "warning", "info"]
+    code: str
+    fields: list[str]
+    message: str
+
+
+class WithholdingSlipValidationResult(BaseModel):
+    """控除合計の検算状態と、証憑からの入力可否。"""
+
+    status: Literal["matched", "mismatched", "incomplete", "not_applicable"]
+    reported_total: int | None = None
+    calculated_total: int | None = None
+    difference: int | None = None
+    missing_fields: list[str] = Field(default_factory=list)
+    issues: list[WithholdingSlipValidationIssue] = Field(default_factory=list)
+    ready_for_calculation: bool = False
 
 
 # --- 税額計算 (tax) ---
@@ -1816,53 +1900,11 @@ class DependentRecord(BaseModel):
 # --- 源泉徴収票 (withholding slip) 拡張 ---
 
 
-class WithholdingSlipInput(BaseModel):
-    """源泉徴収票の登録入力。"""
-
-    payer_name: str | None = None
-    payment_amount: int = 0
-    withheld_tax: int = 0
-    social_insurance: int = 0
-    life_insurance_deduction: int = 0
-    earthquake_insurance_deduction: int = 0
-    housing_loan_deduction: int = 0
-    spouse_deduction: int = 0
-    dependent_deduction: int = 0
-    basic_deduction: int = 0
-    # 拡張フィールド（Phase 6）
-    life_insurance_general_new: int = 0
-    life_insurance_general_old: int = 0
-    life_insurance_medical_care: int = 0
-    life_insurance_annuity_new: int = 0
-    life_insurance_annuity_old: int = 0
-    national_pension_premium: int = 0
-    old_long_term_insurance_premium: int = 0
-    source_file: str | None = None
-
-
-class WithholdingSlipRecord(BaseModel):
+class WithholdingSlipRecord(WithholdingSlipInput):
     """源泉徴収票のDBレコード。"""
 
     id: int
     fiscal_year: int
-    payer_name: str | None
-    payment_amount: int
-    withheld_tax: int
-    social_insurance: int
-    life_insurance_deduction: int
-    earthquake_insurance_deduction: int
-    housing_loan_deduction: int
-    spouse_deduction: int
-    dependent_deduction: int
-    basic_deduction: int
-    life_insurance_general_new: int = 0
-    life_insurance_general_old: int = 0
-    life_insurance_medical_care: int = 0
-    life_insurance_annuity_new: int = 0
-    life_insurance_annuity_old: int = 0
-    national_pension_premium: int = 0
-    old_long_term_insurance_premium: int = 0
-    source_file: str | None = None
 
 
 # --- その他所得 (other income) ---
@@ -2198,6 +2240,23 @@ class RetirementIncomeResult(BaseModel):
 
 
 # --- サニティチェック (sanity check) ---
+
+
+class SalaryEvidenceInput(BaseModel):
+    """年間給与の根拠として確認した票の選択。税額計算の入力とは分ける。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    slip_ids: list[Annotated[int, Field(strict=True, gt=0)]] = Field(min_length=1)
+    selection_confirmed: StrictBool | None = None
+    additional_social_insurance: WithholdingAmount | None = None
+
+    @field_validator("slip_ids")
+    @classmethod
+    def reject_duplicate_ids(cls, value: list[int]) -> list[int]:
+        if len(set(value)) != len(value):
+            raise ValueError("照合対象の源泉徴収票IDを重複して指定できません")
+        return value
 
 
 class TaxSanityCheckItem(BaseModel):

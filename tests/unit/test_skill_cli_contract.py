@@ -147,6 +147,43 @@ def test_family_and_salary_registration_examples_are_present() -> None:
     assert {("ledger", "dep-add"), ("ledger", "spouse-set"), ("ledger", "ws-save")} <= commands
 
 
+def test_withholding_reading_example_matches_input_contract() -> None:
+    import json
+    from shinkoku.models import WithholdingSlipInput
+
+    text = (REPOSITORY_ROOT / "skills/reading-withholding/SKILL.md").read_text(encoding="utf-8")
+    body = text.split("---WITHHOLDING_DATA---", 1)[1].split("---END---", 1)[0].strip()
+    value = WithholdingSlipInput.model_validate(json.loads(body), strict=True)
+    assert value.specific_relative_special_deduction is not None
+    assert value.document_fiscal_year == 2025
+
+
+def test_ws_check_and_save_examples_are_present() -> None:
+    scan = scan_skill_json_contract(REPOSITORY_ROOT)
+    commands = {example.command_path for example in scan.examples}
+    assert {("ledger", "ws-check"), ("ledger", "ws-save")} <= commands
+
+
+def test_salary_evidence_examples_match_strict_contract() -> None:
+    import json
+    import re
+
+    examples = []
+    for name in ("workflow-calculation.md", "workflow-business.md"):
+        text = (REPOSITORY_ROOT / "skills/income-tax/references" / name).read_text(encoding="utf-8")
+        blocks = re.findall(r"```json\s*\n([\s\S]*?)```", text)
+        matched = [
+            json.loads(block)["salary_evidence"] for block in blocks if '"salary_evidence"' in block
+        ]
+        assert matched, f"{name}のsalary_evidence例を検査していません"
+        examples.extend(matched)
+    from shinkoku.models import SalaryEvidenceInput
+
+    for value in examples:
+        result = SalaryEvidenceInput.model_validate(value, strict=True)
+        assert result.selection_confirmed is True
+
+
 def test_fixed_asset_crud_examples_are_present_and_derived() -> None:
     scan = scan_skill_json_contract(REPOSITORY_ROOT)
     commands = {example.command_path for example in scan.examples}

@@ -954,6 +954,192 @@ class TestDependent:
 # ============================================================
 
 
+def test_adjacent_misread_is_rejected_before_save(db_path: str, tmp_path: Path) -> None:
+    fixture = Path(__file__).parents[1] / "fixtures/withholding/2025-specific/input.json"
+    data = json.loads(fixture.read_text(encoding="utf-8"))
+    data["social_insurance"] = 610000
+    path = write_json(tmp_path, data)
+    with sqlite3.connect(db_path) as conn:
+        before = list(conn.iterdump())
+    completed = run_ledger_raw(
+        "ws-save", "--db-path", db_path, "--fiscal-year", "2025", "--input", path
+    )
+    assert completed.returncode == 1
+    assert json.loads(completed.stdout)["status"] == "error"
+    with sqlite3.connect(db_path) as conn:
+        assert list(conn.iterdump()) == before
+
+
+def test_ws_check_json_and_exit_codes(tmp_path: Path) -> None:
+    fixture = Path(__file__).parents[1] / "fixtures/withholding/2025-specific/input.json"
+    data = json.loads(fixture.read_text(encoding="utf-8"))
+    data["social_insurance"] = 610000
+    completed = run_ledger_raw(
+        "ws-check", "--fiscal-year", "2025", "--input", write_json(tmp_path, data)
+    )
+    assert completed.returncode == 0
+    output = json.loads(completed.stdout)
+    assert output["status"] == "ok" and output["validation"]["status"] == "mismatched"
+    assert output["validation"]["difference"] == -140000
+    missing = run_ledger_raw(
+        "ws-check", "--fiscal-year", "2025", "--input", write_json(tmp_path, {})
+    )
+    assert missing.returncode == 0
+    assert json.loads(missing.stdout)["validation"]["ready_for_calculation"] is False
+
+
+@pytest.mark.parametrize("command", ["ws-check", "ws-save"])
+def test_ws_invalid_input_does_not_echo_source(tmp_path: Path, command: str) -> None:
+    data = {
+        "payer_name": "PRIVATE-PAYER",
+        "source_file": "PRIVATE-SOURCE",
+        "payment_amount": 0,
+        "blank_fields": ["payment_amount"],
+    }
+    args = [command, "--fiscal-year", "2025", "--input", write_json(tmp_path, data)]
+    db = tmp_path / "not-created.db"
+    if command == "ws-save":
+        args += ["--db-path", str(db)]
+    completed = run_ledger_raw(*args)
+    assert completed.returncode == 1
+    assert "PRIVATE-PAYER" not in completed.stdout
+    assert "PRIVATE-SOURCE" not in completed.stdout
+    assert not db.exists()
+
+
+def test_withholding_roundtrip_preserves_null_blank_and_zero(db_path: str, tmp_path: Path) -> None:
+    from tests.helpers.withholding import withholding_input
+
+    data = withholding_input()
+    out = run_ledger(
+        "ws-save",
+        "--db-path",
+        db_path,
+        "--fiscal-year",
+        "2025",
+        "--input",
+        write_json(tmp_path, data),
+    )
+    assert out["validation"]["ready_for_calculation"] is True
+    listed = run_ledger("ws-list", "--db-path", db_path, "--fiscal-year", "2025")["slips"][0]
+    assert listed["specific_relative_special_deduction"] == 610000
+    assert listed["social_insurance_small_business_mutual_aid"] is None
+    assert listed["blank_fields"] == data["blank_fields"]
+    assert listed["housing_loan_deduction"] == 0
+    assert listed["source_confirmed"] is True
+    assert listed["validation"] == out["validation"]
+
+
+def test_withholding_update_replaces_fields_and_preserves_identity(
+    db_path: str, tmp_path: Path
+) -> None:
+    from tests.helpers.withholding import withholding_input
+
+    original = run_ledger(
+        "ws-save",
+        "--db-path",
+        db_path,
+        "--fiscal-year",
+        "2025",
+        "--input",
+        write_json(tmp_path, withholding_input()),
+    )
+    wid = original["withholding_slip_id"]
+    with sqlite3.connect(db_path) as conn:
+        created = conn.execute(
+            "SELECT created_at FROM withholding_slips WHERE id=?", (wid,)
+        ).fetchone()[0]
+    updated = run_ledger(
+        "ws-save",
+        "--db-path",
+        db_path,
+        "--fiscal-year",
+        "2025",
+        "--withholding-slip-id",
+        str(wid),
+        "--input",
+        write_json(tmp_path, {"payment_amount": 100}),
+    )
+    assert updated["withholding_slip_id"] == wid
+    assert updated["validation"]["ready_for_calculation"] is False
+    row = run_ledger("ws-list", "--db-path", db_path, "--fiscal-year", "2025")["slips"][0]
+    assert row["withheld_tax"] is None and row["source_confirmed"] is None
+    with sqlite3.connect(db_path) as conn:
+        assert (
+            conn.execute("SELECT created_at FROM withholding_slips WHERE id=?", (wid,)).fetchone()[
+                0
+            ]
+            == created
+        )
+        assert conn.execute("SELECT COUNT(*) FROM withholding_slips").fetchone()[0] == 1
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"document_fiscal_year": 2026},
+        {"year_end_adjusted": False},
+        {"social_insurance_small_business_mutual_aid": 750001, "blank_fields": []},
+        {"payment_amount": True},
+        {"specific_relative_special_deduction": 0},
+    ],
+)
+def test_invalid_withholding_save_does_not_change_db(
+    db_path: str, tmp_path: Path, changes: dict
+) -> None:
+    from tests.helpers.withholding import withholding_input
+
+    with sqlite3.connect(db_path) as conn:
+        before = list(conn.iterdump())
+    result = run_ledger_raw(
+        "ws-save",
+        "--db-path",
+        db_path,
+        "--fiscal-year",
+        "2025",
+        "--input",
+        write_json(tmp_path, withholding_input(**changes)),
+    )
+    assert result.returncode == 1
+    out = json.loads(result.stdout)
+    assert out["status"] == "error" and "code" in out and "validation" in out
+    with sqlite3.connect(db_path) as conn:
+        assert list(conn.iterdump()) == before
+
+
+@pytest.mark.parametrize("target_year,slip_id", [(2026, 1), (2025, 999)])
+def test_withholding_update_rejects_other_year_and_missing_id(
+    db_path: str, tmp_path: Path, target_year: int, slip_id: int
+) -> None:
+    run_ledger(
+        "ws-save",
+        "--db-path",
+        db_path,
+        "--fiscal-year",
+        "2025",
+        "--input",
+        write_json(tmp_path, {}),
+    )
+    with sqlite3.connect(db_path) as conn:
+        conn.execute("INSERT INTO fiscal_years(year) VALUES(2026)")
+        conn.commit()
+        before = list(conn.iterdump())
+    result = run_ledger_raw(
+        "ws-save",
+        "--db-path",
+        db_path,
+        "--fiscal-year",
+        str(target_year),
+        "--withholding-slip-id",
+        str(slip_id),
+        "--input",
+        write_json(tmp_path, {}),
+    )
+    assert result.returncode == 1
+    with sqlite3.connect(db_path) as conn:
+        assert list(conn.iterdump()) == before
+
+
 class TestWithholdingSlip:
     def test_save_list_delete(self, db_path, tmp_path):
         f = write_json(

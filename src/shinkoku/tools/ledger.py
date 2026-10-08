@@ -36,6 +36,7 @@ from shinkoku.models import (
     WithholdingSlipInput,
 )
 from shinkoku.tax_year_support import require_supported_consumption_tax_year
+from shinkoku.tools.withholding import check_withholding_slip, withholding_slip_from_row
 
 
 def ledger_init(*, fiscal_year: int, db_path: str) -> dict:
@@ -1941,89 +1942,96 @@ def ledger_delete_dependent(*, db_path: str, dependent_id: int) -> dict:
 
 
 def ledger_save_withholding_slip(
-    *, db_path: str, fiscal_year: int, detail: WithholdingSlipInput
+    *,
+    db_path: str,
+    fiscal_year: int,
+    detail: WithholdingSlipInput,
+    withholding_slip_id: int | None = None,
 ) -> dict:
-    """Save a withholding slip."""
+    """検算後に証憑を保存・全項目訂正する。未確認は下書きとして保持する。"""
+    validation = check_withholding_slip(detail, fiscal_year=fiscal_year)
+    errors = [item for item in validation.issues if item.severity == "error"]
+    if errors:
+        return {
+            "status": "error",
+            "code": errors[0].code,
+            "message": errors[0].message,
+            "validation": validation.model_dump(),
+        }
+    if withholding_slip_id is not None and (
+        type(withholding_slip_id) is not int or withholding_slip_id <= 0
+    ):
+        return {
+            "status": "error",
+            "code": "WS_INPUT_INVALID",
+            "message": "訂正するIDは正の整数で指定してください",
+            "validation": validation.model_dump(),
+        }
+    data = detail.model_dump(include=set(WithholdingSlipInput.model_fields))
+    data["blank_fields"] = json.dumps(data["blank_fields"], ensure_ascii=False)
     conn = get_connection(db_path)
     try:
-        cursor = conn.execute(
-            "INSERT INTO withholding_slips "
-            "(fiscal_year, payer_name, payment_amount, withheld_tax, social_insurance, "
-            "life_insurance_deduction, earthquake_insurance_deduction, housing_loan_deduction, "
-            "spouse_deduction, dependent_deduction, basic_deduction, "
-            "life_insurance_general_new, life_insurance_general_old, "
-            "life_insurance_medical_care, life_insurance_annuity_new, "
-            "life_insurance_annuity_old, national_pension_premium, "
-            "old_long_term_insurance_premium, source_file) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (
-                fiscal_year,
-                detail.payer_name,
-                detail.payment_amount,
-                detail.withheld_tax,
-                detail.social_insurance,
-                detail.life_insurance_deduction,
-                detail.earthquake_insurance_deduction,
-                detail.housing_loan_deduction,
-                detail.spouse_deduction,
-                detail.dependent_deduction,
-                detail.basic_deduction,
-                detail.life_insurance_general_new,
-                detail.life_insurance_general_old,
-                detail.life_insurance_medical_care,
-                detail.life_insurance_annuity_new,
-                detail.life_insurance_annuity_old,
-                detail.national_pension_premium,
-                detail.old_long_term_insurance_premium,
-                detail.source_file,
-            ),
-        )
-        conn.commit()
-        return {"status": "ok", "withholding_slip_id": cursor.lastrowid}
+        with conn:
+            if withholding_slip_id is None:
+                names = ["fiscal_year", *data]
+                cursor = conn.execute(
+                    f"INSERT INTO withholding_slips ({', '.join(names)}) VALUES ({', '.join('?' for _ in names)})",
+                    (fiscal_year, *data.values()),
+                )
+                withholding_slip_id = cursor.lastrowid
+            else:
+                row = conn.execute(
+                    "SELECT fiscal_year FROM withholding_slips WHERE id=?", (withholding_slip_id,)
+                ).fetchone()
+                if row is None or row[0] != fiscal_year:
+                    return {
+                        "status": "error",
+                        "code": "WS_RECORD_NOT_FOUND"
+                        if row is None
+                        else "WS_RECORD_FISCAL_YEAR_MISMATCH",
+                        "message": "同じ対象年分の訂正する源泉徴収票がありません",
+                        "validation": validation.model_dump(),
+                    }
+                # 全項目入力の確認状態を使い、旧source_confirmedを引き継がない。
+                cursor = conn.execute(
+                    f"UPDATE withholding_slips SET {', '.join(f'{name}=?' for name in data)} WHERE id=? AND fiscal_year=?",
+                    (*data.values(), withholding_slip_id, fiscal_year),
+                )
+                if cursor.rowcount != 1:
+                    conn.rollback()
+                    return {
+                        "status": "error",
+                        "code": "WS_RECORD_NOT_FOUND",
+                        "message": "訂正する源泉徴収票が更新できませんでした。旧状態を保持します",
+                        "validation": validation.model_dump(),
+                    }
+        return {
+            "status": "ok",
+            "withholding_slip_id": withholding_slip_id,
+            "validation": validation.model_dump(),
+        }
     finally:
         conn.close()
 
 
 def ledger_list_withholding_slips(*, db_path: str, fiscal_year: int) -> dict:
-    """List withholding slips for a fiscal year."""
+    """保存済みの原本値を読戻し、共通検算をその都度実行する。"""
     conn = get_connection(db_path)
     try:
         rows = conn.execute(
-            "SELECT id, fiscal_year, payer_name, payment_amount, withheld_tax, "
-            "social_insurance, life_insurance_deduction, earthquake_insurance_deduction, "
-            "housing_loan_deduction, spouse_deduction, dependent_deduction, basic_deduction, "
-            "life_insurance_general_new, life_insurance_general_old, "
-            "life_insurance_medical_care, life_insurance_annuity_new, "
-            "life_insurance_annuity_old, national_pension_premium, "
-            "old_long_term_insurance_premium, source_file "
-            "FROM withholding_slips WHERE fiscal_year = ? ORDER BY id",
-            (fiscal_year,),
+            "SELECT * FROM withholding_slips WHERE fiscal_year=? ORDER BY id", (fiscal_year,)
         ).fetchall()
-        items = [
-            {
-                "id": r[0],
-                "fiscal_year": r[1],
-                "payer_name": r[2],
-                "payment_amount": r[3],
-                "withheld_tax": r[4],
-                "social_insurance": r[5],
-                "life_insurance_deduction": r[6],
-                "earthquake_insurance_deduction": r[7],
-                "housing_loan_deduction": r[8],
-                "spouse_deduction": r[9],
-                "dependent_deduction": r[10],
-                "basic_deduction": r[11],
-                "life_insurance_general_new": r[12],
-                "life_insurance_general_old": r[13],
-                "life_insurance_medical_care": r[14],
-                "life_insurance_annuity_new": r[15],
-                "life_insurance_annuity_old": r[16],
-                "national_pension_premium": r[17],
-                "old_long_term_insurance_premium": r[18],
-                "source_file": r[19],
-            }
-            for r in rows
-        ]
+        items = []
+        for row in rows:
+            slip = withholding_slip_from_row(dict(row))
+            items.append(
+                {
+                    **slip.model_dump(),
+                    "validation": check_withholding_slip(
+                        slip, fiscal_year=fiscal_year
+                    ).model_dump(),
+                }
+            )
         return {"status": "ok", "fiscal_year": fiscal_year, "count": len(items), "slips": items}
     finally:
         conn.close()
